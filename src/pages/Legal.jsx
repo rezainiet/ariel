@@ -1,38 +1,45 @@
 import { PageHeader, Prose, Block, TodoNote } from '../components/ui/Prose.jsx'
-import { STORE } from '../config/store.js'
+import { STORE, MERCHANT } from '../config/store.js'
+import { Fact } from '../concepts/c/Pending.jsx'
 
 export default function Legal() {
+  const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return (
     <>
       <PageHeader
         eyebrow="Informations légales"
         title="Mentions légales"
-        intro="Informations relatives à l'éditeur du site et à l'exploitant de la boutique."
+        intro="Identité de l’exploitant de la boutique (art. 3 al. 1 let. s LCD)."
       />
       <Prose>
-        <Block title="Éditeur du site">
-          <p>Boutique&nbsp;: {STORE.name}</p>
-          <TodoNote>
-            la raison sociale exacte, la forme juridique, l'adresse du siège en Suisse, le
-            numéro IDE/CHE, le numéro TVA le cas échéant et le nom du responsable.
-          </TodoNote>
-        </Block>
-        <Block title="Contact">
-          {STORE.supportEmail ? (
-            <p>E-mail&nbsp;: {STORE.supportEmail}</p>
-          ) : (
-            <TodoNote>l'adresse e-mail de contact.</TodoNote>
-          )}
-          {STORE.supportPhone && <p>Téléphone&nbsp;: {STORE.supportPhone}</p>}
+        <Block title="Exploitant">
+          <dl className="grid grid-cols-[9rem_1fr] gap-y-2 text-ink/80">
+            <dt className="font-semibold text-ink">Boutique</dt>
+            <dd>{STORE.name}</dd>
+            <dt className="font-semibold text-ink">Raison sociale</dt>
+            <dd><Fact value={MERCHANT.legalName} missing="raison sociale (registre du commerce)" /></dd>
+            <dt className="font-semibold text-ink">Adresse</dt>
+            <dd><Fact value={address} missing="adresse postale" /></dd>
+            <dt className="font-semibold text-ink">N° IDE</dt>
+            <dd><Fact value={MERCHANT.uid} missing="numéro IDE (CHE-…)" /></dd>
+            <dt className="font-semibold text-ink">E-mail</dt>
+            <dd><Fact value={STORE.supportEmail} missing="e-mail" /></dd>
+            {STORE.supportPhone && (
+              <>
+                <dt className="font-semibold text-ink">Téléphone</dt>
+                <dd>{STORE.supportPhone}</dd>
+              </>
+            )}
+          </dl>
+          <p className="text-sm">Un simple formulaire de contact ne suffit pas : l’adresse postale et l’e-mail doivent figurer ici.</p>
         </Block>
         <Block title="Hébergement">
-          <TodoNote>le nom et les coordonnées de l'hébergeur du site.</TodoNote>
+          <TodoNote>le nom et l’adresse de l’hébergeur du site.</TodoNote>
         </Block>
-        <Block title="Propriété intellectuelle">
+        <Block title="Marques">
           <p>
-            Les marques et visuels de produits appartiennent à leurs titulaires respectifs.
-            Ariel est une marque de son propriétaire&nbsp;; elle est mentionnée à des fins
-            d'identification du produit vendu.
+            Ariel est une marque de The Procter &amp; Gamble Company. Elle est citée uniquement pour désigner le produit vendu.
+            {` ${STORE.name}`} n’est pas le site officiel de la marque.
           </p>
         </Block>
       </Prose>

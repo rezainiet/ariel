@@ -23,6 +23,43 @@ export const DELIVERY = {
   returnWindowDays: 15,
 }
 
+// ─────────────────────────────────────────────────────────────
+// Identité du marchand (LCD art. 3 al. 1 let. s : raison sociale,
+// adresse postale ET e-mail obligatoires). Aucune valeur n'est inventée :
+// tant qu'un champ est vide, l'interface affiche « à fournir » en
+// développement et l'omet en production (voir LAUNCH-CHECKLIST.md).
+// ─────────────────────────────────────────────────────────────
+export const MERCHANT = {
+  legalName: env.VITE_MERCHANT_LEGAL_NAME || '', // raison sociale (registre du commerce)
+  street: env.VITE_MERCHANT_STREET || '',
+  zip: env.VITE_MERCHANT_ZIP || '',
+  city: env.VITE_MERCHANT_CITY || '',
+  uid: env.VITE_MERCHANT_UID || '', // numéro IDE, ex. CHE-123.456.789
+  vatNote: env.VITE_MERCHANT_VAT_NOTE || '', // ex. « TVA incluse » si assujetti
+  dispatchCity: env.VITE_DISPATCH_CITY || '', // ville réelle de l'entrepôt
+  carrier: env.VITE_CARRIER || '', // ex. « La Poste (PostPac Economy) »
+  clearanceReason: env.VITE_CLEARANCE_REASON || '', // raison RÉELLE du déstockage
+}
+
+// Moyens de paiement réellement activés chez le prestataire (liste séparée par des virgules).
+// Valeurs reconnues : twint, visa, mastercard, amex, apple_pay, google_pay, postfinance, invoice.
+// Vide = aucun moyen affiché comme actif.
+export const PAYMENT_METHODS = (env.VITE_PAYMENT_METHODS || '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean)
+
+export const PAYMENT_LABELS = {
+  twint: 'TWINT',
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  amex: 'American Express',
+  apple_pay: 'Apple Pay',
+  google_pay: 'Google Pay',
+  postfinance: 'PostFinance',
+  invoice: 'Facture',
+}
+
 // Produit (d'après le packaging fourni — à vérifier sur l'emballage réel).
 export const PRODUCT = {
   id: 'ariel-all-in-1-pods',
@@ -90,6 +127,11 @@ export function savingsFor(offer) {
 
 export function pricePerPack(offer) {
   return offer.price / offer.packs
+}
+
+// Prix unitaire par capsule (convention suisse « 0.86/pièce »), arrondi au centime.
+export function pricePerCapsule(offer) {
+  return Math.round((offer.price / (offer.packs * PRODUCT.washesPerPack)) * 100) / 100
 }
 
 // Prix par lavage en centimes, arrondi à 0.1 ct (ex. 6.7 ct).

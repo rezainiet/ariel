@@ -110,9 +110,13 @@ const SAMPLE_REVIEWS = import.meta.env.DEV
 
 export const REVIEWS_ENDPOINT = import.meta.env.VITE_REVIEWS_ENDPOINT || ''
 
+// Aperçu explicite des avis d'exemple pour la boutique (Concept C) : uniquement en dev,
+// uniquement si VITE_REVIEWS_PREVIEW=sample. Par défaut, la boutique n'affiche rien.
+export const STORE_REVIEWS_PREVIEW = import.meta.env.DEV && import.meta.env.VITE_REVIEWS_PREVIEW === 'sample'
+
 // Statut de la source : 'sample' (dev), 'live' (source branchée), 'empty'.
-export function getReviewSource() {
-  if (SAMPLE_REVIEWS.length) return { status: 'sample', reviews: SAMPLE_REVIEWS }
+export function getReviewSource({ allowSample = true } = {}) {
+  if (allowSample && SAMPLE_REVIEWS.length) return { status: 'sample', reviews: SAMPLE_REVIEWS }
   // Point d'intégration : charger les avis vérifiés depuis REVIEWS_ENDPOINT.
   return { status: 'empty', reviews: [] }
 }
@@ -143,8 +147,8 @@ function sortReviews(list, mode) {
 }
 
 // Hook partagé : tri, filtre par note, pagination « Voir plus ».
-export function useReviews({ pageSize = 3 } = {}) {
-  const source = useMemo(() => getReviewSource(), [])
+export function useReviews({ pageSize = 3, allowSample = true } = {}) {
+  const source = useMemo(() => getReviewSource({ allowSample }), [allowSample])
   const summary = useMemo(() => summarize(source.reviews), [source])
   const [sort, setSort] = useState('recent')
   const [stars, setStars] = useState(null)

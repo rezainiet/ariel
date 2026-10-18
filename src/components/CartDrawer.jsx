@@ -6,6 +6,7 @@ import { OFFERS, PRODUCT, DELIVERY, formatCHF, savingsFor } from '../config/stor
 import { IMAGES } from '../config/assets.js'
 import ProductImage from './ui/ProductImage.jsx'
 import Button from './ui/Button.jsx'
+import { PackStack } from '../concepts/c/BuyBoxC.jsx'
 
 // Habillage par concept : même logique panier, identité visuelle cohérente avec la page.
 const SKINS = {
@@ -53,7 +54,8 @@ const SKINS = {
 
 export default function CartDrawer() {
   const { drawerOpen, closeDrawer, offer, hasItems, washes, total, clear, changeOffer, skin } = useCart()
-  const S = SKINS[skin] || SKINS.base
+  // La boutique (Concept C) est l'habillage par défaut ; A et B imposent le leur.
+  const S = SKINS[skin] || SKINS.c
   const navigate = useNavigate()
   const closeRef = useRef(null)
 
@@ -139,13 +141,24 @@ export default function CartDrawer() {
             <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-5">
               <div className="rounded-2xl border border-line bg-surface p-4">
                 <div className="flex gap-4">
-                  <ProductImage
-                    src={offer.image || IMAGES.packshot}
-                    fit="contain"
-                    alt={`${PRODUCT.name} — ${offer.label}`}
-                    ratio="1 / 1"
-                    className="h-24 w-24 flex-none bg-white"
-                  />
+                  {S === SKINS.c ? (
+                    // Boutique : même pile de sachets réels que le configurateur
+                    <span
+                      className="flex h-24 w-24 flex-none items-end justify-center rounded-xl bg-sand/70 pb-2"
+                      role="img"
+                      aria-label={`${PRODUCT.name} — ${offer.label}`}
+                    >
+                      <PackStack packs={offer.packs} />
+                    </span>
+                  ) : (
+                    <ProductImage
+                      src={offer.image || IMAGES.packshot}
+                      fit="contain"
+                      alt={`${PRODUCT.name} — ${offer.label}`}
+                      ratio="1 / 1"
+                      className="h-24 w-24 flex-none bg-white"
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[0.98rem] font-bold leading-tight text-ink">{PRODUCT.name}</h3>
                     <p className="mt-0.5 text-sm text-muted">

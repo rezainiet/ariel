@@ -1,250 +1,383 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Lock, ArrowLeft, Truck, ShieldCheck, Info } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, Lock, Truck, RotateCcw, AlertCircle, Loader2, Minus, Plus, ChevronDown } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { PRODUCT, DELIVERY, formatCHF } from '../config/store.js'
-import { IMAGES } from '../config/assets.js'
-import ProductImage from '../components/ui/ProductImage.jsx'
-import Button from '../components/ui/Button.jsx'
+import {
+  OFFERS,
+  PRODUCT,
+  DELIVERY,
+  MERCHANT,
+  STORE,
+  PAYMENT_METHODS,
+  PAYMENT_LABELS,
+  formatCHF,
+  savingsFor,
+  pricePerCapsule,
+} from '../config/store.js'
 import { trackStartCheckout } from '../lib/pixel.js'
+import { startPayment } from '../lib/payment.js'
+import { Wordmark } from '../concepts/c/ChromeC.jsx'
+import { PackStack } from '../concepts/c/BuyBoxC.jsx'
+import { Fact, Pending } from '../concepts/c/Pending.jsx'
 
-// Champs du formulaire client.
-const FIELDS = [
-  { name: 'prenom', label: 'Prénom', type: 'text', autoComplete: 'given-name', col: 1 },
-  { name: 'nom', label: 'Nom', type: 'text', autoComplete: 'family-name', col: 1 },
-  { name: 'adresse', label: 'Adresse', type: 'text', autoComplete: 'street-address', col: 2 },
-  { name: 'npa', label: 'Code postal', type: 'text', autoComplete: 'postal-code', col: 1, inputMode: 'numeric' },
-  { name: 'ville', label: 'Ville', type: 'text', autoComplete: 'address-level2', col: 1 },
-  { name: 'email', label: 'E-mail', type: 'email', autoComplete: 'email', col: 2 },
-  { name: 'telephone', label: 'Téléphone', type: 'tel', autoComplete: 'tel', col: 2, optional: true },
+// Champs — adresse suisse, clavier mobile adapté, autocomplétion standard.
+const CONTACT = [
+  { name: 'email', label: 'E-mail', type: 'email', autoComplete: 'email', inputMode: 'email', hint: 'Pour la confirmation de commande.' },
+  { name: 'tel', label: 'Téléphone', type: 'tel', autoComplete: 'tel', inputMode: 'tel', optional: true, hint: 'Facultatif — utile au transporteur.' },
 ]
+const ADDRESS = [
+  { name: 'prenom', label: 'Prénom', autoComplete: 'given-name', half: true },
+  { name: 'nom', label: 'Nom', autoComplete: 'family-name', half: true },
+  { name: 'rue', label: 'Rue et numéro', autoComplete: 'address-line1' },
+  { name: 'complement', label: 'Complément d’adresse', autoComplete: 'address-line2', optional: true },
+  { name: 'npa', label: 'NPA', autoComplete: 'postal-code', inputMode: 'numeric', maxLength: 4, npa: true },
+  { name: 'ville', label: 'Localité', autoComplete: 'address-level2', city: true },
+]
+const ALL = [...CONTACT, ...ADDRESS]
 
-const PAYMENTS = ['Carte', 'Apple Pay', 'Google Pay', 'TWINT']
-
-function validate(values) {
+function validate(v) {
   const e = {}
-  if (!values.prenom?.trim()) e.prenom = 'Requis'
-  if (!values.nom?.trim()) e.nom = 'Requis'
-  if (!values.adresse?.trim()) e.adresse = 'Requis'
-  if (!/^\d{4}$/.test(values.npa?.trim() || '')) e.npa = 'NPA à 4 chiffres'
-  if (!values.ville?.trim()) e.ville = 'Requis'
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(values.email?.trim() || '')) e.email = 'E-mail invalide'
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test((v.email || '').trim())) e.email = 'Saisissez une adresse e-mail valide.'
+  const tel = (v.tel || '').replace(/[\s.\-()]/g, '')
+  if (tel && !/^(\+41|0041|0)[1-9]\d{8}$/.test(tel)) e.tel = 'Numéro suisse attendu, ex. 079 123 45 67.'
+  if (!(v.prenom || '').trim()) e.prenom = 'Indiquez votre prénom.'
+  if (!(v.nom || '').trim()) e.nom = 'Indiquez votre nom.'
+  if (!(v.rue || '').trim()) e.rue = 'Indiquez la rue et le numéro.'
+  if (!/^[1-9]\d{3}$/.test((v.npa || '').trim())) e.npa = 'NPA suisse à 4 chiffres.'
+  if (!(v.ville || '').trim()) e.ville = 'Indiquez la localité.'
   return e
 }
 
+function Field({ f, value, error, onChange, onBlur }) {
+  const id = `f-${f.name}`
+  return (
+    <div className={f.half ? 'col-span-1' : f.npa ? 'col-span-1 sm:col-span-1' : f.city ? 'col-span-1' : 'col-span-2'}>
+      <label htmlFor={id} className="block text-sm font-semibold text-ink">
+        {f.label}
+        {f.optional && <span className="ml-1 font-normal text-muted">(facultatif)</span>}
+      </label>
+      <input
+        id={id}
+        name={f.name}
+        type={f.type || 'text'}
+        inputMode={f.inputMode}
+        autoComplete={f.autoComplete}
+        maxLength={f.maxLength}
+        value={value || ''}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-err` : f.hint ? `${id}-hint` : undefined}
+        onChange={(e) => onChange(f.name, e.target.value)}
+        onBlur={() => onBlur(f.name)}
+        className={`mt-1.5 h-12 w-full rounded-xl border bg-white px-4 text-base text-ink outline-none transition-colors focus:border-forest focus:ring-2 focus:ring-forest/15 ${
+          error ? 'border-red-500' : 'border-hair'
+        }`}
+      />
+      {error ? (
+        <p id={`${id}-err`} className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600">
+          <AlertCircle size={13} /> {error}
+        </p>
+      ) : (
+        f.hint && <p id={`${id}-hint`} className="mt-1 text-xs text-muted">{f.hint}</p>
+      )}
+    </div>
+  )
+}
+
+function Steps({ current }) {
+  const steps = ['Panier', 'Coordonnées', 'Paiement']
+  return (
+    <ol className="flex items-center gap-2 text-xs font-semibold" aria-label="Étapes de la commande">
+      {steps.map((s, k) => (
+        <li key={s} className="flex items-center gap-2" aria-current={k === current ? 'step' : undefined}>
+          <span
+            className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] ${
+              k < current ? 'bg-forest text-white' : k === current ? 'bg-forest text-white ring-4 ring-mint' : 'bg-sand text-muted'
+            }`}
+          >
+            {k + 1}
+          </span>
+          <span className={k === current ? 'text-ink' : 'text-muted'}>{s}</span>
+          {k < steps.length - 1 && <span className="h-px w-5 bg-hair sm:w-8" />}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function Summary({ offer, changeOffer }) {
+  const idx = OFFERS.findIndex((o) => o.id === offer.id)
+  const save = savingsFor(offer)
+  return (
+    <div className="rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
+      <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-forest">Votre commande</h2>
+      <div className="mt-4 flex items-center gap-4">
+        <span className="flex h-16 w-20 flex-none items-end justify-center rounded-xl bg-sand/70 pb-1">
+          <PackStack packs={offer.packs} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold leading-tight text-ink">{PRODUCT.name}</p>
+          <p className="text-sm text-muted">
+            {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · {offer.washes} lavages
+          </p>
+        </div>
+      </div>
+      {/* Correction possible avant l'achat (LCD art. 3 let. s) */}
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-sand/50 px-3 py-2">
+        <span className="text-sm font-semibold text-ink">Nombre de packs</span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => OFFERS[idx - 1] && changeOffer(OFFERS[idx - 1].id)}
+            disabled={idx <= 0}
+            aria-label="Un pack de moins"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-forest disabled:opacity-30"
+          >
+            <Minus size={15} />
+          </button>
+          <span className="w-7 text-center font-bold tabular-nums" aria-live="polite">{offer.packs}</span>
+          <button
+            type="button"
+            onClick={() => OFFERS[idx + 1] && changeOffer(OFFERS[idx + 1].id)}
+            disabled={idx >= OFFERS.length - 1}
+            aria-label="Un pack de plus"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-forest disabled:opacity-30"
+          >
+            <Plus size={15} />
+          </button>
+        </div>
+      </div>
+      <dl className="mt-4 space-y-1.5 text-sm">
+        <div className="flex justify-between text-ink/75"><dt>Prix de l’offre</dt><dd className="tabular-nums">{formatCHF(offer.price)}</dd></div>
+        <div className="flex justify-between text-ink/75"><dt>Prix par capsule</dt><dd className="tabular-nums">≈ {formatCHF(pricePerCapsule(offer))}</dd></div>
+        <div className="flex justify-between text-ink/75"><dt>Livraison (Suisse)</dt><dd className="font-semibold text-forest">Offerte</dd></div>
+        {save > 0 && (
+          <div className="flex justify-between text-ink/75"><dt>Économie vs packs séparés</dt><dd className="tabular-nums text-forest">− {formatCHF(save)}</dd></div>
+        )}
+        <div className="mt-2 flex items-baseline justify-between border-t border-hair pt-3">
+          <dt className="text-base font-bold text-ink">Total à payer</dt>
+          <dd className="font-serif text-2xl font-medium tabular-nums text-forest">{formatCHF(offer.price)}</dd>
+        </div>
+        <p className="text-right text-xs text-muted">
+          <Fact value={MERCHANT.vatNote} missing="mention TVA (ex. « TVA incluse »)" />
+        </p>
+      </dl>
+      <ul className="mt-4 space-y-1.5 border-t border-hair pt-4 text-xs text-ink/75">
+        <li className="flex gap-2"><Truck size={14} className="flex-none text-forest" /> Livraison estimée sous {DELIVERY.estimateDays} jours ouvrables</li>
+        <li className="flex gap-2"><RotateCcw size={14} className="flex-none text-forest" /> Retour possible sous {DELIVERY.returnWindowDays} jours après réception</li>
+      </ul>
+      <p className="mt-4 border-t border-hair pt-4 text-xs text-muted">
+        Vendeur : <Fact value={MERCHANT.legalName} missing="raison sociale" /> ·{' '}
+        <Link to="/mentions-legales" className="font-semibold text-forest underline">mentions légales</Link>
+      </p>
+    </div>
+  )
+}
+
 export default function Checkout() {
-  const { offer, hasItems, washes, total } = useCart()
-  const navigate = useNavigate()
+  const { offer, hasItems, total, changeOffer } = useCart()
   const [values, setValues] = useState({})
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const [status, setStatus] = useState('idle') // idle | loading | not_configured | error
+  const summaryRef = useRef(null)
+  const [method, setMethod] = useState(PAYMENT_METHODS[0] || '')
+  const [showSummary, setShowSummary] = useState(false)
 
   useEffect(() => {
-    if (hasItems) {
-      trackStartCheckout({
-        currency: 'CHF',
-        price: total,
-        item_ids: [PRODUCT.id],
-        number_items: offer?.packs,
-      })
-    }
+    if (hasItems) trackStartCheckout({ currency: 'CHF', price: total, item_ids: [PRODUCT.id], number_items: offer?.packs })
   }, [hasItems]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const set = (name, v) => setValues((s) => ({ ...s, [name]: v }))
+  const set = (name, v) => {
+    const next = { ...values, [name]: v }
+    setValues(next)
+    if (touched[name] || submitted) setErrors(validate(next))
+  }
+  const blur = (name) => {
+    setTouched((t) => ({ ...t, [name]: true }))
+    setErrors(validate(values))
+  }
 
-  const formReady = useMemo(() => Object.keys(validate(values)).length === 0, [values])
-
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
     const errs = validate(values)
     setErrors(errs)
-    setTouched(Object.fromEntries(FIELDS.map((f) => [f.name, true])))
-    if (Object.keys(errs).length > 0) {
-      document.querySelector('[aria-invalid="true"]')?.focus()
+    setSubmitted(true)
+    if (Object.keys(errs).length) {
+      requestAnimationFrame(() => summaryRef.current?.focus())
       return
     }
-    // ── FRONTIÈRE D'INTÉGRATION PAIEMENT ──
-    // Aucun paiement n'est traité ici. Le paiement réel devra passer par un
-    // prestataire conforme (PCI-DSS) avec vérification de commande côté serveur.
-    // L'événement PURCHASE ne doit être déclenché qu'après confirmation vérifiée.
-    alert(
-      "DÉMONSTRATION — Aucune commande n'est réellement passée.\n\n" +
-        "Le paiement sera traité par un prestataire externe conforme (à connecter). " +
-        "Cette interface valide uniquement la structure du tunnel de commande."
-    )
+    setStatus('loading')
+    const res = await startPayment({
+      offerId: offer.id,
+      packs: offer.packs,
+      total: offer.price,
+      currency: 'CHF',
+      method,
+      customer: values,
+    })
+    if (res.status !== 'redirecting') setStatus(res.status)
   }
+
+  const shownErrors = Object.fromEntries(Object.entries(errors).filter(([k]) => touched[k] || submitted))
+  const errorList = ALL.filter((f) => shownErrors[f.name])
 
   if (!hasItems) {
     return (
-      <div className="container-edge flex min-h-[60vh] flex-col items-center justify-center py-20 text-center">
-        <h1 className="text-2xl font-extrabold text-ink">Votre panier est vide</h1>
-        <p className="mt-2 max-w-sm text-muted">
-          Choisissez une offre avant de passer commande.
-        </p>
-        <Button to="/" variant="primary" className="mt-6">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-ivory px-6 text-center">
+        <Wordmark />
+        <h1 className="mt-8 font-serif text-3xl text-ink">Votre panier est vide</h1>
+        <p className="mt-2 max-w-sm text-muted">Choisissez une offre avant de passer commande.</p>
+        <Link to="/#offres" className="mt-6 flex h-12 items-center rounded-xl bg-forest px-6 font-bold text-white">
           Voir les offres
-        </Button>
+        </Link>
       </div>
     )
   }
 
   return (
-    <div className="container-edge py-8 sm:py-12">
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-forest"
-      >
-        <ArrowLeft size={16} /> Retour
-      </button>
+    <div className="min-h-screen bg-ivory">
+      <header className="border-b border-hair bg-white">
+        <div className="mx-auto flex h-14 max-w-[1120px] items-center justify-between px-4 lg:h-16 lg:px-8">
+          <Link to="/" aria-label="Retour à la boutique"><Wordmark compact /></Link>
+          <span className="hidden items-center gap-1.5 text-xs font-semibold text-ink/70 sm:flex">
+            <Lock size={14} className="text-forest" /> Commande en CHF
+          </span>
+        </div>
+      </header>
 
-      <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
-        Finaliser la commande
-      </h1>
+      <div className="mx-auto max-w-[1120px] px-4 py-6 lg:px-8 lg:py-10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-forest">
+            <ArrowLeft size={16} /> Continuer mes achats
+          </Link>
+          <Steps current={submitted && !errorList.length ? 2 : 1} />
+        </div>
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:gap-14">
-        {/* ── Formulaire ── */}
-        <form onSubmit={onSubmit} noValidate className="order-2 lg:order-1">
-          <fieldset>
-            <legend className="text-sm font-semibold uppercase tracking-[0.12em] text-forest">
-              Livraison
-            </legend>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              {FIELDS.map((f) => {
-                const err = touched[f.name] && errors[f.name]
-                return (
-                  <div key={f.name} className={f.col === 2 ? 'col-span-2' : 'col-span-2 sm:col-span-1'}>
-                    <label htmlFor={f.name} className="block text-sm font-medium text-ink">
-                      {f.label}
-                      {f.optional && <span className="ml-1 text-xs text-muted">(facultatif)</span>}
-                    </label>
-                    <input
-                      id={f.name}
-                      name={f.name}
-                      type={f.type}
-                      inputMode={f.inputMode}
-                      autoComplete={f.autoComplete}
-                      value={values[f.name] || ''}
-                      aria-invalid={Boolean(err)}
-                      aria-describedby={err ? `${f.name}-err` : undefined}
-                      onChange={(e) => set(f.name, e.target.value)}
-                      onBlur={() => {
-                        setTouched((s) => ({ ...s, [f.name]: true }))
-                        setErrors(validate(values))
-                      }}
-                      className={`mt-1.5 h-12 w-full rounded-xl border bg-surface px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-muted/60 focus:border-forest ${
-                        err ? 'border-red-400 focus:border-red-500' : 'border-line'
-                      }`}
-                    />
-                    {err && (
-                      <p id={`${f.name}-err`} className="mt-1 text-xs text-red-500">
-                        {errors[f.name]}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </fieldset>
+        <h1 className="mt-5 font-serif text-[2rem] font-medium tracking-tight text-ink lg:text-[2.6rem]">Finaliser la commande</h1>
 
-          {/* Paiement — frontière d'intégration */}
-          <fieldset className="mt-10">
-            <legend className="text-sm font-semibold uppercase tracking-[0.12em] text-forest">
-              Paiement
-            </legend>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {PAYMENTS.map((p) => (
-                <span
-                  key={p}
-                  className="inline-flex items-center rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-ink/70"
-                >
-                  {p}
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_1fr] lg:gap-10">
+          <aside className="lg:order-2">
+            {/* Mobile : récapitulatif repliable (le formulaire reste visible) ; desktop : toujours déplié */}
+            <button
+              type="button"
+              onClick={() => setShowSummary((v) => !v)}
+              aria-expanded={showSummary}
+              aria-controls="recapitulatif"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-hair bg-white px-4 py-3 text-left lg:hidden"
+            >
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-sm font-bold text-forest">
+                  {showSummary ? 'Masquer' : 'Afficher'} le récapitulatif
+                  <ChevronDown size={16} className={`transition-transform ${showSummary ? 'rotate-180' : ''}`} />
                 </span>
-              ))}
+                <span className="block truncate text-xs text-muted">
+                  {offer.packs} pack{offer.packs > 1 ? 's' : ''} · {offer.washes} lavages · livraison offerte
+                </span>
+              </span>
+              <span className="font-serif text-xl tabular-nums text-forest">{formatCHF(offer.price)}</span>
+            </button>
+            <div id="recapitulatif" className={`${showSummary ? 'mt-3 block' : 'hidden'} lg:sticky lg:top-6 lg:mt-0 lg:block`}>
+              <Summary offer={offer} changeOffer={changeOffer} />
             </div>
+          </aside>
 
-            <div className="mt-4 flex gap-3 rounded-xl border border-line bg-sage/30 p-4">
-              <Info size={18} className="mt-0.5 flex-none text-forest" />
-              <p className="text-xs leading-relaxed text-ink/75">
-                <strong className="font-semibold">Intégration à connecter.</strong> Le
-                paiement sera traité par un prestataire externe conforme (type Stripe,
-                Datatrans ou Wallee) avec vérification de la commande côté serveur. Aucune
-                donnée de carte n'est collectée par cette application. Les moyens de
-                paiement ne sont pas encore actifs.
-              </p>
-            </div>
-          </fieldset>
-
-          <Button
-            type="submit"
-            size="lg"
-            fullWidth
-            className="mt-8"
-            disabled={!formReady}
-          >
-            <Lock size={17} /> PAYER {formatCHF(total)}
-          </Button>
-          <p className="mt-3 text-center text-xs text-muted">
-            Démonstration — aucun paiement réel n'est effectué.
-          </p>
-        </form>
-
-        {/* ── Récapitulatif ── */}
-        <aside className="order-1 lg:order-2">
-          <div className="rounded-xl2 border border-line bg-surface p-6 lg:sticky lg:top-24">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-forest">
-              Votre commande
-            </h2>
-
-            <div className="mt-5 flex gap-4">
-              <ProductImage
-                src={offer.image || IMAGES.packshot}
-                fit="contain"
-                alt="Ariel All-in-1 PODS"
-                ratio="1 / 1"
-                className="h-20 w-20 flex-none bg-white"
-              />
-              <div>
-                <h3 className="text-[0.95rem] font-semibold text-ink">{PRODUCT.name}</h3>
-                <p className="mt-0.5 text-sm text-muted">{offer.label}</p>
-                <p className="text-sm text-muted">{washes} lavages</p>
+          <form onSubmit={onSubmit} noValidate className="lg:order-1">
+            {errorList.length > 0 && (
+              <div ref={summaryRef} tabIndex={-1} role="alert" className="mb-5 rounded-xl border border-red-300 bg-red-50 p-4 outline-none">
+                <p className="flex items-center gap-2 text-sm font-bold text-red-700">
+                  <AlertCircle size={16} /> Veuillez corriger {errorList.length > 1 ? `${errorList.length} champs` : 'un champ'} :
+                </p>
+                <ul className="mt-2 list-disc space-y-0.5 pl-6 text-sm text-red-700">
+                  {errorList.map((f) => (
+                    <li key={f.name}>
+                      <a href={`#f-${f.name}`} className="underline">{f.label}</a> — {shownErrors[f.name]}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
+            )}
 
-            <dl className="mt-6 space-y-2 border-t border-line pt-5 text-sm">
-              <div className="flex justify-between text-muted">
-                <dt>Sous-total produit</dt>
-                <dd>{formatCHF(offer.price)}</dd>
+            <fieldset className="rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
+              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-forest">1 · Vos coordonnées</legend>
+              <div className="mt-2 grid grid-cols-2 gap-4">
+                {CONTACT.map((f) => (
+                  <Field key={f.name} f={f} value={values[f.name]} error={shownErrors[f.name]} onChange={set} onBlur={blur} />
+                ))}
               </div>
-              <div className="flex justify-between text-muted">
-                <dt>Livraison</dt>
-                <dd className="font-semibold text-forest">Offerte</dd>
-              </div>
-              <div className="mt-2 flex items-baseline justify-between border-t border-line pt-3">
-                <dt className="text-base font-bold text-ink">Total</dt>
-                <dd className="text-xl font-extrabold text-forest">{formatCHF(total)}</dd>
-              </div>
-            </dl>
+            </fieldset>
 
-            <ul className="mt-6 space-y-2.5 text-xs text-ink/70">
-              <li className="flex items-center gap-2">
-                <Truck size={15} className="text-forest" /> Livraison offerte · estimée sous{' '}
-                {DELIVERY.estimateDays} jours ouvrables
-              </li>
-              <li className="flex items-center gap-2">
-                <ShieldCheck size={15} className="text-forest" /> Paiement sécurisé (à venir)
-              </li>
-            </ul>
+            <fieldset className="mt-4 rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
+              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-forest">2 · Adresse de livraison</legend>
+              <div className="mt-2 grid grid-cols-2 gap-4">
+                {ADDRESS.map((f) => (
+                  <Field key={f.name} f={f} value={values[f.name]} error={shownErrors[f.name]} onChange={set} onBlur={blur} />
+                ))}
+                <p className="col-span-2 rounded-lg bg-sand/60 px-3 py-2 text-xs text-ink/75">Pays : <strong>Suisse</strong> — livraison en Suisse uniquement.</p>
+              </div>
+            </fieldset>
 
-            <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
-              Retour possible sous {DELIVERY.returnWindowDays} jours après réception —{' '}
-              <Link to="/retours-remboursements" className="font-medium text-forest hover:underline">
-                en savoir plus
-              </Link>
-              .
+            <fieldset className="mt-4 rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
+              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-forest">3 · Paiement</legend>
+              {PAYMENT_METHODS.length ? (
+                <div role="radiogroup" aria-label="Moyen de paiement" className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {PAYMENT_METHODS.map((m) => (
+                    <label
+                      key={m}
+                      className={`flex h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-sm font-semibold ${
+                        method === m ? 'border-forest bg-mint/40' : 'border-hair'
+                      }`}
+                    >
+                      <input type="radio" name="method" value={m} checked={method === m} onChange={() => setMethod(m)} className="accent-forest" />
+                      {PAYMENT_LABELS[m] || m}
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  <Pending block>prestataire et moyens de paiement réellement activés</Pending>
+                  <p className="text-sm text-ink/75">
+                    Le paiement sera traité sur la page sécurisée de notre prestataire. Aucune donnée de carte n’est saisie ni
+                    conservée par {STORE.name}.
+                  </p>
+                </div>
+              )}
+            </fieldset>
+
+            {status === 'not_configured' && (
+              <div role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                <strong>Paiement en ligne pas encore activé.</strong> Aucune commande n’a été enregistrée et aucun montant n’a été
+                débité. (Intégration prestataire à connecter : VITE_PAYMENT_PROVIDER / VITE_CHECKOUT_API.)
+              </div>
+            )}
+            {status === 'error' && (
+              <div role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+                Le paiement n’a pas pu être initié. Aucun montant n’a été débité. Réessayez dans un instant ou contactez-nous.
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-forest text-base font-extrabold text-white transition-all hover:bg-forest-700 active:scale-[0.99] disabled:opacity-70"
+            >
+              {status === 'loading' ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" /> Redirection vers le paiement…
+                </>
+              ) : (
+                <>
+                  <Lock size={17} /> Acheter · {formatCHF(offer.price)}
+                </>
+              )}
+            </button>
+            <p className="mt-3 text-center text-xs leading-relaxed text-muted">
+              En cliquant sur « Acheter », vous passez une commande avec obligation de paiement et acceptez nos{' '}
+              <Link to="/conditions-generales-de-vente" className="underline">conditions générales de vente</Link>. Une confirmation vous
+              est envoyée par e-mail.
             </p>
-          </div>
-        </aside>
+          </form>
+        </div>
       </div>
     </div>
   )

@@ -12,17 +12,18 @@ npm run build    # build de production
 npm run preview  # prévisualisation du build
 ```
 
-## Concepts de design (branche `three-concepts`)
+## Boutique et concepts (branche `concept-c-revision`)
 
-| Route | Concept |
+| Route | Contenu |
 | ----- | ------- |
-| `/concept-a` | A — Swiss Luxury Commerce (éditorial, ivoire, serif Fraunces) |
-| `/concept-b` | B — Modern Product Experience (immersif, sombre, Space Grotesk) |
-| `/concept-c` | C — Premium Conversion Commerce (compact, barre d'achat collante) |
-| `/design` | Comparaison interne côte à côte — dev uniquement (`VITE_DESIGN_PREVIEW=true` pour la recette) |
+| `/` | **Boutique** — Concept C révisé (recherche : `SWISS-MARKET-RESEARCH.md`) |
+| `/commande`, `/commande/confirmation` | Tunnel de commande + confirmation vérifiée côté serveur |
+| `/concept-a`, `/concept-b` | Concepts A et B (comparaison, inchangés) |
+| `/v1` | Première version (archive) |
+| `/design` | Comparaison interne — dev uniquement (`VITE_DESIGN_PREVIEW=true` pour la recette) |
 
-La v1 reste accessible sur `/` et sur la branche `main`. Revue complète, scores et
-captures : `design-review/DESIGN-REVIEW.md`.
+Avant toute mise en ligne : **`LAUNCH-CHECKLIST.md`** (informations marchand, paiement, visuels).
+Notes de design et captures : `design-review/concept-c-revision/`.
 
 Les avis d'exemple (`src/data/reviews.js`) ne sont chargés qu'en développement ; en production,
 un état vide s'affiche tant que `VITE_REVIEWS_ENDPOINT` n'est pas branché.

@@ -1,32 +1,41 @@
+import '@fontsource-variable/fraunces'
 import { useState } from 'react'
 import { DEFAULT_OFFER_ID } from '../../config/store.js'
 import { useHashScroll } from '../shared/useHashScroll.js'
 import { useCartSkin } from '../shared/useCartSkin.js'
 import { useInView } from '../shared/hooks.js'
 import { HeaderC, FooterC } from './ChromeC.jsx'
-import BuyC from './BuyC.jsx'
-import { CompareC, ProductDetailsC, ReviewsC, FaqC } from './DetailsC.jsx'
+import HeroC from './HeroC.jsx'
+import TrustC from './TrustC.jsx'
+import { FormatSection, WashesSection, ClaimsSection, UsageSection } from './StoryC.jsx'
+import { PhotosSection, DeliverySection, ReviewsSection, FaqSection } from './InfoC.jsx'
 import StickyBarC from './StickyBarC.jsx'
 
-// CONCEPT C — Premium Conversion Commerce
-// Fiche produit compacte, offre sélectionnable dès le premier écran, barre d'achat collante.
+// BOUTIQUE (Concept C révisé) — fondée sur SWISS-MARKET-RESEARCH.md
+// 1. Héros + configurateur  2. Prix & vendeur  3–5. Le produit  6. Photos (mobile)
+// 7. Mode d'emploi & sécurité  8. Avis (si source vérifiée)  9. Livraison/retours/paiement  10. FAQ
 export default function ConceptC() {
   useHashScroll()
   useCartSkin('c')
-  const [sel, setSel] = useState(DEFAULT_OFFER_ID) // sélection partagée héros / comparatif / barre
+  const [sel, setSel] = useState(DEFAULT_OFFER_ID) // sélection partagée configurateur / barre collante
   const [ctaRef, ctaInView] = useInView({ threshold: 0 })
 
   return (
-    <div className="min-h-screen bg-white text-ink">
+    <div className="min-h-screen bg-ivory text-ink">
       <HeaderC />
       <main>
-        <BuyC sel={sel} setSel={setSel} ctaRef={ctaRef} />
-        <CompareC sel={sel} setSel={setSel} />
-        <ProductDetailsC />
-        <ReviewsC />
-        <FaqC />
+        <HeroC sel={sel} setSel={setSel} ctaRef={ctaRef} />
+        <TrustC />
+        <FormatSection />
+        <WashesSection />
+        <ClaimsSection />
+        <PhotosSection />
+        <UsageSection />
+        <ReviewsSection />
+        <DeliverySection />
+        <FaqSection />
       </main>
-      <FooterC />
+      <FooterC withStickyPadding />
       <StickyBarC visible={!ctaInView} sel={sel} />
     </div>
   )

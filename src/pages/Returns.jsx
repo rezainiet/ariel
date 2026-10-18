@@ -1,88 +1,71 @@
 import { PageHeader, Prose, Block, TodoNote } from '../components/ui/Prose.jsx'
-import { DELIVERY, STORE } from '../config/store.js'
+import { DELIVERY, STORE, MERCHANT } from '../config/store.js'
+import { Fact } from '../concepts/c/Pending.jsx'
 
 export default function Returns() {
-  const email = STORE.supportEmail || '[adresse e-mail du service client à fournir]'
+  const contact = STORE.supportEmail ? (
+    <a href={`mailto:${STORE.supportEmail}`} className="font-semibold text-forest underline">{STORE.supportEmail}</a>
+  ) : (
+    <Fact value="" missing="e-mail du service client" />
+  )
   return (
     <>
       <PageHeader
         eyebrow="Service client"
         title="Retours & remboursements"
-        intro={`Notre objectif est que vous soyez pleinement satisfait de votre commande. Vous disposez de ${DELIVERY.returnWindowDays} jours après réception pour demander un retour.`}
+        intro={`Vous disposez de ${DELIVERY.returnWindowDays} jours après réception pour demander un retour. Voici comment cela fonctionne, simplement.`}
       />
       <Prose>
-        <Block title="Délai de demande de retour">
+        <Block title={`Un engagement de ${DELIVERY.returnWindowDays} jours`}>
           <p>
-            Vous pouvez demander un retour dans un délai de {DELIVERY.returnWindowDays} jours
-            à compter de la réception de votre commande.
+            Vous pouvez demander un retour dans les {DELIVERY.returnWindowDays} jours qui suivent la réception de votre colis.
+            Il s’agit d’un engagement volontaire de notre boutique : en Suisse, la loi ne prévoit pas de droit de rétractation
+            pour les achats en ligne.
           </p>
         </Block>
 
-        <Block title="Comment contacter le service client">
-          <p>
-            Pour initier un retour, contactez notre service client en indiquant votre{' '}
-            <strong>numéro de commande</strong>. Nous vous communiquerons ensuite les
-            instructions de retour détaillées.
-          </p>
-          <p>Contact&nbsp;: {email}</p>
-          <TodoNote>
-            l'adresse e-mail (et éventuel formulaire) du service client, ainsi que l'adresse
-            de retour physique.
-          </TodoNote>
+        <Block title="Comment faire">
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>Écrivez-nous à {contact} en indiquant votre <strong>numéro de commande</strong>.</li>
+            <li>Nous vous envoyons les instructions de retour (adresse et modalités d’envoi).</li>
+            <li>Dès réception et contrôle du colis, nous procédons au remboursement.</li>
+          </ol>
+          <TodoNote>l’adresse de retour physique.</TodoNote>
         </Block>
 
-        <Block title="État du produit">
-          <p>
-            Les produits doivent être retournés dans un état permettant leur traitement.
-            S'agissant d'un produit détergent, certaines conditions peuvent s'appliquer
-            aux articles ouverts ou utilisés.
-          </p>
+        <Block title="État des produits">
           <TodoNote>
-            si les produits ouverts ou entamés sont éligibles au retour, et dans quelles
-            conditions (ces règles dépendent de la politique du marchand et du droit suisse).
+            si les sachets ouverts ou entamés sont acceptés, et à quelles conditions (le label « Swiss Online Garantie », par
+            exemple, admet l’exclusion des marchandises utilisées).
           </TodoNote>
         </Block>
 
         <Block title="Frais de retour">
-          <TodoNote>
-            qui prend en charge les frais de retour (marchand ou client) et selon quelles
-            modalités.
-          </TodoNote>
+          <TodoNote>qui prend en charge les frais de retour (boutique ou client).</TodoNote>
         </Block>
 
-        <Block title="Délai de remboursement">
-          <TodoNote>
-            le délai de traitement du remboursement après réception et vérification du
-            retour.
-          </TodoNote>
+        <Block title="Délai et mode de remboursement">
+          <TodoNote>le délai de remboursement après réception du retour et le moyen utilisé (en principe le moyen de paiement d’origine).</TodoNote>
         </Block>
 
-        <Block title="Articles endommagés ou erronés">
+        <Block title="Produit endommagé, défectueux ou erroné">
           <p>
-            Si vous recevez un article endommagé ou ne correspondant pas à votre commande,
-            contactez le service client dès réception avec votre numéro de commande et, si
-            possible, une photo. Nous trouverons une solution adaptée.
+            Contactez-nous dès réception, avec votre numéro de commande et si possible une photo. Indépendamment du délai de retour
+            volontaire, la garantie légale pour les défauts s’applique (deux ans en droit suisse).
           </p>
-          <TodoNote>
-            la procédure exacte et les compensations proposées pour les articles endommagés
-            ou erronés.
-          </TodoNote>
-        </Block>
-
-        <Block title="Mode de remboursement">
-          <TodoNote>
-            le mode de remboursement (moyen de paiement d'origine, avoir, etc.).
-          </TodoNote>
         </Block>
 
         <Block title="Contact">
-          <p>Service client&nbsp;: {email}</p>
-          {STORE.supportPhone && <p>Téléphone&nbsp;: {STORE.supportPhone}</p>}
+          <p>{contact}</p>
+          {STORE.supportPhone && <p>Téléphone : {STORE.supportPhone}</p>}
+          <p className="text-sm">
+            <Fact value={MERCHANT.legalName} missing="raison sociale" />
+          </p>
         </Block>
 
         <p className="rounded-xl border border-line bg-surface p-4 text-xs text-muted">
-          Cette politique doit être revue au regard du droit suisse de la consommation
-          applicable et des obligations réelles du marchand avant toute mise en ligne.
+          Texte à faire valider par un juriste au regard du droit suisse et des conditions réelles du marchand avant la mise en
+          ligne.
         </p>
       </Prose>
     </>
