@@ -97,7 +97,7 @@ export default function GalleryC({ images = C_GALLERY, eager = false, className 
             }`}
           >
             <img
-              src={g.picture ? '/images/hero/hero-desktop-800.webp' : g.src}
+              src={g.thumb || g.src}
               alt=""
               loading="lazy"
               className={`h-full w-full ${g.fit === 'contain' ? 'object-contain p-1' : 'object-cover'}`}

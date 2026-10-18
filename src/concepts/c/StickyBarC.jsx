@@ -30,15 +30,15 @@ export default function StickyBarC({ visible, sel }) {
           tabIndex={shown ? 0 : -1}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
-          <span className="flex h-11 w-12 flex-none items-end justify-center max-[359px]:hidden">
+          <span className="flex h-11 w-12 flex-none items-end justify-center max-[399px]:hidden">
             <PackStack packs={offer.packs} />
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-extrabold text-ink">
-              {offer.packs} pack{offer.packs > 1 ? 's' : ''} <span className="font-medium text-muted">· {offer.washes} lav.</span>
+              {offer.packs} pack{offer.packs > 1 ? 's' : ''} · {offer.washes} lavages
             </span>
             <span className="block truncate text-xs text-forest underline underline-offset-2">
-              {hasItems ? 'Voir le panier' : 'Changer'}
+              {hasItems ? 'Voir le panier' : 'Changer d’offre'}
             </span>
           </span>
         </button>
@@ -47,7 +47,7 @@ export default function StickyBarC({ visible, sel }) {
           tabIndex={shown ? 0 : -1}
           className="flex h-12 flex-none items-center gap-1.5 rounded-xl bg-forest px-4 text-sm font-extrabold text-white active:scale-[0.98]"
         >
-          Commander {formatCHF(offer.price)} <ArrowRight size={16} />
+          Commander · {formatCHF(offer.price)} <ArrowRight size={16} />
         </button>
       </div>
     </div>

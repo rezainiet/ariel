@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, ShoppingBag, Truck, RotateCcw, ArrowRight, Minus, Plus, MapPin } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { OFFERS, PRODUCT, DELIVERY, formatCHF, savingsFor } from '../config/store.js'
+import { OFFERS, PRODUCT, DELIVERY, MERCHANT, formatCHF, savingsFor } from '../config/store.js'
 import { IMAGES } from '../config/assets.js'
 import ProductImage from './ui/ProductImage.jsx'
 import Button from './ui/Button.jsx'
@@ -40,15 +40,18 @@ const SKINS = {
     cta: 'rounded-full bg-pollen font-grotesk text-night hover:bg-night hover:text-white',
     foot: 'bg-white',
   },
+  // Boutique : mêmes ivoire, serif et boutons que la page et la commande.
   c: {
-    panel: 'bg-white',
-    head: 'border-b border-line',
-    title: 'font-extrabold text-ink',
+    panel: 'bg-ivory',
+    head: 'border-b border-hair',
+    title: 'font-serif text-xl font-medium text-ink',
     icon: 'text-forest',
-    close: 'text-muted hover:bg-cloud hover:text-forest',
-    display: 'font-extrabold text-forest',
+    close: 'text-muted hover:bg-sand hover:text-forest',
+    display: 'font-serif font-medium text-forest',
     cta: 'rounded-xl bg-forest text-white hover:bg-forest-700',
-    foot: 'bg-cloud',
+    foot: 'bg-sand/60',
+    card: 'border-hair bg-white',
+    sentenceCta: true,
   },
 }
 
@@ -102,7 +105,7 @@ export default function CartDrawer() {
           <h2 className={`flex items-center gap-2 text-base tracking-tight ${S.title}`}>
             <ShoppingBag size={18} className={S.icon} /> Votre panier
             {hasItems && (
-              <span className="rounded-full bg-sage px-2 py-0.5 text-[0.7rem] font-bold text-forest">
+              <span className="rounded-full bg-sage px-2 py-0.5 font-sans text-[0.7rem] font-bold text-forest">
                 {offer.packs} pack{offer.packs > 1 ? 's' : ''}
               </span>
             )}
@@ -139,7 +142,7 @@ export default function CartDrawer() {
         ) : (
           <>
             <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-5">
-              <div className="rounded-2xl border border-line bg-surface p-4">
+              <div className={`rounded-2xl border p-4 ${S.card || 'border-line bg-surface'}`}>
                 <div className="flex gap-4">
                   {S === SKINS.c ? (
                     // Boutique : même pile de sachets réels que le configurateur
@@ -213,8 +216,8 @@ export default function CartDrawer() {
                   {DELIVERY.estimateDays} jours ouvrables
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <MapPin size={16} className="flex-none text-forest" /> Expédié depuis notre stock en{' '}
-                  {DELIVERY.dispatchLocation}
+                  <MapPin size={16} className="flex-none text-forest" /> Expédié depuis{' '}
+                  {MERCHANT.dispatchCity ? `${MERCHANT.dispatchCity} (Suisse)` : 'la Suisse'}
                 </li>
                 <li className="flex items-center gap-2.5">
                   <RotateCcw size={16} className="flex-none text-forest" /> Retour possible sous{' '}
@@ -243,7 +246,7 @@ export default function CartDrawer() {
                 onClick={goCheckout}
                 className={`mt-4 flex h-14 w-full items-center justify-center gap-2 text-base font-bold tracking-tight transition-all duration-200 active:scale-[0.99] ${S.cta}`}
               >
-                PASSER COMMANDE
+                {S.sentenceCta ? `Passer commande · ${formatCHF(total)}` : 'PASSER COMMANDE'}
                 <ArrowRight size={18} />
               </button>
               <button

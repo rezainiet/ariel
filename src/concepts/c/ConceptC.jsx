@@ -7,13 +7,14 @@ import { useInView } from '../shared/hooks.js'
 import { HeaderC, FooterC } from './ChromeC.jsx'
 import HeroC from './HeroC.jsx'
 import TrustC from './TrustC.jsx'
-import { FormatSection, WashesSection, ClaimsSection, UsageSection } from './StoryC.jsx'
-import { PhotosSection, DeliverySection, ReviewsSection, FaqSection } from './InfoC.jsx'
+import { LabelSection, WashesSection, UsageSection } from './StoryC.jsx'
+import { DeliverySection, ReviewsSection, FaqSection } from './InfoC.jsx'
 import StickyBarC from './StickyBarC.jsx'
 
 // BOUTIQUE (Concept C révisé) — fondée sur SWISS-MARKET-RESEARCH.md
-// 1. Héros + configurateur  2. Prix & vendeur  3–5. Le produit  6. Photos (mobile)
-// 7. Mode d'emploi & sécurité  8. Avis (si source vérifiée)  9. Livraison/retours/paiement  10. FAQ
+// 1. Héros + configurateur  2. Prix & vendeur  3. Le sachet traduit  4. 60 lavages (coût par lavage)
+// 5. Mode d'emploi & sécurité  6. Avis (si source vérifiée)  7. Livraison/retours/paiement  8. FAQ
+// (mobile : la galerie complète s'ouvre depuis la puce « photos » du héros)
 export default function ConceptC() {
   useHashScroll()
   useCartSkin('c')
@@ -26,10 +27,8 @@ export default function ConceptC() {
       <main>
         <HeroC sel={sel} setSel={setSel} ctaRef={ctaRef} />
         <TrustC />
-        <FormatSection />
-        <WashesSection />
-        <ClaimsSection />
-        <PhotosSection />
+        <LabelSection />
+        <WashesSection sel={sel} setSel={setSel} />
         <UsageSection />
         <ReviewsSection />
         <DeliverySection />

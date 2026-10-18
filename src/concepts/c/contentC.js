@@ -8,44 +8,50 @@
 // ─────────────────────────────────────────────────────────────
 import { DELIVERY, MERCHANT, STORE } from '../../config/store.js'
 
-// A — Le format capsule
-export const FORMAT_POINTS = [
+// A — « Le sachet, traduit » : ce qu'indique la face avant (imprimée en allemand), repère par repère.
+// x / y = position du repère en % de public/images/packshot-cutout.webp (placé à côté du texte, jamais dessus).
+export const LABEL_NOTES = [
   {
-    title: 'Rien à mesurer',
-    body: 'Chaque capsule contient la dose de lessive : pas de bouchon doseur, pas de poudre à verser.',
+    x: 9.5,
+    y: 24.5,
+    de: '60 PODS',
+    fr: '60 capsules',
+    body: 'Soit 60 lavages au dosage standard d’une capsule par machine.',
   },
   {
-    title: 'Directement dans le tambour',
-    body: 'La capsule se place au fond du tambour vide, avant le linge — pas dans le bac à produits.',
+    x: 48.5,
+    y: 37.5,
+    de: 'Schnell auflösend',
+    fr: 'Dissolution rapide',
+    body: 'Selon Ariel, la capsule se dissout rapidement dans l’eau de lavage.',
   },
   {
-    title: 'Pensé pour le lavage à froid',
-    body: 'Selon Ariel, la capsule se dissout rapidement, même dans l’eau froide.',
-    source: '« Löst sich selbst in kaltem Wasser schnell auf » — ariel.de',
-  },
-]
-
-// C — Allégations vérifiées (fabricant / emballage), avec attribution
-export const CLAIMS = [
-  {
-    title: 'Détachage dès le premier lavage',
-    body: 'Mention du fabricant et de l’emballage.',
-    quote: '« Fleck-weg-Power beim 1. Waschen »',
+    x: 50,
+    y: 57,
+    de: 'Fleck-weg-Power beim 1. Waschen · Selbst in kaltem Wasser',
+    fr: 'Détachage dès le premier lavage, même à l’eau froide',
+    body: 'Allégation du fabricant, telle qu’imprimée sur l’emballage.',
   },
   {
-    title: 'Efficace en lavage à froid',
-    body: 'L’emballage précise : même à l’eau froide.',
-    quote: '« Selbst in kaltem Wasser »',
+    x: 51,
+    y: 44,
+    de: 'Wasche kälter und spare damit Energie & CO₂',
+    fr: 'Lavez plus froid : moins d’énergie, moins de CO₂',
+    body: 'Message de l’initiative #WirDrehenRunter d’Ariel avec le WWF, présent sur le sachet.',
   },
   {
-    title: 'Dissolution rapide',
-    body: 'Indiqué sur la face avant du sachet.',
-    quote: '« Schnell auflösend »',
+    x: 31,
+    y: 5,
+    de: 'Kindersicherer Verschluss',
+    fr: 'Fermeture sécurité enfants',
+    body: 'Ouverture en 4 gestes : déchirer, trouver la languette, ouvrir, presser pour refermer.',
   },
   {
-    title: 'Fermeture de sécurité enfants',
-    body: 'Sachet refermable avec ouverture en quatre étapes.',
-    quote: '« Kindersicherer Verschluss »',
+    x: 40.5,
+    y: 89.5,
+    de: 'Universal+',
+    fr: 'Lessive universelle',
+    body: 'Pour le linge blanc et clair. Pas pour la laine, le délicat, le lavage à la main.',
   },
 ]
 
@@ -98,7 +104,9 @@ export const ORDER_STEPS = [
   { title: 'Suivi', body: 'Un lien de suivi vous est transmis lorsqu’il est disponible.' },
 ]
 
+// La question du prix n'apparaît que si le marchand a fourni la raison réelle (jamais inventée).
 export const FAQ_C = [
+  ...(MERCHANT.clearanceReason ? [{ q: 'Pourquoi ce prix si bas ?', a: MERCHANT.clearanceReason }] : []),
   {
     q: 'Qu’est-ce que j’achète exactement ?',
     a: 'Des sachets Ariel All-in-1 PODS (variante Universal+) de 60 capsules de lessive. Vous choisissez 1, 2 ou 3 sachets.',
@@ -109,7 +117,7 @@ export const FAQ_C = [
   },
   {
     q: 'Pourquoi l’emballage est-il en allemand ?',
-    a: 'La face avant de ce sachet est imprimée en allemand. Le mode d’emploi et les consignes de sécurité essentielles sont repris en français sur cette page ; référez-vous aussi aux pictogrammes de l’emballage.',
+    a: 'La face avant de ce sachet est imprimée en allemand. Chaque mention est traduite plus haut (« Le sachet, traduit »), et le mode d’emploi et les consignes de sécurité essentielles sont repris en français sur cette page. Référez-vous aussi aux pictogrammes de l’emballage.',
   },
   {
     q: 'La livraison est-elle payante ?',

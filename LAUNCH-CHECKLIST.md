@@ -23,6 +23,8 @@ Chaque valeur se configure dans `.env.local` (voir `.env.example`). Justificatio
 
 - [ ] **Raison réelle du déstockage** (`VITE_CLEARANCE_REASON`), formulée par le marchand. Aucune raison
       ne sera inventée (fin de série, surstock, emballage étranger…) : seule la vraie raison est publiable.
+      Sans elle, la page n'affiche pas « Pourquoi ce prix ? » mais « Le prix, en clair » (faits seulement),
+      et la question n'apparaît pas dans la FAQ.
 - [ ] Statut **TVA** et mention à afficher (`VITE_MERCHANT_VAT_NOTE`, ex. « TVA incluse ») — l'OIP exige
       le prix final TVA comprise.
 - [ ] Confirmer que les prix 4.– / 7.– / 10.– sont les prix finaux, sans frais ajoutés.
@@ -81,12 +83,13 @@ Chaque valeur se configure dans `.env.local` (voir `.env.example`). Justificatio
 | **Packshot HD officiel** (≥ 2000 px, fond détouré ou blanc, face avant) | Seul visuel net actuel (1000 px). Indispensable pour un zoom de qualité. |
 | **Packshots HD dos et côté du sachet** | Montrer les mentions en français, le mode d'emploi, les pictogrammes de sécurité. |
 | **Photo HD d'une capsule** (gros plan, fond neutre) | Le gros plan actuel provient du collage (~290 px). |
-| **Photos lifestyle sous licence** (buanderie lumineuse, linge plié, lave-linge) ou **séance photo** avec le vrai produit | Le héros actuel est une **composition originale** (décor généré + vrai packshot non retouché), pas une photographie de scène. Une vraie photo de buanderie renforcerait l'authenticité. |
+| **Séance photo avec le vrai produit** (recommandée) | Le héros et la scène « 3 sachets » sont de **vraies photos de buanderie** (Unsplash License, `assets-src/stock/CREDITS.md`) dans lesquelles le packshot réel est posé. Une séance photo réelle restera plus fidèle (perspective, lumière, reflets). |
 | Autorisation d'utiliser les photos fournies | Confirmer les droits sur le collage d'origine. |
 
 Fichiers à déposer : `public/images/` puis mise à jour des chemins dans `src/config/assets.js` et
-`src/concepts/c/media.js`. Le script de composition du héros peut être relancé avec un packshot HD
-détouré : `python scripts/compose-hero.py <packshot-detoure.webp> <dossier-sortie>` (Pillow + numpy).
+`src/concepts/c/media.js`. Les compositions se régénèrent (par ex. avec un packshot HD détouré) :
+`python scripts/compose-hero-photo.py assets-src/stock/unsplash-in7u-CJYHyA-laundry-nook.jpg public/images/packshot-cutout.webp public/images`
+(Pillow avec AVIF + numpy).
 
 ## 10. Marque et Swissness
 

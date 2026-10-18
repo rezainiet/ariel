@@ -177,8 +177,9 @@ const BuyBoxC = forwardRef(function BuyBoxC({ sel, setSel }, ctaRef) {
           onClick={checkout}
           className="flex h-[3.4rem] items-center justify-center gap-2 rounded-xl bg-forest text-[0.98rem] font-extrabold text-white transition-all hover:bg-forest-700 active:scale-[0.99]"
         >
-          <span className="max-[359px]:hidden">Passer commande</span>
-          <span className="min-[360px]:hidden">Commander</span> · {formatCHF(offer.price)} <ArrowRight size={18} />
+          <span className="max-[359px]:hidden">Passer commande · {formatCHF(offer.price)}</span>
+          <span className="min-[360px]:hidden">Commander · {formatCHF(offer.price)}</span>
+          <ArrowRight size={18} />
         </button>
       </div>
 

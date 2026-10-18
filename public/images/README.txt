@@ -14,7 +14,11 @@ Assets utilisés par le site (dérivés des sources ci-dessus) :
   - pod-water.webp  capsule dans l'eau       -> galerie produit
   - towels.webp     linge + fleurs           -> galerie produit
   - basket.webp     pack sur panier          -> galerie produit
-  - ../og-image.jpg image de partage social 1200x630 (packshot sur fond de marque)
+  - hero/*           héros mobile 4:5 et desktop 4:3 (AVIF + WebP)
+  - scene/trio-*    scène « 3 sachets » (60 lavages)
+  - ../og-image.jpg image de partage social 1200x630
+    -> vraie photo de buanderie (Unsplash License, assets-src/stock/CREDITS.md)
+       + packshot réel non retouché ; script : scripts/compose-hero-photo.py
 
 Les visuels « handpod / pod-water / towels / basket / stacked » ont été
 recadrés depuis le collage publicitaire fourni (compositions distinctes :

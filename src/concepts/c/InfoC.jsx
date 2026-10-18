@@ -6,89 +6,89 @@ import { useReviews, SORTS, formatReviewDate, STORE_REVIEWS_PREVIEW } from '../.
 import Stars from '../shared/Stars.jsx'
 import { SampleBanner } from '../shared/ReviewNotice.jsx'
 import Reveal from '../../components/ui/Reveal.jsx'
-import GalleryC from './GalleryC.jsx'
 import { Eyebrow, H2 } from './TrustC.jsx'
 import { Pending, Fact } from './Pending.jsx'
 import { deliveryFacts, ORDER_STEPS, FAQ_C } from './contentC.js'
 
 const W = 'mx-auto max-w-[1320px] px-4 lg:px-8'
 
-// Photos (mobile uniquement — dès 768 px, la galerie est dans le héros)
-export function PhotosSection() {
+// Livraison, retours & paiement — section unique et détaillée, en colonnes éditoriales.
+function ServiceCol({ icon: Icon, title, children }) {
   return (
-    <section aria-label="Photos du produit" className="py-10 md:hidden">
-      <div className="px-4">
-        <Eyebrow>Photos</Eyebrow>
-        <H2 className="text-[1.7rem]">Le produit en images</H2>
-        <GalleryC className="mt-5" />
-      </div>
-    </section>
+    <div className="border-b border-ink/15 py-6 lg:border-b-0 lg:border-l lg:px-8 lg:py-2 lg:first:border-l-0 lg:first:pl-0">
+      <h3 className="flex items-center gap-2.5 font-serif text-[1.35rem] font-medium text-ink lg:text-[1.5rem]">
+        <Icon size={19} className="text-forest" strokeWidth={1.8} /> {title}
+      </h3>
+      <div className="mt-3 text-[0.88rem] leading-relaxed text-ink/75">{children}</div>
+    </div>
   )
 }
 
-// Livraison, retours & paiement — section unique et détaillée
 export function DeliverySection() {
   const f = deliveryFacts()
   return (
-    <section id="livraison" className="scroll-mt-20 bg-sand/60 py-12 lg:py-20">
+    <section id="livraison" className="scroll-mt-20 bg-sand/60 py-14 lg:py-24">
       <div className={W}>
-        <Reveal>
+        <Reveal className="max-w-2xl">
           <Eyebrow>Service</Eyebrow>
-          <H2>Livraison, retours & paiement</H2>
+          <H2>
+            Livré chez vous,
+            <span className="block italic text-forest">sans frais.</span>
+          </H2>
         </Reveal>
-        <div className="mt-8 grid gap-3 lg:grid-cols-3 lg:gap-5">
-          <div className="rounded-[1.25rem] bg-white p-4 lg:p-7">
-            <h3 className="flex items-center gap-2.5 text-lg font-bold text-ink"><Truck size={19} className="text-forest" /> Livraison offerte</h3>
-            <dl className="mt-3 space-y-1.5 text-[0.88rem] text-ink/75">
+        <div className="mt-6 grid border-t border-ink/15 lg:mt-10 lg:grid-cols-3 lg:pt-8">
+          <ServiceCol icon={Truck} title="Livraison offerte">
+            <dl className="space-y-1.5">
               <div className="flex justify-between gap-3"><dt>Frais</dt><dd className="font-semibold text-forest">CHF 0.–</dd></div>
               <div className="flex justify-between gap-3"><dt>Délai estimé</dt><dd>{f.days} jours ouvrables</dd></div>
               <div className="flex justify-between gap-3"><dt>Expédition</dt><dd className="text-right">depuis {f.from}</dd></div>
-              <div className="flex justify-between gap-3">
-                <dt>Transporteur</dt>
-                <dd className="text-right"><Fact value={f.carrier} missing="transporteur" /></dd>
-              </div>
+              {(f.carrier || import.meta.env.DEV) && (
+                <div className="flex justify-between gap-3">
+                  <dt>Transporteur</dt>
+                  <dd className="text-right"><Fact value={f.carrier} missing="transporteur" /></dd>
+                </div>
+              )}
             </dl>
-          </div>
-          <div className="rounded-[1.25rem] bg-white p-4 lg:p-7">
-            <h3 className="flex items-center gap-2.5 text-lg font-bold text-ink"><RotateCcw size={19} className="text-forest" /> Retour sous {f.returnDays} jours</h3>
-            <p className="mt-3 text-[0.88rem] leading-relaxed text-ink/75">
+          </ServiceCol>
+          <ServiceCol icon={RotateCcw} title={`Retour sous ${f.returnDays} jours`}>
+            <p>
               Demandez un retour dans les {f.returnDays} jours suivant la réception, avec votre numéro de commande. C’est un
               engagement de notre boutique : la loi suisse ne prévoit pas de droit de rétractation pour les achats en ligne.
             </p>
-            <p className="mt-2 text-[0.88rem] leading-relaxed text-ink/75">Article endommagé ou erroné : contactez-nous dès réception.</p>
+            <p className="mt-2">Article endommagé ou erroné : contactez-nous dès réception.</p>
             <Link to="/retours-remboursements" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-forest hover:underline">
               Conditions de retour <ArrowUpRight size={14} />
             </Link>
-          </div>
-          <div className="rounded-[1.25rem] bg-white p-4 lg:p-7">
-            <h3 className="flex items-center gap-2.5 text-lg font-bold text-ink"><CreditCard size={19} className="text-forest" /> Paiement</h3>
+          </ServiceCol>
+          <ServiceCol icon={CreditCard} title="Paiement">
             {PAYMENT_METHODS.length ? (
-              <ul className="mt-3 flex flex-wrap gap-1.5">
+              <ul className="mb-3 flex flex-wrap gap-1.5">
                 {PAYMENT_METHODS.map((m) => (
-                  <li key={m} className="rounded-md border border-hair px-2.5 py-1 text-xs font-semibold text-ink">
+                  <li key={m} className="rounded-md border border-hair bg-white px-2.5 py-1 text-xs font-semibold text-ink">
                     {PAYMENT_LABELS[m] || m}
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="mt-3">
+              <div className="mb-3">
                 <Pending block>moyens de paiement réellement activés</Pending>
               </div>
             )}
-            <p className="mt-3 text-[0.88rem] leading-relaxed text-ink/75">
+            <p>
               Montant total en CHF affiché avant l’achat. Le paiement est traité par un prestataire spécialisé : aucune donnée de
               carte ne transite par notre boutique.
             </p>
-          </div>
+          </ServiceCol>
         </div>
 
-        <ol className="mt-4 grid divide-y divide-hair rounded-[1.25rem] border border-hair bg-white/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        {/* Après la commande : une ligne de temps, pas des cartes */}
+        <ol className="mt-8 grid gap-5 border-t border-ink/15 pt-6 sm:grid-cols-3 sm:gap-8 lg:mt-12">
           {ORDER_STEPS.map((s, k) => (
-            <li key={s.title} className="flex gap-3 p-3.5 lg:p-4">
-              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-forest text-[0.7rem] font-bold text-white">{k + 1}</span>
-              <span>
-                <span className="block text-sm font-bold text-ink">{s.title}</span>
-                <span className="block text-xs leading-relaxed text-ink/70">{s.body}</span>
+            <li key={s.title} className="grid grid-cols-[1.75rem_1fr] gap-3 sm:block">
+              <span className="font-serif text-[1.35rem] leading-none text-forest">{k + 1}</span>
+              <span className="sm:mt-2 sm:block">
+                <span className="block text-[0.92rem] font-bold text-ink">{s.title}</span>
+                <span className="mt-0.5 block text-[0.82rem] leading-relaxed text-ink/70">{s.body}</span>
               </span>
             </li>
           ))}
