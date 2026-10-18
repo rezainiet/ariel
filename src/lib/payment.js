@@ -4,7 +4,11 @@
 //   1. startPayment(order) → POST vers NOTRE serveur (VITE_CHECKOUT_API),
 //      qui crée une session chez le prestataire (TWINT/cartes/wallets…)
 //      et renvoie une URL de redirection hébergée par le prestataire.
-//   2. Le prestataire redirige vers /commande/confirmation?session=…
+//      Retours à configurer chez le prestataire :
+//        succès   → /checkout/confirmation?session=…
+//        annulé   → /checkout?paiement=annule      (le formulaire est conservé)
+//        erreur   → /checkout?paiement=erreur
+//   2. Le prestataire redirige vers /checkout/confirmation?session=…
 //   3. verifyOrder(session) → NOTRE serveur vérifie le paiement auprès du
 //      prestataire (webhook/API) et renvoie la commande confirmée.
 //   4. Seulement alors : e-mail de confirmation + événement PURCHASE.
@@ -24,7 +28,15 @@ export async function startPayment(order) {
     const res = await fetch(`${API}/checkout-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(order),
+      // Pas de montant : le serveur le recalcule depuis offerId (server/validate-order.mjs).
+      body: JSON.stringify({
+        ...order,
+        returnUrls: {
+          success: `${window.location.origin}/checkout/confirmation`,
+          cancel: `${window.location.origin}/checkout?paiement=annule`,
+          error: `${window.location.origin}/checkout?paiement=erreur`,
+        },
+      }),
     })
     if (!res.ok) return { status: 'error' }
     const data = await res.json()

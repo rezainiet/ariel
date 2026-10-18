@@ -16,24 +16,7 @@
 import { useEffect, useState } from 'react'
 import { URGENCY } from '../config/store.js'
 
-const EMPTY = { ready: true, offset: 0, campaign: null, stock: null, limited: URGENCY.limitedConfirmed, isSample: false }
-
-// Aperçu de conception : DEV uniquement et sur demande explicite (VITE_URGENCY_PREVIEW=sample).
-// Ce bloc est éliminé du build de production ; chaque élément affiché porte le libellé d'aperçu.
-function sampleStatus() {
-  if (!(import.meta.env.DEV && import.meta.env.VITE_URGENCY_PREVIEW === 'sample')) return null
-  const now = new Date()
-  // Fin fixe (dernier jour du mois, 23:59 heure suisse) : ne se réinitialise pas au rechargement.
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 22, 59, 59))
-  return {
-    ready: true,
-    offset: 0,
-    campaign: { endsAt: end.toISOString(), label: 'Opération de déstockage' },
-    stock: { available: 240, lowThreshold: 50 },
-    limited: true,
-    isSample: true,
-  }
-}
+const EMPTY = { ready: true, offset: 0, campaign: null, stock: null, limited: URGENCY.limitedConfirmed }
 
 let cache = null
 let inflight = null
@@ -50,8 +33,6 @@ function validDate(v) {
 }
 
 export async function loadStoreStatus() {
-  const sample = sampleStatus()
-  if (sample) return publish(sample)
   if (!URGENCY.statusApi) return publish(EMPTY)
   if (inflight) return inflight
   inflight = (async () => {
@@ -75,7 +56,6 @@ export async function loadStoreStatus() {
             ? null
             : { available, lowThreshold: Number.isInteger(data.stock.lowThreshold) ? data.stock.lowThreshold : null },
         limited: URGENCY.limitedConfirmed,
-        isSample: false,
       })
     } catch {
       // Panne du service : on n'affiche aucune urgence plutôt qu'une information non vérifiée.

@@ -36,18 +36,18 @@ export default function ConsentBanner() {
   }
 
   return (
-    <div role="dialog" aria-label="Cookies et mesure d’audience" className="fixed inset-x-3 bottom-3 z-[65] mx-auto max-w-xl rounded-2xl border border-hair bg-white p-4 shadow-2xl sm:p-5">
-      <p className="text-sm leading-relaxed text-ink/80">
+    <div role="dialog" aria-label="Cookies et mesure d’audience" className="fixed inset-x-3 bottom-3 z-[65] mx-auto max-w-xl rounded-2xl border border-fr-line bg-white p-4 font-jakarta shadow-2xl sm:p-5">
+      <p className="text-sm leading-relaxed text-fr-ink/80">
         Nous aimerions mesurer l’efficacité de nos publicités (Snapchat). Ces cookies sont facultatifs.{' '}
-        <Link to="/politique-de-confidentialite" className="font-semibold text-forest underline">
+        <Link to="/politique-de-confidentialite" className="font-semibold text-fr-green underline">
           En savoir plus
         </Link>
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button onClick={() => decide('denied')} className="h-11 rounded-xl border-2 border-forest text-sm font-bold text-forest">
+        <button onClick={() => decide('denied')} className="h-11 rounded-full border-2 border-fr-green text-sm font-bold text-fr-green">
           Uniquement nécessaires
         </button>
-        <button onClick={() => decide('granted')} className="h-11 rounded-xl border-2 border-forest bg-forest text-sm font-bold text-white">
+        <button onClick={() => decide('granted')} className="h-11 rounded-full border-2 border-fr-green bg-fr-green text-sm font-bold text-white">
           Tout accepter
         </button>
       </div>

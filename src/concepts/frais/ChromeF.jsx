@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShoppingBag, Truck, RotateCcw, Tag } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
-import { MERCHANT, STORE, DELIVERY } from '../../config/store.js'
-import { Fact } from '../c/Pending.jsx'
+import { MERCHANT, STORE, DELIVERY, storeRef } from '../../config/store.js'
 import { ANNOUNCEMENTS } from './contentF.js'
 
 const ICONS = [Tag, Truck, RotateCcw]
@@ -44,7 +43,16 @@ export function Announcement() {
             return (
               <span key={i} className="flex animate-msg-in items-center gap-2">
                 <Icon size={13} strokeWidth={1.9} className="text-fr-leaf" aria-hidden="true" />
-                <span className={i === 0 ? 'uppercase tracking-[0.1em] text-white' : ''}>{ANNOUNCEMENTS[i]}</span>
+                <span className={`whitespace-nowrap ${i === 0 ? 'uppercase tracking-[0.1em] text-white max-[379px]:tracking-[0.05em]' : ''}`}>
+                  {i === 0 ? (
+                    <>
+                      <span className="max-[379px]:hidden">{ANNOUNCEMENTS[0]}</span>
+                      <span className="min-[380px]:hidden">Déstockage · dès CHF 4.–</span>
+                    </>
+                  ) : (
+                    ANNOUNCEMENTS[i]
+                  )}
+                </span>
               </span>
             )
           })()}
@@ -54,7 +62,7 @@ export function Announcement() {
   )
 }
 
-export function Logo() {
+export function Logo({ light = false }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 font-jakarta text-[1.02rem] font-extrabold tracking-[-0.02em] text-fr-ink">
       <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-fr-leaf to-fr-green text-white shadow-[0_4px_10px_rgba(14,122,71,0.3)]">
@@ -62,7 +70,15 @@ export function Logo() {
           <path d="M12 2.5 21.5 12 12 21.5 2.5 12z" />
         </svg>
       </span>
-      <span className="max-[359px]:text-[0.9rem]">{STORE.name === 'NOM DE LA BOUTIQUE' ? 'Nom de la boutique' : STORE.name}</span>
+      {/* Nom commercial réel s'il est configuré ; sinon libellé descriptif neutre (aucun nom inventé). */}
+      {STORE.name ? (
+        <span className="max-[359px]:text-[0.9rem]">{STORE.name}</span>
+      ) : (
+        <span className="leading-none">
+          Déstockage
+          <span className={`block text-[0.62rem] font-bold uppercase tracking-[0.18em] ${light ? 'text-fr-leaf' : 'text-fr-green'}`}>Suisse</span>
+        </span>
+      )}
     </Link>
   )
 }
@@ -120,24 +136,26 @@ export function HeaderF() {
 
 export function FooterF({ stickyPad = false }) {
   const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  const merchantLines = [MERCHANT.legalName, address, MERCHANT.uid && `IDE ${MERCHANT.uid}`, STORE.supportEmail].filter(Boolean)
   return (
     <footer className={`bg-fr-deep font-jakarta text-fr-mint/80 ${stickyPad ? 'pb-28 lg:pb-0' : ''}`}>
       <div className="mx-auto grid max-w-[1320px] gap-10 px-4 py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
         <div>
           <div className="[&_a]:text-white [&_a>span:last-child]:text-white">
-            <Logo />
+            <Logo light />
           </div>
-          {/* Identité du marchand (LCD art. 3 let. s) : uniquement des données configurées */}
-          <address className="mt-5 space-y-1 text-sm not-italic leading-relaxed">
-            <span className="block empty:hidden"><Fact value={MERCHANT.legalName} missing="raison sociale" /></span>
-            <span className="block empty:hidden"><Fact value={address} missing="adresse postale" /></span>
-            <span className="block empty:hidden"><Fact value={MERCHANT.uid && `IDE ${MERCHANT.uid}`} missing="numéro IDE" /></span>
-            <span className="block empty:hidden"><Fact value={STORE.supportEmail} missing="e-mail du service client" /></span>
-          </address>
+          {/* Identité du marchand (LCD art. 3 let. s) : uniquement les données configurées */}
+          {merchantLines.length > 0 && (
+            <address className="mt-5 space-y-1 text-sm not-italic leading-relaxed">
+              {merchantLines.map((l) => (
+                <span key={l} className="block">{l}</span>
+              ))}
+            </address>
+          )}
         </div>
         {[
           ['La boutique', [['Offres', '/#offres'], ['Pourquoi Ariel', '/#pourquoi'], ['Livraison', '/#livraison'], ['FAQ', '/#faq']]],
-          ['Service', [['Contact', '/contact'], ['Retours & remboursements', '/retours-remboursements']]],
+          ['Service', [['Contact & suivi', '/contact'], ['Livraison', '/livraison'], ['Retours & remboursements', '/retours-remboursements']]],
           ['Informations légales', [['Conditions générales', '/conditions-generales-de-vente'], ['Confidentialité', '/politique-de-confidentialite'], ['Mentions légales', '/mentions-legales']]],
         ].map(([title, links]) => (
           <div key={title}>
@@ -159,7 +177,7 @@ export function FooterF({ stickyPad = false }) {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-2 px-4 py-6 text-xs text-fr-mint/55 lg:flex-row lg:justify-between lg:px-8">
           <p>Prix en CHF · Livraison offerte en Suisse · Retour sous {DELIVERY.returnWindowDays} jours</p>
-          <p>Ariel est une marque de The Procter &amp; Gamble Company. Cette boutique n’est pas le site officiel de la marque.</p>
+          <p>Ariel est une marque de The Procter &amp; Gamble Company. {storeRef(true)} n’est pas le site officiel de la marque.</p>
         </div>
       </div>
     </footer>

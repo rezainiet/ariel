@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BadgeCheck, Play, Truck, RotateCcw, LockKeyhole, Mail, PackageCheck, MapPin, Plus, ArrowUpRight, MessageCircleQuestion, Star } from 'lucide-react'
-import { DELIVERY, PAYMENT_METHODS, PAYMENT_LABELS, STORE, VIDEO } from '../../config/store.js'
-import { getReviewSource, summarize, formatReviewDate, REVIEWS_ENDPOINT, STORE_REVIEWS_PREVIEW } from '../../data/reviews.js'
-import { SampleBanner } from '../shared/ReviewNotice.jsx'
-import { Pending, Fact } from '../c/Pending.jsx'
-import { deliveryFacts } from '../c/contentC.js'
+import { DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, STORE, VIDEO } from '../../config/store.js'
+import { summarize, formatReviewDate, REVIEWS_ENDPOINT } from '../../data/reviews.js'
 import { IconTile } from './Icons.jsx'
 import { Rise } from './motion.jsx'
 import { FAQ_F } from './contentF.js'
@@ -27,22 +24,26 @@ function SectionHead({ eyebrow, title, accent, aside }) {
   )
 }
 
-// ── Avis : uniquement une source vérifiée (VITE_REVIEWS_ENDPOINT) ; aperçu d'exemple en dev seulement ──
-function useStoreReviews() {
-  const [state, setState] = useState(() => {
-    const s = getReviewSource({ allowSample: STORE_REVIEWS_PREVIEW })
-    return s.status === 'sample' ? { status: 'sample', reviews: s.reviews } : { status: REVIEWS_ENDPOINT ? 'loading' : 'empty', reviews: [] }
-  })
+// ── Avis : UNIQUEMENT depuis la plateforme d'avis vérifiés (VITE_REVIEWS_ENDPOINT). ──
+// Sans source, ou si la source ne renvoie aucun avis : la section n'existe pas.
+function useVerifiedReviews() {
+  const [state, setState] = useState({ status: REVIEWS_ENDPOINT ? 'loading' : 'none', reviews: [] })
   useEffect(() => {
-    if (state.status !== 'loading') return
+    if (!REVIEWS_ENDPOINT) return
+    let alive = true
     fetch(REVIEWS_ENDPOINT, { headers: { Accept: 'application/json' } })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((list) => {
-        const reviews = Array.isArray(list) ? list.filter((r) => r && r.rating >= 1 && r.rating <= 5 && r.body) : []
-        setState({ status: reviews.length ? 'live' : 'empty', reviews })
+        const reviews = Array.isArray(list)
+          ? list.filter((r) => r && r.rating >= 1 && r.rating <= 5 && r.body && r.author && /^\d{4}-\d{2}-\d{2}$/.test(r.date || ''))
+          : []
+        if (alive) setState({ status: reviews.length ? 'live' : 'none', reviews })
       })
-      .catch(() => setState({ status: 'empty', reviews: [] }))
-  }, [state.status])
+      .catch(() => alive && setState({ status: 'none', reviews: [] }))
+    return () => {
+      alive = false
+    }
+  }, [])
   return state
 }
 
@@ -57,9 +58,9 @@ function Stars({ value, size = 14 }) {
 }
 
 export function ReviewsF() {
-  const { status, reviews } = useStoreReviews()
+  const { status, reviews } = useVerifiedReviews()
   const [all, setAll] = useState(false)
-  if (status === 'empty' || status === 'loading') return null
+  if (status !== 'live') return null
   const sum = summarize(reviews)
   const items = [...reviews].sort((a, b) => b.date.localeCompare(a.date)).slice(0, all ? 12 : 3)
   return (
@@ -71,7 +72,7 @@ export function ReviewsF() {
           accent="nos clients."
           aside={
             <div className="flex items-center gap-3 font-jakarta">
-              <span className="text-[2.6rem] font-extrabold leading-none tracking-[-0.025em] text-fr-ink">{sum.average.toFixed(1)}</span>
+              <span className="text-[2.6rem] font-extrabold leading-none tracking-[-0.03em] text-fr-ink">{sum.average.toFixed(1)}</span>
               <span>
                 <Stars value={sum.average} size={16} />
                 <span className="mt-1 block text-[0.8rem] text-fr-muted">{sum.count} avis</span>
@@ -79,14 +80,9 @@ export function ReviewsF() {
             </div>
           }
         />
-        {status === 'sample' && (
-          <div className="mt-5">
-            <SampleBanner />
-          </div>
-        )}
         <ul className="mt-8 grid gap-3 lg:grid-cols-3 lg:gap-5">
           {items.map((r, k) => (
-            <Rise as="li" key={r.id} delay={k * 80} className="flex flex-col rounded-[1.5rem] bg-fr-soft p-5 font-jakarta lg:p-7">
+            <Rise as="li" key={r.id || k} delay={k * 80} className="flex flex-col rounded-[1.5rem] bg-fr-soft p-5 font-jakarta lg:p-7">
               <div className="flex items-center justify-between">
                 <Stars value={r.rating} />
                 {r.verified && (
@@ -95,7 +91,7 @@ export function ReviewsF() {
                   </span>
                 )}
               </div>
-              <p className="mt-3 text-[1rem] font-bold text-fr-ink">{r.title}</p>
+              {r.title && <p className="mt-3 text-[1rem] font-bold text-fr-ink">{r.title}</p>}
               <p className="mt-1.5 flex-1 text-[0.9rem] leading-relaxed text-fr-muted">{r.body}</p>
               <p className="mt-4 text-[0.76rem] text-fr-muted">
                 <strong className="font-semibold text-fr-ink">{r.author}</strong>
@@ -114,24 +110,11 @@ export function ReviewsF() {
   )
 }
 
-// ── Vidéo réelle (fichier du marchand). Sans fichier : rien en production, emplacement signalé en dev. ──
+// ── Vidéo réelle (fichier du marchand). Sans fichier : la section n'existe pas. ──
 export function VideoF() {
   const ref = useRef(null)
   const [playing, setPlaying] = useState(false)
-  if (!VIDEO.src) {
-    if (!import.meta.env.DEV) return null
-    return (
-      <section className="bg-white pb-14 lg:pb-20">
-        <div className={W}>
-          <div className="flex flex-col items-center justify-center gap-3 rounded-[1.75rem] border border-dashed border-fr-green/30 bg-fr-mint/40 px-6 py-10 text-center font-jakarta">
-            <IconTile icon={Play} tone="white" round />
-            <p className="text-[0.95rem] font-bold text-fr-ink">Section vidéo produit / client</p>
-            <Pending>vidéo réelle (VITE_PRODUCT_VIDEO_URL + VITE_PRODUCT_VIDEO_POSTER)</Pending>
-          </div>
-        </div>
-      </section>
-    )
-  }
+  if (!VIDEO.src) return null
   return (
     <section aria-label="Vidéo" className="bg-white pb-14 lg:pb-20">
       <div className={W}>
@@ -164,13 +147,20 @@ export function VideoF() {
   )
 }
 
-// ── Livraison suisse & retours ──
+// ── Livraison suisse & retours : uniquement des informations confirmées. ──
 export function ServiceF() {
-  const f = deliveryFacts()
+  const from = MERCHANT.dispatchCity ? `${MERCHANT.dispatchCity} (Suisse)` : DELIVERY.dispatchLocation
+  const rows = [
+    ['Frais de port', <span key="f" className="font-bold text-fr-green">CHF 0.–</span>],
+    ['Zone', 'Toute la Suisse'],
+    DELIVERY.estimateDays && ['Délai estimé', `${DELIVERY.estimateDays} jours ouvrables`],
+    from && ['Expédition', `depuis ${from}`],
+    MERCHANT.carrier && ['Transporteur', MERCHANT.carrier],
+  ].filter(Boolean)
   const steps = [
-    [Mail, 'Confirmation', 'E-mail récapitulatif dès la commande.'],
-    [PackageCheck, 'Expédition', `Depuis ${f.from}, confirmée par e-mail.`],
-    [MapPin, 'Livraison', `Estimée sous ${f.days} jours ouvrables.`],
+    [Mail, 'Confirmation', 'Un e-mail récapitulatif dès la commande.'],
+    [PackageCheck, 'Expédition', 'Un second e-mail confirme l’envoi de votre colis.'],
+    [MapPin, 'Suivi', 'Un lien de suivi vous est transmis lorsqu’il est disponible.'],
   ]
   return (
     <section id="livraison" className="scroll-mt-20 bg-fr-mint/45 py-14 lg:py-24">
@@ -183,13 +173,16 @@ export function ServiceF() {
               <h3 className="text-[1.1rem] font-extrabold tracking-[-0.02em] text-fr-ink lg:mt-4 lg:text-[1.2rem]">Livraison offerte</h3>
             </div>
             <dl className="mt-3 space-y-1.5 text-[0.88rem] text-fr-muted">
-              <div className="flex justify-between gap-3"><dt>Frais de port</dt><dd className="font-bold text-fr-green">CHF 0.–</dd></div>
-              <div className="flex justify-between gap-3"><dt>Délai estimé</dt><dd className="text-fr-ink">{f.days} jours ouvrables</dd></div>
-              <div className="flex justify-between gap-3"><dt>Expédition</dt><dd className="text-right text-fr-ink">depuis {f.from}</dd></div>
-              {(f.carrier || import.meta.env.DEV) && (
-                <div className="flex justify-between gap-3"><dt>Transporteur</dt><dd className="text-right"><Fact value={f.carrier} missing="transporteur" /></dd></div>
-              )}
+              {rows.map(([dt, dd]) => (
+                <div key={dt} className="flex justify-between gap-3">
+                  <dt>{dt}</dt>
+                  <dd className="text-right text-fr-ink">{dd}</dd>
+                </div>
+              ))}
             </dl>
+            <Link to="/livraison" className="mt-3 inline-flex items-center gap-1 text-[0.85rem] font-bold text-fr-green hover:underline">
+              Conditions de livraison <ArrowUpRight size={14} />
+            </Link>
           </Rise>
           <Rise delay={80} className="rounded-[1.5rem] bg-white p-5 font-jakarta lg:p-8">
             <div className="flex items-center gap-3.5 lg:block">
@@ -197,8 +190,8 @@ export function ServiceF() {
               <h3 className="text-[1.1rem] font-extrabold tracking-[-0.02em] text-fr-ink lg:mt-4 lg:text-[1.2rem]">Retour sous {DELIVERY.returnWindowDays} jours</h3>
             </div>
             <p className="mt-3 text-[0.88rem] leading-relaxed text-fr-muted">
-              Demandez un retour dans les {DELIVERY.returnWindowDays} jours suivant la réception. C’est un engagement de notre boutique :
-              la loi suisse ne prévoit pas de droit de rétractation en ligne.
+              Vous pouvez demander un retour dans les {DELIVERY.returnWindowDays} jours suivant la réception. C’est un engagement de
+              notre boutique : la loi suisse ne prévoit pas de droit de rétractation en ligne.
             </p>
             <Link to="/retours-remboursements" className="mt-3 inline-flex items-center gap-1 text-[0.85rem] font-bold text-fr-green hover:underline">
               Conditions de retour <ArrowUpRight size={14} />
@@ -209,19 +202,19 @@ export function ServiceF() {
               <IconTile icon={LockKeyhole} size="lg" className="max-lg:!h-11 max-lg:!w-11" />
               <h3 className="text-[1.1rem] font-extrabold tracking-[-0.02em] text-fr-ink lg:mt-4 lg:text-[1.2rem]">Paiement sécurisé</h3>
             </div>
-            {PAYMENT_METHODS.length ? (
+            {PAYMENT_METHODS.length > 0 && (
               <ul className="mt-3 flex flex-wrap gap-1.5">
                 {PAYMENT_METHODS.map((m) => (
                   <li key={m} className="rounded-lg bg-fr-soft px-2.5 py-1 text-xs font-bold text-fr-ink ring-1 ring-fr-line">{PAYMENT_LABELS[m] || m}</li>
                 ))}
               </ul>
-            ) : (
-              <div className="mt-3"><Pending block>moyens de paiement réellement activés</Pending></div>
             )}
-            <p className="mt-3 text-[0.88rem] leading-relaxed text-fr-muted">Montant total en CHF affiché avant l’achat. Aucune donnée de carte ne transite par notre boutique.</p>
+            <p className="mt-3 text-[0.88rem] leading-relaxed text-fr-muted">
+              Montant total en CHF affiché avant l’achat. Le paiement est traité sur la page sécurisée d’un prestataire
+              spécialisé : aucune donnée de carte ne transite par notre boutique.
+            </p>
           </Rise>
         </div>
-        {/* Après la commande */}
         <ol className="mt-8 grid gap-4 font-jakarta sm:grid-cols-3 lg:mt-10">
           {steps.map(([Icon, t, b], k) => (
             <Rise as="li" key={t} delay={k * 80} className="flex items-start gap-3">
@@ -249,12 +242,14 @@ export function FaqF() {
           <div className="mt-6 flex items-start gap-3 rounded-2xl bg-fr-soft p-4 font-jakarta">
             <IconTile icon={MessageCircleQuestion} size="md" tone="white" />
             <p className="text-[0.88rem] text-fr-muted">
-              Une autre question ?
-              <span className="mt-0.5 block font-bold text-fr-ink">
-                {STORE.supportEmail ? <a href={`mailto:${STORE.supportEmail}`} className="text-fr-green underline">{STORE.supportEmail}</a> : <Pending>e-mail du service client</Pending>}
-              </span>
-              <Link to="/contact" className="mt-1 inline-flex items-center gap-1 font-bold text-fr-green hover:underline">
-                Formulaire de contact <ArrowUpRight size={14} />
+              Une autre question&nbsp;?
+              {STORE.supportEmail && (
+                <a href={`mailto:${STORE.supportEmail}`} className="mt-0.5 block font-bold text-fr-green underline">
+                  {STORE.supportEmail}
+                </a>
+              )}
+              <Link to="/contact" className="mt-1 flex items-center gap-1 font-bold text-fr-green hover:underline">
+                Contact &amp; suivi de commande <ArrowUpRight size={14} />
               </Link>
             </p>
           </div>

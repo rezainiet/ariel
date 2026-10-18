@@ -1,103 +1,146 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Lock, Truck, RotateCcw, AlertCircle, Loader2, Minus, Plus, ChevronDown } from 'lucide-react'
-import { useCart } from '../context/CartContext.jsx'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
-  OFFERS,
-  PRODUCT,
-  DELIVERY,
-  MERCHANT,
-  STORE,
-  PAYMENT_METHODS,
-  PAYMENT_LABELS,
-  formatCHF,
-  savingsFor,
-  pricePerCapsule,
-} from '../config/store.js'
+  ArrowLeft,
+  LockKeyhole,
+  Truck,
+  RotateCcw,
+  AlertCircle,
+  Loader2,
+  ChevronDown,
+  Check,
+  CreditCard,
+  Info,
+  ArrowUpRight,
+  ShieldCheck,
+} from 'lucide-react'
+import { useCart } from '../context/CartContext.jsx'
+import { OFFERS, PRODUCT, DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
 import { trackStartCheckout } from '../lib/pixel.js'
-import { startPayment } from '../lib/payment.js'
+import { startPayment, isPaymentConfigured } from '../lib/payment.js'
+import { validateCustomer, clean } from '../lib/orderValidation.js'
+import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
-import { Fact, Pending } from '../concepts/c/Pending.jsx'
+import { Chf } from '../concepts/frais/Icons.jsx'
 
-// Champs — adresse suisse, clavier mobile adapté, autocomplétion standard.
-const CONTACT = [
-  { name: 'email', label: 'E-mail', type: 'email', autoComplete: 'email', inputMode: 'email', hint: 'Pour la confirmation de commande.' },
-  { name: 'tel', label: 'Téléphone', type: 'tel', autoComplete: 'tel', inputMode: 'tel', optional: true, hint: 'Facultatif — utile au transporteur.' },
-]
-const ADDRESS = [
-  { name: 'prenom', label: 'Prénom', autoComplete: 'given-name', half: true },
-  { name: 'nom', label: 'Nom', autoComplete: 'family-name', half: true },
-  { name: 'rue', label: 'Rue et numéro', autoComplete: 'address-line1' },
-  { name: 'complement', label: 'Complément d’adresse', autoComplete: 'address-line2', optional: true },
-  { name: 'npa', label: 'NPA', autoComplete: 'postal-code', inputMode: 'numeric', maxLength: 4, npa: true },
-  { name: 'ville', label: 'Localité', autoComplete: 'address-level2', city: true },
-]
-const ALL = [...CONTACT, ...ADDRESS]
+// ─────────────────────────────────────────────────────────────
+// Commande — gabarit Frais, pensé d'abord pour mobile.
+// Paiement : UNIQUEMENT via la page hébergée du prestataire (src/lib/payment.js).
+// Aucune donnée de carte n'est saisie ici ; succès affiché seulement après vérification serveur.
+// ─────────────────────────────────────────────────────────────
 
-function validate(v) {
-  const e = {}
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test((v.email || '').trim())) e.email = 'Saisissez une adresse e-mail valide.'
-  const tel = (v.tel || '').replace(/[\s.\-()]/g, '')
-  if (tel && !/^(\+41|0041|0)[1-9]\d{8}$/.test(tel)) e.tel = 'Numéro suisse attendu, ex. 079 123 45 67.'
-  if (!(v.prenom || '').trim()) e.prenom = 'Indiquez votre prénom.'
-  if (!(v.nom || '').trim()) e.nom = 'Indiquez votre nom.'
-  if (!(v.rue || '').trim()) e.rue = 'Indiquez la rue et le numéro.'
-  if (!/^[1-9]\d{3}$/.test((v.npa || '').trim())) e.npa = 'NPA suisse à 4 chiffres.'
-  if (!(v.ville || '').trim()) e.ville = 'Indiquez la localité.'
-  return e
+const FORM_KEY = 'checkout-form-v1'
+const readForm = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(FORM_KEY)) || {}
+  } catch {
+    return {}
+  }
 }
 
-function Field({ f, value, error, onChange, onBlur }) {
+const CONTACT = [
+  { name: 'prenom', label: 'Prénom', autoComplete: 'given-name', half: true, required: true },
+  { name: 'nom', label: 'Nom', autoComplete: 'family-name', half: true, required: true },
+  { name: 'email', label: 'Adresse e-mail', type: 'email', autoComplete: 'email', inputMode: 'email', required: true, hint: 'Pour la confirmation et le suivi de votre commande.' },
+  { name: 'tel', label: 'Téléphone', type: 'tel', autoComplete: 'tel', inputMode: 'tel', hint: 'Utile au transporteur en cas de besoin.' },
+]
+const ADDRESS = [
+  { name: 'adresse', label: 'Adresse', autoComplete: 'address-line1', required: true, placeholder: 'Rue et numéro' },
+  { name: 'complement', label: 'Complément d’adresse', autoComplete: 'address-line2', placeholder: 'Appartement, étage, c/o…' },
+  { name: 'npa', label: 'Code postal', autoComplete: 'postal-code', inputMode: 'numeric', maxLength: 4, pattern: '[0-9]*', required: true, zip: true },
+  { name: 'ville', label: 'Ville', autoComplete: 'address-level2', required: true, city: true },
+]
+const ORDERED = [...CONTACT, ...ADDRESS]
+
+const METHOD_ICONS = { card: CreditCard, visa: CreditCard, mastercard: CreditCard, amex: CreditCard }
+
+function Field({ f, value, error, valid, onChange, onBlur, list }) {
   const id = `f-${f.name}`
+  const described = [error && `${id}-err`, f.hint && `${id}-hint`].filter(Boolean).join(' ') || undefined
+  const span = f.half ? 'col-span-2 min-[400px]:col-span-1' : f.zip || f.city ? 'col-span-2 min-[360px]:col-span-1' : 'col-span-2'
   return (
-    <div className={f.half ? 'col-span-1' : f.npa ? 'col-span-1 sm:col-span-1' : f.city ? 'col-span-1' : 'col-span-2'}>
-      <label htmlFor={id} className="block text-sm font-semibold text-fr-ink">
+    <div className={span}>
+      <label htmlFor={id} className="block text-[0.86rem] font-bold text-fr-ink">
         {f.label}
-        {f.optional && <span className="ml-1 font-normal text-fr-muted">(facultatif)</span>}
+        {f.required ? (
+          <span className="ml-0.5 text-fr-green" aria-hidden="true">
+            *
+          </span>
+        ) : (
+          <span className="ml-1.5 text-[0.76rem] font-medium text-fr-muted">(facultatif)</span>
+        )}
       </label>
-      <input
-        id={id}
-        name={f.name}
-        type={f.type || 'text'}
-        inputMode={f.inputMode}
-        autoComplete={f.autoComplete}
-        maxLength={f.maxLength}
-        value={value || ''}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id}-err` : f.hint ? `${id}-hint` : undefined}
-        onChange={(e) => onChange(f.name, e.target.value)}
-        onBlur={() => onBlur(f.name)}
-        className={`mt-1.5 h-12 w-full rounded-xl border bg-white px-4 text-base text-fr-ink outline-none transition-colors focus:border-fr-green focus:ring-2 focus:ring-fr-green/15 ${
-          error ? 'border-red-500' : 'border-fr-line'
-        }`}
-      />
+      <div className="relative mt-1.5">
+        <input
+          id={id}
+          name={f.name}
+          type={f.type || 'text'}
+          inputMode={f.inputMode}
+          autoComplete={f.autoComplete}
+          maxLength={f.maxLength}
+          pattern={f.pattern}
+          placeholder={f.placeholder}
+          required={f.required}
+          list={list}
+          value={value || ''}
+          aria-invalid={Boolean(error)}
+          aria-describedby={described}
+          onChange={(e) => onChange(f.name, f.zip ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value)}
+          onBlur={() => onBlur(f.name)}
+          className={`h-[3.25rem] w-full rounded-2xl border bg-white px-4 pr-11 text-[1rem] text-fr-ink outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-fr-muted/60 focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${
+            error ? 'border-red-400 bg-red-50/40' : 'border-fr-line hover:border-fr-green/40'
+          }`}
+        />
+        {valid && !error && (
+          <Check size={17} strokeWidth={2.6} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-fr-green" aria-hidden="true" />
+        )}
+      </div>
       {error ? (
-        <p id={`${id}-err`} className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600">
-          <AlertCircle size={13} /> {error}
+        <p id={`${id}-err`} className="mt-1.5 flex items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
+          <AlertCircle size={14} className="flex-none" /> {error}
         </p>
       ) : (
-        f.hint && <p id={`${id}-hint`} className="mt-1 text-xs text-fr-muted">{f.hint}</p>
+        f.hint && (
+          <p id={`${id}-hint`} className="mt-1.5 text-[0.76rem] text-fr-muted">
+            {f.hint}
+          </p>
+        )
       )}
     </div>
   )
 }
 
-function Steps({ current }) {
-  const steps = ['Panier', 'Coordonnées', 'Paiement']
+function Section({ n, title, children, aside }) {
   return (
-    <ol className="flex items-center gap-2 text-xs font-semibold" aria-label="Étapes de la commande">
+    <section className="rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-7" aria-labelledby={`etape-${n}`}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 id={`etape-${n}`} className="flex items-center gap-3 text-[1.08rem] font-extrabold tracking-[-0.015em] text-fr-ink">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-fr-mint text-[0.78rem] font-extrabold text-fr-green">{n}</span>
+          {title}
+        </h2>
+        {aside}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  )
+}
+
+function Steps() {
+  const steps = ['Panier', 'Informations', 'Paiement']
+  return (
+    <ol className="flex items-center gap-2 text-[0.76rem] font-semibold" aria-label="Étapes de la commande">
       {steps.map((s, k) => (
-        <li key={s} className="flex items-center gap-2" aria-current={k === current ? 'step' : undefined}>
+        <li key={s} className="flex items-center gap-2" aria-current={k === 1 ? 'step' : undefined}>
           <span
             className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] ${
-              k < current ? 'bg-fr-green text-white' : k === current ? 'bg-fr-green text-white ring-4 ring-fr-mint' : 'bg-fr-line text-fr-muted'
+              k === 0 ? 'bg-fr-green text-white' : k === 1 ? 'bg-fr-deep text-white ring-4 ring-fr-mint' : 'bg-fr-line text-fr-muted'
             }`}
           >
-            {k + 1}
+            {k === 0 ? <Check size={13} strokeWidth={3} /> : k + 1}
           </span>
-          <span className={k === current ? 'text-fr-ink' : 'text-fr-muted'}>{s}</span>
-          {k < steps.length - 1 && <span className="h-px w-5 bg-fr-line sm:w-8" />}
+          <span className={k === 1 ? 'text-fr-ink' : 'text-fr-muted max-[379px]:sr-only'}>{s}</span>
+          {k < steps.length - 1 && <span className="h-px w-4 bg-fr-line min-[400px]:w-7" />}
         </li>
       ))}
     </ol>
@@ -105,280 +148,507 @@ function Steps({ current }) {
 }
 
 function Summary({ offer, changeOffer }) {
-  const idx = OFFERS.findIndex((o) => o.id === offer.id)
   const save = savingsFor(offer)
+  const group = useId()
   return (
-    <div className="rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
-      <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-fr-green">Votre commande</h2>
+    <div className="rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-7">
+      <h2 className="text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-fr-green">Votre commande</h2>
       <div className="mt-4 flex items-center gap-4">
-        <span className="flex h-16 w-20 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1">
+        <span className="flex h-[4.5rem] w-[4.5rem] flex-none items-end justify-center rounded-2xl bg-fr-mint pb-2">
           <Packs n={offer.packs} size="sm" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-bold leading-tight text-fr-ink">{PRODUCT.name}</p>
-          <p className="text-sm text-fr-muted">
-            {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · {offer.washes} lavages
+          <p className="font-extrabold leading-tight text-fr-ink">{PRODUCT.name}</p>
+          <p className="mt-0.5 text-[0.86rem] text-fr-muted">
+            {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules
           </p>
         </div>
-      </div>
-      {/* Correction possible avant l'achat (LCD art. 3 let. s) */}
-      <div className="mt-4 flex items-center justify-between rounded-xl bg-fr-soft px-3 py-2">
-        <span className="text-sm font-semibold text-fr-ink">Nombre de sachets</span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => OFFERS[idx - 1] && changeOffer(OFFERS[idx - 1].id)}
-            disabled={idx <= 0}
-            aria-label="Un sachet de moins"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-fr-green disabled:opacity-30"
-          >
-            <Minus size={15} />
-          </button>
-          <span className="w-7 text-center font-bold tabular-nums" aria-live="polite">{offer.packs}</span>
-          <button
-            type="button"
-            onClick={() => OFFERS[idx + 1] && changeOffer(OFFERS[idx + 1].id)}
-            disabled={idx >= OFFERS.length - 1}
-            aria-label="Un sachet de plus"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-fr-green disabled:opacity-30"
-          >
-            <Plus size={15} />
-          </button>
-        </div>
-      </div>
-      <dl className="mt-4 space-y-1.5 text-sm">
-        <div className="flex justify-between text-fr-ink/75"><dt>Prix de l’offre</dt><dd className="tabular-nums">{formatCHF(offer.price)}</dd></div>
-        <div className="flex justify-between text-fr-ink/75"><dt>Prix par capsule</dt><dd className="tabular-nums">≈ {formatCHF(pricePerCapsule(offer))}</dd></div>
-        <div className="flex justify-between text-fr-ink/75"><dt>Livraison (Suisse)</dt><dd className="font-semibold text-fr-green">Offerte</dd></div>
-        {save > 0 && (
-          <div className="flex justify-between text-fr-ink/75"><dt>Économie vs sachets à l’unité</dt><dd className="tabular-nums text-fr-green">− {formatCHF(save)}</dd></div>
-        )}
-        <div className="mt-2 flex items-baseline justify-between border-t border-fr-line pt-3">
-          <dt className="text-base font-bold text-fr-ink">Total à payer</dt>
-          <dd className="font-extrabold tracking-[-0.03em] text-2xl font-medium tabular-nums text-fr-green">{formatCHF(offer.price)}</dd>
-        </div>
-        <p className="text-right text-xs text-fr-muted">
-          <Fact value={MERCHANT.vatNote} missing="mention TVA (ex. « TVA incluse »)" />
+        <p className="text-[1.05rem] font-extrabold tabular-nums text-fr-ink">
+          <Chf v={offer.price} format={formatCHF} />
         </p>
+      </div>
+
+      {/* Modifier la sélection : remplace l'offre (jamais de doublon), les coordonnées restent saisies */}
+      <fieldset className="mt-5">
+        <legend className="text-[0.8rem] font-bold text-fr-ink">Modifier mon offre</legend>
+        <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-2xl bg-fr-soft p-1.5">
+          {OFFERS.map((o) => {
+            const on = o.id === offer.id
+            return (
+              <label
+                key={o.id}
+                className={`relative flex cursor-pointer flex-col items-center rounded-xl px-1 py-2 text-center transition-all duration-200 focus-within:ring-2 focus-within:ring-fr-green ${
+                  on ? 'bg-white shadow-[0_6px_16px_rgba(11,61,42,0.10)] ring-1 ring-fr-green' : 'hover:bg-white/70'
+                }`}
+              >
+                <input type="radio" name={group} value={o.id} checked={on} onChange={() => changeOffer(o.id)} className="sr-only" />
+                <span className="text-[0.8rem] font-bold text-fr-ink">
+                  {o.packs} sachet{o.packs > 1 ? 's' : ''}
+                </span>
+                <span className={`text-[0.78rem] font-extrabold tabular-nums ${on ? 'text-fr-green' : 'text-fr-muted'}`}>
+                  <Chf v={o.price} format={formatCHF} />
+                </span>
+              </label>
+            )
+          })}
+        </div>
+      </fieldset>
+
+      <dl className="mt-5 space-y-2 text-[0.9rem]">
+        <div className="flex justify-between text-fr-muted">
+          <dt>Sous-total</dt>
+          <dd className="tabular-nums text-fr-ink">
+            <Chf v={offer.price} format={formatCHF} />
+          </dd>
+        </div>
+        <div className="flex justify-between text-fr-muted">
+          <dt>Livraison (Suisse)</dt>
+          <dd className="font-bold text-fr-green">Offerte</dd>
+        </div>
+        {save > 0 && (
+          <div className="flex justify-between text-fr-muted">
+            <dt>Vous économisez</dt>
+            <dd className="font-semibold tabular-nums text-fr-green">
+              − <Chf v={save} format={formatCHF} />
+            </dd>
+          </div>
+        )}
+        <div className="flex items-baseline justify-between border-t border-fr-line pt-3">
+          <dt className="text-[1rem] font-extrabold text-fr-ink">Total à payer</dt>
+          <dd className="text-[1.6rem] font-extrabold tabular-nums tracking-[-0.03em] text-fr-green">
+            <Chf v={offer.price} format={formatCHF} />
+          </dd>
+        </div>
       </dl>
-      <ul className="mt-4 space-y-1.5 border-t border-fr-line pt-4 text-xs text-fr-ink/75">
-        <li className="flex gap-2"><Truck size={14} className="flex-none text-fr-green" /> Livraison estimée sous {DELIVERY.estimateDays} jours ouvrables</li>
-        <li className="flex gap-2"><RotateCcw size={14} className="flex-none text-fr-green" /> Retour possible sous {DELIVERY.returnWindowDays} jours après réception</li>
-      </ul>
-      <p className="mt-4 border-t border-fr-line pt-4 text-xs text-fr-muted">
-        Vendeur : <Fact value={MERCHANT.legalName} missing="raison sociale" /> ·{' '}
-        <Link to="/mentions-legales" className="font-semibold text-fr-green underline">mentions légales</Link>
+      <p className="mt-1 text-right text-[0.74rem] text-fr-muted">
+        Prix en CHF{MERCHANT.vatNote ? ` · ${MERCHANT.vatNote}` : ''} · {offer.washes} lavages au dosage standard
       </p>
     </div>
   )
 }
 
+function MethodPicker({ method, setMethod }) {
+  return (
+    <div role="radiogroup" aria-label="Moyen de paiement" className="grid gap-2 sm:grid-cols-2">
+      {PAYMENT_METHODS.map((m) => {
+        const Icon = METHOD_ICONS[m]
+        const on = method === m
+        return (
+          <label
+            key={m}
+            className={`flex h-14 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 text-[0.92rem] font-bold transition-colors focus-within:ring-2 focus-within:ring-fr-green/40 ${
+              on ? 'border-fr-green bg-fr-mint/50 text-fr-ink' : 'border-fr-line text-fr-ink hover:border-fr-green/40'
+            }`}
+          >
+            <input type="radio" name="method" value={m} checked={on} onChange={() => setMethod(m)} className="h-4 w-4 accent-[#0E7A47]" />
+            {Icon && <Icon size={18} strokeWidth={1.8} className="text-fr-green" aria-hidden="true" />}
+            {PAYMENT_LABELS[m] || m}
+          </label>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Checkout() {
-  const { offer, hasItems, total, changeOffer } = useCart()
-  const [values, setValues] = useState({})
+  const { offer, hasItems, changeOffer } = useCart()
+  const [params] = useSearchParams()
+  const [values, setValues] = useState(readForm)
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [submitted, setSubmitted] = useState(false)
-  const [status, setStatus] = useState('idle') // idle | loading | not_configured | error
-  const summaryRef = useRef(null)
+  const [terms, setTerms] = useState(false)
+  // idle | loading | unavailable | error | cancelled (retour du prestataire : ?paiement=annule / erreur)
+  const [status, setStatus] = useState(() => {
+    const p = params.get('paiement')
+    return p === 'annule' ? 'cancelled' : p === 'erreur' ? 'error' : 'idle'
+  })
   const [method, setMethod] = useState(PAYMENT_METHODS[0] || '')
   const [showSummary, setShowSummary] = useState(false)
+  const [cities, setCities] = useState([])
+  const [streets, setStreets] = useState([])
+  const alertRef = useRef(null)
+  const paymentReady = isPaymentConfigured()
 
   useEffect(() => {
-    if (hasItems) trackStartCheckout({ currency: 'CHF', price: total, item_ids: [PRODUCT.id], number_items: offer?.packs })
+    if (hasItems) trackStartCheckout({ currency: 'CHF', price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs })
   }, [hasItems]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Les coordonnées restent saisies (rechargement, retour depuis les conditions, modification de l'offre).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        sessionStorage.setItem(FORM_KEY, JSON.stringify(values))
+      } catch {
+        /* stockage indisponible */
+      }
+    }, 250)
+    return () => clearTimeout(t)
+  }, [values])
+
+  // Aide à la saisie : seulement si un service d'adresses réel est configuré.
+  useEffect(() => {
+    if (!hasAddressService() || !/^[1-9]\d{3}$/.test(values.npa || '')) {
+      setCities([])
+      return
+    }
+    let alive = true
+    localitiesFor(values.npa).then((list) => {
+      if (!alive) return
+      setCities(list)
+      if (list.length === 1 && !values.ville) setValues((v) => ({ ...v, ville: list[0].city }))
+    })
+    return () => {
+      alive = false
+    }
+  }, [values.npa]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!hasAddressService()) return
+    let alive = true
+    const t = setTimeout(() => streetsFor(values.adresse, values.npa).then((l) => alive && setStreets(l)), 250)
+    return () => {
+      alive = false
+      clearTimeout(t)
+    }
+  }, [values.adresse, values.npa])
 
   const set = (name, v) => {
     const next = { ...values, [name]: v }
     setValues(next)
-    if (touched[name] || submitted) setErrors(validate(next))
+    if (touched[name] || submitted) setErrors(validateCustomer(next, { terms: submitted ? terms : undefined }))
   }
   const blur = (name) => {
     setTouched((t) => ({ ...t, [name]: true }))
-    setErrors(validate(values))
+    setErrors(validateCustomer(values, { terms: submitted ? terms : undefined }))
   }
+  const toggleTerms = (v) => {
+    setTerms(v)
+    if (submitted) setErrors(validateCustomer(values, { terms: v }))
+  }
+
+  const focusAlert = () => requestAnimationFrame(() => alertRef.current?.focus())
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    const errs = validate(values)
+    const errs = validateCustomer(values, { terms })
     setErrors(errs)
     setSubmitted(true)
     if (Object.keys(errs).length) {
-      requestAnimationFrame(() => summaryRef.current?.focus())
-      return
+      setStatus('idle')
+      return focusAlert()
+    }
+    if (!paymentReady) {
+      setStatus('unavailable')
+      return focusAlert()
     }
     setStatus('loading')
-    const res = await startPayment({
-      offerId: offer.id,
-      packs: offer.packs,
-      total: offer.price,
-      currency: 'CHF',
-      method,
-      customer: values,
-    })
-    if (res.status !== 'redirecting') setStatus(res.status)
+    // Le serveur recalcule le montant à partir de l'offre ; aucun total n'est transmis.
+    const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, customer: clean(values) })
+    if (res.status !== 'redirecting') {
+      setStatus(res.status === 'not_configured' ? 'unavailable' : 'error')
+      focusAlert()
+    }
   }
 
-  const shownErrors = Object.fromEntries(Object.entries(errors).filter(([k]) => touched[k] || submitted))
-  const errorList = ALL.filter((f) => shownErrors[f.name])
+  const shown = useMemo(
+    () => Object.fromEntries(Object.entries(errors).filter(([k]) => touched[k] || submitted)),
+    [errors, touched, submitted]
+  )
+  const errorList = [...ORDERED.filter((f) => shown[f.name]), ...(shown.terms ? [{ name: 'terms', label: 'Conditions générales' }] : [])]
+  const isValid = (name) => (touched[name] || submitted) && !errors[name] && Boolean((values[name] || '').trim())
 
   if (!hasItems) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-fr-soft px-6 text-center font-jakarta">
         <Logo />
-        <h1 className="mt-8 font-extrabold tracking-[-0.03em] text-3xl text-fr-ink">Votre panier est vide</h1>
-        <p className="mt-2 max-w-sm text-fr-muted">Choisissez une offre avant de passer commande.</p>
-        <Link to="/#offres" className="mt-6 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white">
+        <h1 className="mt-8 text-[1.8rem] font-extrabold tracking-[-0.025em] text-fr-ink">Votre panier est vide</h1>
+        <p className="mt-2 max-w-sm text-fr-muted">Choisissez votre offre Ariel All‑in‑1 PODS avant de passer commande.</p>
+        <Link to="/#offres" className="mt-6 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white shadow-[0_12px_26px_rgba(14,122,71,0.28)]">
           Voir les offres
         </Link>
       </div>
     )
   }
 
+  const fieldProps = (f) => ({ f, value: values[f.name], error: shown[f.name], valid: isValid(f.name), onChange: set, onBlur: blur })
+
   return (
-    <div className="min-h-screen bg-fr-soft font-jakarta">
+    <div className="min-h-screen bg-fr-soft font-jakarta text-fr-ink">
       <header className="border-b border-fr-line bg-white">
-        <div className="mx-auto flex h-14 max-w-[1120px] items-center justify-between px-4 lg:h-16 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-4 lg:h-[4.5rem] lg:px-8">
           <Logo />
-          <span className="hidden items-center gap-1.5 text-xs font-semibold text-fr-ink/70 sm:flex">
-            <Lock size={14} className="text-fr-green" /> Commande en CHF
+          <span className="flex items-center gap-1.5 rounded-full bg-fr-mint px-3 py-1.5 text-[0.76rem] font-bold text-fr-deep">
+            <LockKeyhole size={14} strokeWidth={2} className="text-fr-green" /> Paiement sécurisé
           </span>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1120px] px-4 py-6 lg:px-8 lg:py-10">
+      <main className="mx-auto max-w-[1180px] px-4 pb-16 pt-5 lg:px-8 lg:pt-9">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-fr-muted hover:text-fr-green">
-            <ArrowLeft size={16} /> Continuer mes achats
+          <Link to="/" className="inline-flex items-center gap-1.5 text-[0.86rem] font-semibold text-fr-muted hover:text-fr-green">
+            <ArrowLeft size={16} /> Retour à la boutique
           </Link>
-          <Steps current={submitted && !errorList.length ? 2 : 1} />
+          <Steps />
         </div>
+        <h1 className="mt-5 text-[1.85rem] font-extrabold leading-tight tracking-[-0.025em] lg:mt-6 lg:text-[2.5rem]">Finaliser ma commande</h1>
 
-        <h1 className="mt-5 font-extrabold text-[2rem] tracking-[-0.025em] text-fr-ink lg:text-[2.6rem]">Finaliser la commande</h1>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_1fr] lg:gap-10">
-          <aside className="lg:order-2">
-            {/* Mobile : récapitulatif repliable (le formulaire reste visible) ; desktop : toujours déplié */}
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:mt-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
+          {/* Récapitulatif : repliable sur mobile, collant sur desktop */}
+          <aside className="min-w-0 lg:sticky lg:top-6 lg:order-2" aria-label="Récapitulatif de commande">
             <button
               type="button"
               onClick={() => setShowSummary((v) => !v)}
               aria-expanded={showSummary}
               aria-controls="recapitulatif"
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-fr-line bg-white px-4 py-3 text-left lg:hidden"
+              className="flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-fr-line lg:hidden"
             >
-              <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-sm font-bold text-fr-green">
+              <span className="flex h-11 w-11 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1">
+                <Packs n={offer.packs} size="sm" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1 text-[0.86rem] font-bold text-fr-green">
                   {showSummary ? 'Masquer' : 'Afficher'} le récapitulatif
-                  <ChevronDown size={16} className={`transition-transform ${showSummary ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${showSummary ? 'rotate-180' : ''}`} />
                 </span>
-                <span className="block truncate text-xs text-fr-muted">
-                  {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} lavages · livraison offerte
+                <span className="block truncate text-[0.76rem] text-fr-muted">
+                  {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · livraison offerte
                 </span>
               </span>
-              <span className="font-extrabold tracking-[-0.03em] text-xl tabular-nums text-fr-green">{formatCHF(offer.price)}</span>
+              <span className="text-[1.15rem] font-extrabold tabular-nums text-fr-ink">
+                <Chf v={offer.price} format={formatCHF} />
+              </span>
             </button>
-            <div id="recapitulatif" className={`${showSummary ? 'mt-3 block' : 'hidden'} lg:sticky lg:top-6 lg:mt-0 lg:block`}>
+            <div id="recapitulatif" className={`${showSummary ? 'mt-3 block animate-fade-in' : 'hidden'} lg:mt-0 lg:block`}>
               <Summary offer={offer} changeOffer={changeOffer} />
+              <ul className="mt-3 hidden space-y-2.5 rounded-[1.6rem] bg-white p-5 text-[0.84rem] ring-1 ring-fr-line lg:block">
+                <li className="flex items-center gap-2.5">
+                  <ShieldCheck size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Aucune donnée de carte ne transite par notre boutique
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <Truck size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Livraison offerte en Suisse
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <RotateCcw size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Retour possible sous {DELIVERY.returnWindowDays} jours après réception
+                </li>
+              </ul>
             </div>
           </aside>
 
-          <form onSubmit={onSubmit} noValidate className="lg:order-1">
-            {errorList.length > 0 && (
-              <div ref={summaryRef} tabIndex={-1} role="alert" className="mb-5 rounded-xl border border-red-300 bg-red-50 p-4 outline-none">
-                <p className="flex items-center gap-2 text-sm font-bold text-red-700">
-                  <AlertCircle size={16} /> Veuillez corriger {errorList.length > 1 ? `${errorList.length} champs` : 'un champ'} :
-                </p>
-                <ul className="mt-2 list-disc space-y-0.5 pl-6 text-sm text-red-700">
-                  {errorList.map((f) => (
-                    <li key={f.name}>
-                      <a href={`#f-${f.name}`} className="underline">{f.label}</a> — {shownErrors[f.name]}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <fieldset className="rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
-              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-fr-green">1 · Vos coordonnées</legend>
-              <div className="mt-2 grid grid-cols-2 gap-4">
+          <form onSubmit={onSubmit} noValidate className="min-w-0 space-y-4 lg:order-1">
+            <Section n={1} title="Vos coordonnées">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 {CONTACT.map((f) => (
-                  <Field key={f.name} f={f} value={values[f.name]} error={shownErrors[f.name]} onChange={set} onBlur={blur} />
+                  <Field key={f.name} {...fieldProps(f)} />
                 ))}
               </div>
-            </fieldset>
+            </Section>
 
-            <fieldset className="mt-4 rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
-              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-fr-green">2 · Adresse de livraison</legend>
-              <div className="mt-2 grid grid-cols-2 gap-4">
-                {ADDRESS.map((f) => (
-                  <Field key={f.name} f={f} value={values[f.name]} error={shownErrors[f.name]} onChange={set} onBlur={blur} />
-                ))}
-                <p className="col-span-2 rounded-lg bg-fr-mint/60 px-3 py-2 text-xs text-fr-ink/75">Pays : <strong>Suisse</strong> — livraison en Suisse uniquement.</p>
-              </div>
-            </fieldset>
-
-            <fieldset className="mt-4 rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
-              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-fr-green">3 · Paiement</legend>
-              {PAYMENT_METHODS.length ? (
-                <div role="radiogroup" aria-label="Moyen de paiement" className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {PAYMENT_METHODS.map((m) => (
-                    <label
-                      key={m}
-                      className={`flex h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-sm font-semibold ${
-                        method === m ? 'border-fr-green bg-fr-mint/60' : 'border-fr-line'
-                      }`}
-                    >
-                      <input type="radio" name="method" value={m} checked={method === m} onChange={() => setMethod(m)} className="accent-[#0E7A47]" />
-                      {PAYMENT_LABELS[m] || m}
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-2 space-y-2">
-                  <Pending block>prestataire et moyens de paiement réellement activés</Pending>
-                  <p className="text-sm text-fr-ink/75">
-                    Le paiement sera traité sur la page sécurisée de notre prestataire. Aucune donnée de carte n’est saisie ni
-                    conservée par {STORE.name}.
+            <Section n={2} title="Adresse de livraison">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
+                <div className="col-span-2">
+                  <p className="block text-[0.86rem] font-bold text-fr-ink" id="pays-label">
+                    Pays
+                  </p>
+                  <p
+                    aria-labelledby="pays-label"
+                    className="mt-1.5 flex h-[3.25rem] items-center justify-between gap-3 rounded-2xl border border-fr-line bg-fr-soft px-4 text-[1rem] text-fr-ink"
+                  >
+                    Suisse (CH)
+                    <span className="text-right text-[0.72rem] font-semibold leading-tight text-fr-muted">Livraison en Suisse uniquement</span>
                   </p>
                 </div>
-              )}
-            </fieldset>
+                {ADDRESS.map((f) => (
+                  <Field
+                    key={f.name}
+                    {...fieldProps(f)}
+                    list={f.name === 'adresse' && streets.length ? 'rues' : f.city && cities.length > 1 ? 'localites' : undefined}
+                  />
+                ))}
+                {streets.length > 0 && (
+                  <datalist id="rues">
+                    {streets.map((s) => (
+                      <option key={`${s.street}-${s.zip}`} value={s.street} />
+                    ))}
+                  </datalist>
+                )}
+                {cities.length > 1 && (
+                  <datalist id="localites">
+                    {cities.map((c) => (
+                      <option key={c.city} value={c.city} />
+                    ))}
+                  </datalist>
+                )}
+              </div>
+            </Section>
 
-            {status === 'not_configured' && (
-              <div role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-                <strong>Paiement en ligne pas encore activé.</strong> Aucune commande n’a été enregistrée et aucun montant n’a été
-                débité. (Intégration prestataire à connecter : VITE_PAYMENT_PROVIDER / VITE_CHECKOUT_API.)
-              </div>
-            )}
-            {status === 'error' && (
-              <div role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-                Le paiement n’a pas pu être initié. Aucun montant n’a été débité. Réessayez dans un instant ou contactez-nous.
-              </div>
-            )}
+            <Section
+              n={3}
+              title="Paiement"
+              aside={
+                <span className="hidden items-center gap-1 text-[0.74rem] font-semibold text-fr-muted min-[400px]:flex">
+                  <LockKeyhole size={13} /> Page sécurisée
+                </span>
+              }
+            >
+              {paymentReady ? (
+                <div className="space-y-3">
+                  {PAYMENT_METHODS.length > 0 && <MethodPicker method={method} setMethod={setMethod} />}
+                  <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.84rem] leading-relaxed text-fr-muted">
+                    <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
+                    Vous serez redirigé vers la page sécurisée de notre prestataire de paiement pour régler {formatCHF(offer.price)}.
+                    Aucune donnée de carte n’est saisie ni conservée par notre boutique.
+                  </p>
+                </div>
+              ) : (
+                <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] leading-relaxed text-fr-ink">
+                  <Info size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
+                  <span>
+                    <strong className="font-bold">Le paiement en ligne n’est pas encore ouvert.</strong> Vous pouvez vérifier votre
+                    commande ; aucune commande ne peut être validée ni débitée pour le moment.
+                  </span>
+                </p>
+              )}
+            </Section>
+
+            {/* Réassurance confirmée, à côté de l'action finale */}
+            <div className="rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-6">
+              <ul className="space-y-3 text-[0.88rem]">
+                <li className="flex items-start gap-3">
+                  <Truck size={19} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
+                  <span>
+                    <strong className="font-bold">Livraison offerte en Suisse</strong>
+                    {DELIVERY.estimateDays ? ` · estimée sous ${DELIVERY.estimateDays} jours ouvrables` : ''}
+                    <Link to="/livraison" target="_blank" rel="noopener" className="ml-1.5 inline-flex items-center gap-0.5 font-semibold text-fr-green underline-offset-2 hover:underline">
+                      Conditions <ArrowUpRight size={13} />
+                    </Link>
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <RotateCcw size={19} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
+                  <span>
+                    <strong className="font-bold">Retour possible sous {DELIVERY.returnWindowDays} jours après réception</strong>
+                    <Link
+                      to="/retours-remboursements"
+                      target="_blank"
+                      rel="noopener"
+                      className="ml-1.5 inline-flex items-center gap-0.5 font-semibold text-fr-green underline-offset-2 hover:underline"
+                    >
+                      Politique de retour <ArrowUpRight size={13} />
+                    </Link>
+                  </span>
+                </li>
+              </ul>
+              <details className="group mt-3 rounded-2xl bg-fr-soft px-4 py-3 text-[0.84rem]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold text-fr-ink [&::-webkit-details-marker]:hidden">
+                  Lire le résumé de la politique de retour
+                  <ChevronDown size={16} className="flex-none text-fr-green transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="mt-2 space-y-1.5 leading-relaxed text-fr-muted">
+                  <p>
+                    Vous pouvez demander un retour dans les {DELIVERY.returnWindowDays} jours qui suivent la réception, en indiquant
+                    votre numéro de commande. Il s’agit d’un engagement de notre boutique : la loi suisse ne prévoit pas de droit de
+                    rétractation pour les achats en ligne.
+                  </p>
+                  <p>Article endommagé, défectueux ou erroné : contactez-nous dès réception. La garantie légale s’applique.</p>
+                </div>
+              </details>
+
+              <label
+                className={`mt-4 flex cursor-pointer items-start gap-3 rounded-2xl p-3 transition-colors ${shown.terms ? 'bg-red-50 ring-1 ring-red-300' : 'hover:bg-fr-soft'}`}
+              >
+                <input
+                  id="f-terms"
+                  type="checkbox"
+                  checked={terms}
+                  onChange={(e) => toggleTerms(e.target.checked)}
+                  aria-invalid={Boolean(shown.terms)}
+                  aria-describedby={shown.terms ? 'f-terms-err' : undefined}
+                  className="mt-0.5 h-5 w-5 flex-none rounded accent-[#0E7A47]"
+                />
+                <span className="text-[0.86rem] leading-relaxed text-fr-ink">
+                  J’accepte les{' '}
+                  <Link to="/conditions-generales-de-vente" target="_blank" rel="noopener" className="font-semibold text-fr-green underline">
+                    conditions générales de vente
+                  </Link>{' '}
+                  et j’ai pris connaissance de la{' '}
+                  <Link to="/retours-remboursements" target="_blank" rel="noopener" className="font-semibold text-fr-green underline">
+                    politique de retour
+                  </Link>
+                  .
+                  {shown.terms && (
+                    <span id="f-terms-err" className="mt-1 flex items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
+                      <AlertCircle size={14} /> {shown.terms}
+                    </span>
+                  )}
+                </span>
+              </label>
+            </div>
+
+            {/* Messages : erreurs de saisie, paiement indisponible, annulation, erreur prestataire */}
+            <div ref={alertRef} tabIndex={-1} className="space-y-3 outline-none">
+              {errorList.length > 0 && (
+                <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                  <p className="flex items-center gap-2 text-[0.9rem] font-bold text-red-700">
+                    <AlertCircle size={17} /> {errorList.length > 1 ? `Veuillez vérifier ${errorList.length} champs` : 'Veuillez vérifier un champ'}
+                  </p>
+                  <ul className="mt-2 space-y-1 pl-7 text-[0.86rem] text-red-700">
+                    {errorList.map((f) => (
+                      <li key={f.name}>
+                        <a href={`#f-${f.name}`} className="font-semibold underline">
+                          {f.label}
+                        </a>{' '}
+                        — {shown[f.name]}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {status === 'unavailable' && !errorList.length && (
+                <p role="status" className="flex gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
+                  <Info size={18} className="mt-0.5 flex-none text-fr-green" />
+                  Vos informations sont complètes, mais le paiement en ligne n’est pas encore ouvert : aucune commande n’a été
+                  enregistrée et aucun montant n’a été débité.
+                </p>
+              )}
+              {status === 'cancelled' && (
+                <p role="status" className="flex gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
+                  <Info size={18} className="mt-0.5 flex-none text-fr-green" />
+                  Paiement annulé : aucune commande n’a été passée. Vos informations sont conservées, vous pouvez réessayer.
+                </p>
+              )}
+              {status === 'error' && (
+                <p role="alert" className="flex gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-[0.88rem] text-red-700">
+                  <AlertCircle size={18} className="mt-0.5 flex-none" />
+                  Le paiement n’a pas pu être lancé. Aucun montant n’a été débité. Veuillez réessayer dans un instant.
+                </p>
+              )}
+            </div>
 
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-fr-green shadow-[0_14px_28px_rgba(14,122,71,0.28)] text-base font-extrabold text-white transition-all hover:bg-[#0C6B3E] active:scale-[0.99] disabled:opacity-70"
+              className="flex h-[3.75rem] w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1.02rem] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-all duration-200 hover:-translate-y-px hover:bg-[#0C6B3E] active:translate-y-0 disabled:cursor-wait disabled:opacity-80"
             >
               {status === 'loading' ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" /> Redirection vers le paiement…
+                  <Loader2 size={19} className="animate-spin" /> Redirection vers le paiement…
                 </>
               ) : (
                 <>
-                  <Lock size={17} /> Acheter · {formatCHF(offer.price)}
+                  <LockKeyhole size={18} strokeWidth={2.2} />
+                  <span>
+                    Acheter — <Chf v={offer.price} format={formatCHF} />
+                  </span>
                 </>
               )}
             </button>
-            <p className="mt-3 text-center text-xs leading-relaxed text-fr-muted">
-              En cliquant sur « Acheter », vous passez une commande avec obligation de paiement et acceptez nos{' '}
-              <Link to="/conditions-generales-de-vente" className="underline">conditions générales de vente</Link>. Une confirmation vous
-              est envoyée par e-mail.
+            <p className="text-center text-[0.76rem] leading-relaxed text-fr-muted">
+              En cliquant sur « Acheter », vous passez une commande avec obligation de paiement auprès de {storeRef()}. Une
+              confirmation vous est envoyée par e-mail.
             </p>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

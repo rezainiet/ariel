@@ -1,53 +1,69 @@
-import { PageHeader, Prose, Block, TodoNote } from '../components/ui/Prose.jsx'
-import { DELIVERY, formatCHF } from '../config/store.js'
+import { Link } from 'react-router-dom'
+import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
+import { DELIVERY, MERCHANT, POLICIES, OFFERS, formatCHF } from '../config/store.js'
 
+// Conditions générales : uniquement des engagements confirmés ; les clauses propres au vendeur
+// (identité, for juridique) n'apparaissent qu'une fois renseignées.
 export default function Terms() {
   return (
     <>
       <PageHeader
-        eyebrow="CGV"
+        eyebrow="Conditions générales"
         title="Conditions générales de vente"
-        intro="Les présentes conditions encadrent la vente des produits proposés sur la boutique. Modèle à compléter et valider juridiquement."
+        intro="Les présentes conditions encadrent la vente des produits proposés sur la boutique."
       />
       <Prose>
+        {MERCHANT.legalName && (
+          <Block title="Vendeur">
+            <p>
+              {MERCHANT.legalName}
+              {MERCHANT.uid ? `, IDE ${MERCHANT.uid}` : ''}. Coordonnées complètes dans les{' '}
+              <Link to="/mentions-legales" className="font-semibold text-fr-green underline">
+                mentions légales
+              </Link>
+              .
+            </p>
+          </Block>
+        )}
         <Block title="Produits et prix">
           <p>
-            Les produits sont proposés dans la limite des stocks disponibles. Les prix sont
-            indiqués en francs suisses (CHF), livraison offerte. Offres de déstockage&nbsp;:
-            1 pack {formatCHF(4)}, 2 packs {formatCHF(7)}, 3 packs {formatCHF(10)}.
+            Ariel All-in-1 PODS, sachets de 60 capsules, proposés dans la limite des stocks disponibles. Prix en francs suisses
+            (CHF), livraison en Suisse incluse : {OFFERS.map((o) => `${o.packs} sachet${o.packs > 1 ? 's' : ''} ${formatCHF(o.price)}`).join(' · ')}.
           </p>
         </Block>
         <Block title="Commande">
           <p>
-            La commande est confirmée par e-mail après validation. Nous nous réservons le
-            droit d'annuler toute commande en cas d'erreur manifeste de prix ou de rupture
-            de stock.
+            La commande est conclue par un clic sur « Acheter », qui engage à payer le montant affiché. Une confirmation est envoyée
+            par e-mail. Nous pouvons annuler une commande en cas d’erreur manifeste de prix ou de rupture de stock ; tout montant
+            déjà payé est alors remboursé.
           </p>
         </Block>
         <Block title="Paiement">
           <p>
-            Le paiement s'effectue via un prestataire externe sécurisé. Aucune donnée de
-            carte n'est conservée par la boutique.
+            Le paiement s’effectue sur la page sécurisée d’un prestataire spécialisé. Aucune donnée de carte n’est saisie ni
+            conservée par la boutique. La commande n’est confirmée qu’après vérification du paiement.
           </p>
-          <TodoNote>le prestataire de paiement retenu et ses conditions.</TodoNote>
         </Block>
         <Block title="Livraison">
           <p>
-            Expédition depuis la {DELIVERY.dispatchLocation}, livraison estimée sous{' '}
-            {DELIVERY.estimateDays} jours ouvrables. Les délais sont indicatifs.
+            Livraison offerte, uniquement en Suisse. Détails sur la page{' '}
+            <Link to="/livraison" className="font-semibold text-fr-green underline">
+              Livraison
+            </Link>
+            .
           </p>
         </Block>
-        <Block title="Rétractation et retours">
+        <Block title="Retours">
           <p>
-            Les conditions de retour figurent sur la page Retours & remboursements (délai
-            de {DELIVERY.returnWindowDays} jours après réception).
+            Retour possible sous {DELIVERY.returnWindowDays} jours après réception, selon la page{' '}
+            <Link to="/retours-remboursements" className="font-semibold text-fr-green underline">
+              Retours &amp; remboursements
+            </Link>
+            . La garantie légale pour les défauts s’applique.
           </p>
         </Block>
-        <Block title="Responsabilité et droit applicable">
-          <TodoNote>
-            la raison sociale du vendeur, le siège, le droit applicable et le for juridique,
-            ainsi que les clauses obligatoires au regard du droit suisse.
-          </TodoNote>
+        <Block title="Droit applicable">
+          <p>Les présentes conditions sont soumises au droit suisse.{POLICIES.jurisdiction ? ` For juridique : ${POLICIES.jurisdiction}.` : ''}</p>
         </Block>
       </Prose>
     </>

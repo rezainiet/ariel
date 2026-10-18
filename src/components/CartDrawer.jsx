@@ -93,7 +93,7 @@ export default function CartDrawer() {
 
   const goCheckout = () => {
     closeDrawer()
-    navigate('/commande')
+    navigate('/checkout')
   }
 
   // Stepper : passe d'un bundle à l'autre (1 ↔ 2 ↔ 3 packs), prix de bundle conservés.
@@ -142,13 +142,15 @@ export default function CartDrawer() {
             </span>
             <div>
               <p className="font-semibold text-ink">Votre panier est vide</p>
-              <p className="mt-1 text-sm text-muted">Choisissez une offre pour commencer.</p>
+              <p className="mt-1 text-sm text-muted">Choisissez votre offre Ariel All‑in‑1 PODS pour commencer.</p>
             </div>
             <Button
               variant="outline"
               onClick={() => {
                 closeDrawer()
-                document.getElementById('offres')?.scrollIntoView({ behavior: 'smooth' })
+                const el = document.getElementById('offres')
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                else navigate('/#offres')
               }}
             >
               Voir les offres
@@ -222,21 +224,24 @@ export default function CartDrawer() {
                 onClick={clear}
                 className="mt-3 text-xs font-medium text-muted underline-offset-2 hover:text-forest hover:underline"
               >
-                Retirer l'article
+                Retirer l’article
               </button>
 
+              {/* Uniquement des informations confirmées (délai et lieu d'expédition seulement si configurés) */}
               <ul className="mt-6 space-y-3 text-sm text-ink/80">
                 <li className="flex items-center gap-2.5">
-                  <Truck size={16} className="flex-none text-forest" /> Livraison offerte · estimée sous{' '}
-                  {DELIVERY.estimateDays} jours ouvrables
+                  <Truck size={16} className="flex-none text-fr-green" /> Livraison offerte en Suisse
+                  {DELIVERY.estimateDays ? ` · estimée sous ${DELIVERY.estimateDays} jours ouvrables` : ''}
                 </li>
+                {(MERCHANT.dispatchCity || DELIVERY.dispatchLocation) && (
+                  <li className="flex items-center gap-2.5">
+                    <MapPin size={16} className="flex-none text-fr-green" /> Expédié depuis{' '}
+                    {MERCHANT.dispatchCity ? `${MERCHANT.dispatchCity} (Suisse)` : DELIVERY.dispatchLocation}
+                  </li>
+                )}
                 <li className="flex items-center gap-2.5">
-                  <MapPin size={16} className="flex-none text-forest" /> Expédié depuis{' '}
-                  {MERCHANT.dispatchCity ? `${MERCHANT.dispatchCity} (Suisse)` : 'la Suisse'}
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <RotateCcw size={16} className="flex-none text-forest" /> Retour possible sous{' '}
-                  {DELIVERY.returnWindowDays} jours après réception
+                  <RotateCcw size={16} className="flex-none text-fr-green" /> Retour possible sous {DELIVERY.returnWindowDays} jours
+                  après réception
                 </li>
               </ul>
             </div>

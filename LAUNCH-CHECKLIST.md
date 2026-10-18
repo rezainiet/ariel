@@ -1,114 +1,89 @@
 # Liste de contrôle avant mise en ligne
 
-La boutique n'invente **aucune** information marchand. Tant qu'un élément manque, il apparaît en
-développement sous forme de marqueur ambré « À fournir » et **disparaît** en production.
-➡️ Ne lancez pas tant que les points **Bloquant** ne sont pas réglés.
+La boutique n'affiche **aucune** donnée inventée et **aucun** texte de développement. Tant qu'une information
+manque, la rubrique correspondante est simplement **masquée** (rien n'est remplacé par une valeur fictive).
+➡️ **La boutique n'est pas prête pour la production tant que les points « Bloquant » ne sont pas réglés.**
 
-Chaque valeur se configure dans `.env.local` (voir `.env.example`). Justification des exigences :
-`SWISS-MARKET-RESEARCH.md`.
+Chaque valeur se règle dans `.env.local` (modèle : `.env.example`). Justification juridique : `SWISS-MARKET-RESEARCH.md`.
 
 ## 1. Identité du marchand — Bloquant (LCD art. 3 al. 1 let. s)
 
-| Information | Variable | Où elle s'affiche |
+| Information manquante | Variable | Effet tant qu'elle manque |
 | --- | --- | --- |
-| Nom de la boutique (remplace « NOM DE LA BOUTIQUE ») | `VITE_STORE_NAME` | En-tête, pied de page, partout |
-| Raison sociale exacte (registre du commerce) | `VITE_MERCHANT_LEGAL_NAME` | « Qui vous livre ? », pied de page, mentions légales, commande |
+| Nom commercial de la boutique | `VITE_STORE_NAME` | En-tête : libellé neutre « Déstockage Suisse » ; textes : « notre boutique » |
+| Raison sociale exacte (registre du commerce) | `VITE_MERCHANT_LEGAL_NAME` | Absente du pied de page, des mentions légales, des CGV, de la confidentialité |
 | Adresse postale (rue, NPA, localité) | `VITE_MERCHANT_STREET`, `_ZIP`, `_CITY` | Idem |
 | Numéro IDE (CHE-…) | `VITE_MERCHANT_UID` | Idem |
-| E-mail du service client (un formulaire seul ne suffit pas) | `VITE_SUPPORT_EMAIL` | Idem + FAQ + retours |
-| Téléphone (recommandé) | `VITE_SUPPORT_PHONE` | Contact, mentions |
-| Hébergeur du site | — (texte des mentions légales) | Mentions légales |
+| E-mail du service client | `VITE_SUPPORT_EMAIL` | Page Contact sans e-mail ; FAQ et retours renvoient vers /contact |
+| Téléphone (recommandé) | `VITE_SUPPORT_PHONE` | Masqué |
+| Hébergeur du site | `VITE_HOSTING_PROVIDER` | Rubrique « Hébergement » masquée |
+| Mention TVA (ex. « TVA incluse ») | `VITE_MERCHANT_VAT_NOTE` | Absente du récapitulatif de commande |
 
-## 2. Prix et déstockage — Bloquant
+## 2. Paiement — Bloquant
 
-- [ ] **Raison réelle du déstockage** (`VITE_CLEARANCE_REASON`), formulée par le marchand. Aucune raison
-      ne sera inventée (fin de série, surstock, emballage étranger…) : seule la vraie raison est publiable.
-      Sans elle, la page n'affiche pas « Pourquoi ce prix ? » mais « Le prix, en clair » (faits seulement),
-      et la question n'apparaît pas dans la FAQ.
-- [ ] Statut **TVA** et mention à afficher (`VITE_MERCHANT_VAT_NOTE`, ex. « TVA incluse ») — l'OIP exige
-      le prix final TVA comprise.
-- [ ] Confirmer que les prix 4.– / 7.– / 10.– sont les prix finaux, sans frais ajoutés.
-- [ ] Ne jamais ajouter de prix barré ou de % sans base conforme à l'OIP.
+État actuel : **aucun prestataire connecté**. Le formulaire de commande fonctionne (validation, récapitulatif),
+mais « Acheter » n'envoie rien : le client lit « le paiement en ligne n'est pas encore ouvert : aucune commande n'a
+été enregistrée et aucun montant n'a été débité ».
 
-## 3. Produit — Bloquant
+- [ ] Choisir le prestataire (cartes, Apple Pay, Google Pay, TWINT) avec **page de paiement hébergée** ou champs
+      sécurisés du prestataire. Aucune donnée de carte ne doit passer par nos formulaires.
+- [ ] Serveur de commande (`VITE_CHECKOUT_API`) :
+  - `POST /checkout-session` : valider avec `server/validate-order.mjs` (mêmes règles que le navigateur,
+    **montant recalculé depuis l'offre**, jamais repris du client), créer la session, renvoyer `{ redirectUrl }` ;
+  - `GET /orders/verify?session=…` : vérifier le paiement auprès du prestataire (API/webhook), renvoyer
+    `{ verified: true, orderId, total, currency, packs }` ;
+  - envoyer l'e-mail de confirmation de commande, puis l'e-mail d'expédition.
+- [ ] URL de retour chez le prestataire : succès `/checkout/confirmation?session=…`, annulation
+      `/checkout?paiement=annule`, erreur `/checkout?paiement=erreur` (le formulaire est conservé).
+- [ ] `VITE_PAYMENT_PROVIDER` + `VITE_CHECKOUT_API` renseignés ; `VITE_PAYMENT_METHODS` = **uniquement** les moyens
+      réellement activés (`card`, `twint`, `apple_pay`, `google_pay`, …).
+- [ ] Tester paiement réussi, refusé, annulé ; la confirmation n'affiche un succès et n'envoie PURCHASE (Snap)
+      **qu'après** vérification serveur.
 
-- [ ] Confirmer que les sachets vendus sont exactement **Ariel All-in-1 PODS Universal+ « 60 PODS »**
-      (le visuel fourni) et leur EAN.
-- [ ] Vérifier l'**étiquetage** des sachets (face avant en allemand) : présence des mentions requises
-      en français/italien au dos, conformité aux exigences suisses sur les produits chimiques.
-- [ ] Confirmer l'origine et l'authenticité des produits (provenance, lot, date).
+## 3. Livraison — Bloquant pour afficher un délai
 
-## 4. Livraison — Bloquant
+Confirmé et affiché : **livraison offerte en Suisse**, livraison en Suisse uniquement.
 
-- [ ] Ville réelle de l'entrepôt (`VITE_DISPATCH_CITY`) — remplace « Suisse » près du bouton d'achat.
-- [ ] Transporteur (`VITE_CARRIER`, ex. « La Poste (PostPac Economy) »).
-- [ ] Délai réel (`VITE_DELIVERY_ESTIMATE_DAYS`) : PostPac Economy = 2 jours ouvrables en principe ;
-      3 jours affichés supposent 1 jour de préparation — à confirmer (heure limite d'expédition).
-- [ ] Gratuité de la livraison confirmée pour toute la Suisse.
+- [ ] Délai réel (`VITE_DELIVERY_ESTIMATE_DAYS`) — sans valeur, aucun délai n'est affiché.
+- [ ] Lieu d'expédition (`VITE_DISPATCH_CITY`) et transporteur (`VITE_CARRIER`) — sans valeur, masqués.
 
-## 5. Retours et remboursements — Bloquant
+## 4. Retours et remboursements — Bloquant
 
-- [ ] Adresse de retour physique.
-- [ ] Sachets ouverts/entamés acceptés ou non.
-- [ ] Qui paie les frais de retour.
-- [ ] Délai et moyen de remboursement.
-- [ ] Relecture juridique de `/retours-remboursements`, `/conditions-generales-de-vente`,
-      `/politique-de-confidentialite`.
+Confirmé et affiché : **retour possible sous 15 jours après réception** ; garantie légale pour les défauts.
 
-## 6. Paiement — Bloquant
+- [ ] Adresse physique de retour (`VITE_RETURN_ADDRESS`).
+- [ ] Sachets ouverts acceptés ou non (`VITE_RETURN_CONDITION`).
+- [ ] Qui paie les frais de retour (`VITE_RETURN_COSTS`).
+- [ ] Délai et moyen de remboursement (`VITE_REFUND_TERMS`).
+- [ ] For juridique (`VITE_JURISDICTION`).
+- [ ] Relecture juridique des pages Retours, CGV, Confidentialité, Mentions légales.
 
-- [ ] Choisir un prestataire suisse ou compatible (TWINT + cartes + wallets recommandés pour un panier
-      de CHF 4.– à 10.– ; facture à évaluer selon les frais).
-- [ ] Serveur de commande (`VITE_CHECKOUT_API`) : création de session, **vérification serveur**,
-      e-mail de confirmation immédiat (LCD).
-- [ ] `VITE_PAYMENT_PROVIDER` et `VITE_PAYMENT_METHODS` = **uniquement** les moyens réellement actifs.
-- [ ] Tester `/commande/confirmation` : PURCHASE n'est envoyé qu'après vérification serveur.
+## 5. Produit — Bloquant
 
-## 7. Mesure d'audience et vie privée — Bloquant si le pixel est activé
+- [ ] Confirmer que les sachets vendus sont exactement **Ariel All-in-1 PODS Universal+ « 60 PODS »** et leur EAN.
+- [ ] Étiquetage conforme pour la Suisse (mentions FR/IT au dos), provenance, lot.
 
-- [ ] `VITE_SNAP_PIXEL_ID` renseigné **seulement** avec la bannière de consentement (déjà intégrée).
-- [ ] Politique de confidentialité complétée (responsable, sous-traitants : paiement, transporteur,
-      Snapchat ; durées de conservation ; droits) — nLPD.
+## 6. Mesure d'audience et vie privée
 
-## 8. Avis clients — Optionnel
+- [ ] `VITE_SNAP_PIXEL_ID` seulement avec la bannière de consentement (intégrée) ; la page Confidentialité s'adapte
+      automatiquement (pixel actif ou non).
 
-- [ ] Brancher une plateforme d'avis vérifiés (`VITE_REVIEWS_ENDPOINT`). D'ici là, **aucune** note,
-      étoile ou nombre d'avis n'est affiché dans la boutique (le composant est prêt).
-- Le build échoue automatiquement si des avis d'exemple se retrouvent dans le bundle (`scripts/check-bundle.mjs`).
+## 7. Contenus facultatifs — masqués tant qu'ils ne sont pas réels
 
-## 8 bis. Motivation d'achat — Optionnel, uniquement avec des données réelles
-
-| Élément | Condition d'affichage | Variable |
+| Contenu | Variable | Sans donnée réelle |
 | --- | --- | --- |
-| « Quantités limitées · offre valable jusqu'à épuisement du stock » | Le marchand confirme par écrit que c'est exact | `VITE_CLEARANCE_LIMITED=true` |
-| Stock disponible (« En stock · N sachets », « Plus que N sachets ») | Quantité réelle renvoyée par le serveur ; à 0 le bouton passe à « Épuisé » | `VITE_STORE_STATUS_API` (`stock`) |
-| Compte à rebours de l'opération | Date de fin réelle fournie par le serveur ; calcul sur l'heure serveur, disparaît à l'échéance | `VITE_STORE_STATUS_API` (`campaign.endsAt`) |
-| Vidéo produit / client | Fichier réel et droits d'utilisation | `VITE_PRODUCT_VIDEO_URL`, `_POSTER`, `_CAPTION` |
+| Avis clients vérifiés | `VITE_REVIEWS_ENDPOINT` | Section avis absente |
+| Vidéo produit / client | `VITE_PRODUCT_VIDEO_URL`, `_POSTER`, `_CAPTION` | Section vidéo absente |
+| « Quantités limitées » (confirmé par écrit) | `VITE_CLEARANCE_LIMITED=true` | Mention absente |
+| Stock réel et compte à rebours de campagne | `VITE_STORE_STATUS_API` | Absents (jamais de stock ni de compte à rebours fictif) |
+| Aide à la saisie d'adresse (service suisse réel) | `VITE_ADDRESS_API` | Aucune suggestion |
 
-- [ ] Jamais de nombre aléatoire, de stock fictif ni d'activité client simulée (« X personnes regardent… »).
-- [ ] Une campagne terminée ne doit plus être présentée comme disponible : mettre `campaign` à `null` ou laisser
-      la date passée (le composant disparaît seul).
-- [ ] Le build échoue si l'aperçu d'urgence de développement se retrouve en production (`scripts/check-bundle.mjs`).
+## 8. Visuels — recommandé
 
-## 9. Visuels — Fortement recommandé
+- Photos HD de capsule (les visuels actuels sont agrandis depuis le collage fourni) ; séance photo produit.
 
-| Besoin | Pourquoi |
-| --- | --- |
-| **Packshot HD officiel** (≥ 2000 px, fond détouré ou blanc, face avant) | Seul visuel net actuel (1000 px). Indispensable pour un zoom de qualité. |
-| **Packshots HD dos et côté du sachet** | Montrer les mentions en français, le mode d'emploi, les pictogrammes de sécurité. |
-| **Photos HD de capsule** (gros plan, main, tambour) | Les visuels « capsule » de la section « Pourquoi choisir » sont agrandis depuis le collage fourni (~290 px d'origine) : nets sur mobile, doux en grand. |
-| **Séance photo avec le vrai produit** (recommandée) | Le héros et la scène « 3 sachets » sont de **vraies photos de buanderie** (Unsplash License, `assets-src/stock/CREDITS.md`) dans lesquelles le packshot réel est posé. Une séance photo réelle restera plus fidèle (perspective, lumière, reflets). |
-| Autorisation d'utiliser les photos fournies | Confirmer les droits sur le collage d'origine. |
+## Garde-fous automatiques
 
-Fichiers à déposer : `public/images/` puis mise à jour des chemins dans `src/config/assets.js` et
-`src/concepts/c/media.js`. Les compositions se régénèrent (par ex. avec un packshot HD détouré) :
-`python scripts/compose-hero-photo.py assets-src/stock/unsplash-in7u-CJYHyA-laundry-nook.jpg public/images/packshot-cutout.webp public/images`
-(Pillow avec AVIF + numpy).
-
-## 10. Marque et Swissness
-
-- [ ] Pas de croix suisse ni de drapeau dans le logo tant que le siège et l'administration en Suisse ne
-      sont pas confirmés (critères Swissness pour les services).
-- [ ] Mention « Ariel est une marque de The Procter & Gamble Company. Cette boutique n'est pas le site
-      officiel de la marque. » — conservée.
-- [ ] Label « Swiss Online Garantie » : uniquement après adhésion et certification réelles.
+`npm run build` échoue si le bundle public contient un texte de développement, des avis d'exemple, un nom de
+variable de configuration ou les archives de conception (`scripts/check-bundle.mjs`).
+`node server/validate-order.mjs` teste la validation serveur (10 cas).

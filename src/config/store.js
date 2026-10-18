@@ -4,24 +4,29 @@
 // Les prix des bundles ne sont PAS un prix unitaire multiplié.
 // ─────────────────────────────────────────────────────────────
 
-const env = import.meta.env
 
 export const STORE = {
-  // Nom provisoire tant que l'identité légale n'est pas confirmée.
-  name: env.VITE_STORE_NAME || 'NOM DE LA BOUTIQUE',
-  supportEmail: env.VITE_SUPPORT_EMAIL || '',
-  supportPhone: env.VITE_SUPPORT_PHONE || '',
+  // Nom commercial réel (obligatoire avant la mise en ligne). Vide = aucun nom inventé :
+  // l'en-tête affiche alors un libellé descriptif neutre et les textes disent « notre boutique ».
+  name: import.meta.env.VITE_STORE_NAME || '',
+  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || '',
+  supportPhone: import.meta.env.VITE_SUPPORT_PHONE || '',
   currency: 'CHF',
   locale: 'fr-CH',
 }
 
 // Informations logistiques — configurables, à confirmer avant mise en ligne.
+// Seules la gratuité en Suisse et le délai de retour de 15 jours sont confirmés.
+// Délai de livraison et lieu d'expédition : affichés UNIQUEMENT s'ils sont configurés.
 export const DELIVERY = {
-  dispatchLocation: env.VITE_DISPATCH_LOCATION || 'Suisse',
-  estimateDays: Number(env.VITE_DELIVERY_ESTIMATE_DAYS || 3),
+  dispatchLocation: import.meta.env.VITE_DISPATCH_LOCATION || '',
+  estimateDays: Number(import.meta.env.VITE_DELIVERY_ESTIMATE_DAYS) > 0 ? Number(import.meta.env.VITE_DELIVERY_ESTIMATE_DAYS) : null,
   free: true,
   returnWindowDays: 15,
 }
+
+// Désignation dans les phrases quand aucun nom commercial n'est configuré.
+export const storeRef = (capital = false) => STORE.name || (capital ? 'Notre boutique' : 'notre boutique')
 
 // ─────────────────────────────────────────────────────────────
 // Identité du marchand (LCD art. 3 al. 1 let. s : raison sociale,
@@ -30,15 +35,15 @@ export const DELIVERY = {
 // développement et l'omet en production (voir LAUNCH-CHECKLIST.md).
 // ─────────────────────────────────────────────────────────────
 export const MERCHANT = {
-  legalName: env.VITE_MERCHANT_LEGAL_NAME || '', // raison sociale (registre du commerce)
-  street: env.VITE_MERCHANT_STREET || '',
-  zip: env.VITE_MERCHANT_ZIP || '',
-  city: env.VITE_MERCHANT_CITY || '',
-  uid: env.VITE_MERCHANT_UID || '', // numéro IDE, ex. CHE-123.456.789
-  vatNote: env.VITE_MERCHANT_VAT_NOTE || '', // ex. « TVA incluse » si assujetti
-  dispatchCity: env.VITE_DISPATCH_CITY || '', // ville réelle de l'entrepôt
-  carrier: env.VITE_CARRIER || '', // ex. « La Poste (PostPac Economy) »
-  clearanceReason: env.VITE_CLEARANCE_REASON || '', // raison RÉELLE du déstockage
+  legalName: import.meta.env.VITE_MERCHANT_LEGAL_NAME || '', // raison sociale (registre du commerce)
+  street: import.meta.env.VITE_MERCHANT_STREET || '',
+  zip: import.meta.env.VITE_MERCHANT_ZIP || '',
+  city: import.meta.env.VITE_MERCHANT_CITY || '',
+  uid: import.meta.env.VITE_MERCHANT_UID || '', // numéro IDE, ex. CHE-123.456.789
+  vatNote: import.meta.env.VITE_MERCHANT_VAT_NOTE || '', // ex. « TVA incluse » si assujetti
+  dispatchCity: import.meta.env.VITE_DISPATCH_CITY || '', // ville réelle de l'entrepôt
+  carrier: import.meta.env.VITE_CARRIER || '', // ex. « La Poste (PostPac Economy) »
+  clearanceReason: import.meta.env.VITE_CLEARANCE_REASON || '', // raison RÉELLE du déstockage
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -50,26 +55,37 @@ export const MERCHANT = {
 // Jamais de nombre aléatoire, jamais d'activité client simulée.
 // ─────────────────────────────────────────────────────────────
 export const URGENCY = {
-  limitedConfirmed: env.VITE_CLEARANCE_LIMITED === 'true',
-  statusApi: env.VITE_STORE_STATUS_API || '',
+  limitedConfirmed: import.meta.env.VITE_CLEARANCE_LIMITED === 'true',
+  statusApi: import.meta.env.VITE_STORE_STATUS_API || '',
+}
+
+// Détails des conditions (textes validés par le marchand). Vide = la rubrique n'est pas affichée.
+export const POLICIES = {
+  returnAddress: import.meta.env.VITE_RETURN_ADDRESS || '', // adresse physique de retour
+  returnCosts: import.meta.env.VITE_RETURN_COSTS || '', // ex. « Les frais de retour sont à la charge du client. »
+  returnCondition: import.meta.env.VITE_RETURN_CONDITION || '', // ex. sachets non ouverts uniquement
+  refundTerms: import.meta.env.VITE_REFUND_TERMS || '', // délai et moyen de remboursement
+  hosting: import.meta.env.VITE_HOSTING_PROVIDER || '', // hébergeur du site (nom et adresse)
+  jurisdiction: import.meta.env.VITE_JURISDICTION || '', // for juridique
 }
 
 // Vidéo produit / client réelle (fichier hébergé par le marchand). Vide = section masquée.
 export const VIDEO = {
-  src: env.VITE_PRODUCT_VIDEO_URL || '',
-  poster: env.VITE_PRODUCT_VIDEO_POSTER || '',
-  caption: env.VITE_PRODUCT_VIDEO_CAPTION || '',
+  src: import.meta.env.VITE_PRODUCT_VIDEO_URL || '',
+  poster: import.meta.env.VITE_PRODUCT_VIDEO_POSTER || '',
+  caption: import.meta.env.VITE_PRODUCT_VIDEO_CAPTION || '',
 }
 
 // Moyens de paiement réellement activés chez le prestataire (liste séparée par des virgules).
 // Valeurs reconnues : twint, visa, mastercard, amex, apple_pay, google_pay, postfinance, invoice.
 // Vide = aucun moyen affiché comme actif.
-export const PAYMENT_METHODS = (env.VITE_PAYMENT_METHODS || '')
+export const PAYMENT_METHODS = (import.meta.env.VITE_PAYMENT_METHODS || '')
   .split(',')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean)
 
 export const PAYMENT_LABELS = {
+  card: 'Carte de crédit ou de débit',
   twint: 'TWINT',
   visa: 'Visa',
   mastercard: 'Mastercard',
@@ -80,81 +96,16 @@ export const PAYMENT_LABELS = {
   invoice: 'Facture',
 }
 
-// Produit (d'après le packaging fourni — à vérifier sur l'emballage réel).
-export const PRODUCT = {
-  id: 'ariel-all-in-1-pods',
-  name: 'Ariel All-in-1 PODS',
-  washesPerPack: 60,
-  shortDesc: 'Capsules de lessive tout-en-un',
-}
-
-// Les trois offres. Prix de bundle fixes (déstockage), pas un multiple.
-// `image` : visuel réel associé (1 pack = packshot, multi = packs empilés).
-export const OFFERS = [
-  {
-    id: 'pack-1',
-    packs: 1,
-    washes: 60,
-    price: 4,
-    label: '1 PACK',
-    badge: null,
-    featured: false,
-    image: '/images/packshot.webp',
-  },
-  {
-    id: 'pack-2',
-    packs: 2,
-    washes: 120,
-    price: 7,
-    label: '2 PACKS',
-    badge: 'LE PLUS POPULAIRE',
-    featured: true,
-    image: '/images/stacked.webp',
-  },
-  {
-    id: 'pack-3',
-    packs: 3,
-    washes: 180,
-    price: 10,
-    label: '3 PACKS',
-    badge: 'MEILLEUR RAPPORT QUALITÉ-PRIX',
-    featured: false,
-    image: '/images/stacked.webp',
-  },
-]
-
-export const DEFAULT_OFFER_ID = 'pack-2'
-
-export function getOffer(id) {
-  return OFFERS.find((o) => o.id === id) || null
-}
-
-// Formatage monétaire suisse : « CHF 4.– », « CHF 3.50 ».
-export function formatCHF(amount) {
-  const whole = Number.isInteger(amount)
-  const value = whole ? `${amount}.–` : amount.toFixed(2)
-  return `CHF ${value}`
-}
-
-// ── Comparaisons de prix (calculées, jamais de prix de référence inventé) ──
-// Référence = achat de packs séparés au prix de l'offre 1 pack.
-export const SINGLE_PACK_PRICE = OFFERS[0].price
-
-// Économie réelle vs. N packs achetés séparément : 2 packs -> 1, 3 packs -> 2.
-export function savingsFor(offer) {
-  return offer.packs * SINGLE_PACK_PRICE - offer.price
-}
-
-export function pricePerPack(offer) {
-  return offer.price / offer.packs
-}
-
-// Prix unitaire par capsule (convention suisse « 0.86/pièce »), arrondi au centime.
-export function pricePerCapsule(offer) {
-  return Math.round((offer.price / (offer.packs * PRODUCT.washesPerPack)) * 100) / 100
-}
-
-// Prix par lavage en centimes, arrondi à 0.1 ct (ex. 6.7 ct).
-export function centsPerWash(offer) {
-  return Math.round((offer.price / offer.washes) * 1000) / 10
-}
+// Produit, offres et calculs de prix : module partagé avec le serveur de commande.
+export {
+  PRODUCT,
+  OFFERS,
+  DEFAULT_OFFER_ID,
+  getOffer,
+  formatCHF,
+  SINGLE_PACK_PRICE,
+  savingsFor,
+  pricePerPack,
+  pricePerCapsule,
+  centsPerWash,
+} from './offers.js'

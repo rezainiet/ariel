@@ -1,68 +1,58 @@
 # Ariel — Déstockage en Suisse
 
-Boutique e-commerce mobile-first (React + Vite + Tailwind) pour les packs
-**Ariel All-in-1 PODS · 60 lavages**. Direction artistique « Swiss Editorial Commerce ».
+Boutique e-commerce mobile-first (React + Vite + Tailwind) pour les sachets
+**Ariel All-in-1 PODS · 60 capsules**. Direction artistique approuvée : **Concept 2 « Frais »**.
 
 ## Démarrage
 
 ```bash
 npm install
 npm run dev      # serveur de développement
-npm run build    # build de production
+npm run build    # build de production + contrôle du bundle (scripts/check-bundle.mjs)
 npm run preview  # prévisualisation du build
+node server/validate-order.mjs   # auto-test de la validation serveur des commandes
 ```
 
-## Boutique et concepts (branche `concept-c-revision`)
+## Routes
 
 | Route | Contenu |
 | ----- | ------- |
-| `/` | **Boutique** — Concept C révisé (recherche : `SWISS-MARKET-RESEARCH.md`) |
-| `/commande`, `/commande/confirmation` | Tunnel de commande + confirmation vérifiée côté serveur |
-| `/concept-a`, `/concept-b` | Concepts A et B (comparaison, inchangés) |
-| `/v1` | Première version (archive) |
-| `/design` | Comparaison interne — dev uniquement (`VITE_DESIGN_PREVIEW=true` pour la recette) |
+| `/` | Boutique (annonce, héros + 3 offres, « Pourquoi choisir », livraison & retours, FAQ) |
+| `/checkout` | Commande : coordonnées, adresse suisse, paiement hébergé, récapitulatif modifiable |
+| `/checkout/confirmation` | Confirmation affichée **uniquement** après vérification serveur du paiement |
+| `/livraison`, `/retours-remboursements`, `/conditions-generales-de-vente`, `/politique-de-confidentialite`, `/mentions-legales`, `/contact` | Pages de service et légales |
+| `/commande` | Ancienne adresse, redirigée vers `/checkout` |
 
-Avant toute mise en ligne : **`LAUNCH-CHECKLIST.md`** (informations marchand, paiement, visuels).
-Notes de design et captures : `design-review/concept-c-revision/`.
+Les archives de conception (`/concept-a|b|c`, `/v1`, `/design`) ne sont pas publiées : elles n'existent que si
+`VITE_DESIGN_PREVIEW=true` (environnement de recette interne).
 
-Les avis d'exemple (`src/data/reviews.js`) ne sont chargés qu'en développement ; en production,
-un état vide s'affiche tant que `VITE_REVIEWS_ENDPOINT` n'est pas branché.
+Avant toute mise en ligne : **`LAUNCH-CHECKLIST.md`** (informations marchand, paiement, livraison, retours).
+Captures et notes : `design-review/frais-finition/`.
 
 ## Architecture
 
-- `src/config/store.js` — **source unique de vérité** : offres, prix (bundles fixes), livraison, boutique.
-- `src/context/CartContext.jsx` — état panier centralisé (une offre à la fois, pas de doublon).
-- `src/lib/pixel.js` — intégration Snap Pixel (PAGE_VIEW, VIEW_CONTENT, ADD_CART, START_CHECKOUT, PURCHASE), anti-duplication.
-- `src/components/` — header, hero, offres, trust, produit, livraison, FAQ, footer, drawer, UI réutilisable.
-- `src/pages/` — accueil, commande, retours, confidentialité, CGV, mentions légales, contact.
+- `src/config/offers.js` — produit, offres et calculs de prix (module pur, partagé avec le serveur).
+- `src/config/store.js` — configuration de la boutique (marchand, livraison, paiement, conditions) ; réexporte les offres.
+- `src/context/CartContext.jsx` — panier : une offre à la fois (jamais de doublon), conservé au rechargement de l'onglet.
+- `src/lib/orderValidation.js` — validation des coordonnées et de la commande (navigateur **et** serveur).
+- `src/lib/payment.js` — frontière de paiement : session hébergée chez le prestataire, vérification serveur.
+- `src/lib/storeStatus.js` — stock et campagne réels (jamais de valeur fictive).
+- `src/lib/address.js` — aide à la saisie d'adresse, uniquement via un service configuré.
+- `src/lib/pixel.js` — Snap Pixel après consentement (PAGE_VIEW, ADD_CART, START_CHECKOUT, PURCHASE vérifié).
+- `src/concepts/frais/` — composants de la boutique Frais ; `src/pages/` — commande et pages de service.
+- `server/validate-order.mjs` — validation à appeler par le serveur de commande avant de créer le paiement.
 
 ## Prix (bundles — ne pas multiplier un prix unitaire)
 
-| Offre   | Packs | Lavages | Prix     |
-| ------- | ----- | ------- | -------- |
-| 1 pack  | 1     | 60      | CHF 4.–  |
-| 2 packs | 2     | 120     | CHF 7.–  |
-| 3 packs | 3     | 180     | CHF 10.– |
+| Offre     | Sachets | Capsules | Prix     |
+| --------- | ------- | -------- | -------- |
+| 1 sachet  | 1       | 60       | CHF 4.–  |
+| 2 sachets | 2       | 120      | CHF 7.–  |
+| 3 sachets | 3       | 180      | CHF 10.– |
 
-## Configuration (`.env.local`, copier depuis `.env.example`)
+Livraison offerte en Suisse. Le serveur recalcule toujours le montant à partir de l'offre.
 
-| Variable                 | Rôle                                            |
-| ------------------------ | ----------------------------------------------- |
-| `VITE_STORE_NAME`        | Nom légal de la boutique (défaut : placeholder) |
-| `VITE_SUPPORT_EMAIL`     | E-mail du service client                        |
-| `VITE_SUPPORT_PHONE`     | Téléphone du service client                     |
-| `VITE_SNAP_PIXEL_ID`     | ID Snap Pixel (vide = pixel désactivé)          |
-| `VITE_PAYMENT_PROVIDER`  | Prestataire de paiement (à connecter)           |
-| `VITE_DISPATCH_LOCATION` | Lieu d'expédition                               |
-| `VITE_DELIVERY_ESTIMATE_DAYS` | Délai de livraison estimé                  |
+## Configuration
 
-## À fournir / confirmer avant mise en production
-
-- **Photos produit réelles** (voir `public/images/README.txt`).
-- **Nom légal, adresse, IDE/CHE, hébergeur** (mentions légales).
-- **Prestataire de paiement** conforme (Stripe/Datatrans/Wallee) + vérification serveur.
-  Aucune donnée de carte ne transite par l'app ; `PURCHASE` ne se déclenche
-  qu'après paiement vérifié côté serveur.
-- **Politique de retours** validée au regard du droit suisse.
-- **Transporteur, délais, stock** confirmés avant d'être présentés comme vérifiés.
-- **Consentement / vie privée** (nLPD, RGPD si clients UE) avant d'activer le pixel.
+Toutes les variables sont décrites dans `.env.example`. Sans valeur, l'élément correspondant est masqué :
+aucune donnée marchand, aucun avis, aucune vidéo, aucun stock ni délai n'est inventé.

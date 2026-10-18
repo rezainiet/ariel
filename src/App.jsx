@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Routes, Route, Outlet, useLocation } from 'react-router-dom'
+import { Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import CartDrawer from './components/CartDrawer.jsx'
@@ -12,19 +12,21 @@ import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
 import Legal from './pages/Legal.jsx'
 import Contact from './pages/Contact.jsx'
+import Shipping from './pages/Shipping.jsx'
 import NotFound from './pages/NotFound.jsx'
 // Boutique (Concept 2 « Frais », approuvé) : chargée immédiatement — page d'arrivée des publicités.
 import FraisPage from './concepts/frais/FraisPage.jsx'
 import { Announcement, HeaderF, FooterF } from './concepts/frais/ChromeF.jsx'
 import { trackPageView } from './lib/pixel.js'
 
-// Comparaison / archives : chargées à la demande.
-const Home = lazy(() => import('./pages/Home.jsx')) // v1, conservée pour comparaison
-const ConceptC = lazy(() => import('./concepts/c/ConceptC.jsx')) // version précédente, pour comparaison
-const ConceptA = lazy(() => import('./concepts/a/ConceptA.jsx'))
-const ConceptB = lazy(() => import('./concepts/b/ConceptB.jsx'))
-const DesignCompare = lazy(() => import('./pages/DesignCompare.jsx'))
-const DESIGN_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_DESIGN_PREVIEW === 'true'
+// Archives de conception (v1, concepts A/B/C, page de comparaison) : INTERNES uniquement.
+// Absentes du build public (VITE_DESIGN_PREVIEW=true seulement pour un environnement de recette).
+const DESIGN_PREVIEW = import.meta.env.VITE_DESIGN_PREVIEW === 'true'
+const Home = DESIGN_PREVIEW ? lazy(() => import('./pages/Home.jsx')) : null
+const ConceptC = DESIGN_PREVIEW ? lazy(() => import('./concepts/c/ConceptC.jsx')) : null
+const ConceptA = DESIGN_PREVIEW ? lazy(() => import('./concepts/a/ConceptA.jsx')) : null
+const ConceptB = DESIGN_PREVIEW ? lazy(() => import('./concepts/b/ConceptB.jsx')) : null
+const DesignCompare = DESIGN_PREVIEW ? lazy(() => import('./pages/DesignCompare.jsx')) : null
 
 // Remet le scroll en haut + PAGE_VIEW à chaque navigation (hors ancres).
 // Le pixel n'est chargé qu'après consentement (ConsentBanner) : avant, l'appel est sans effet.
@@ -79,9 +81,11 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<FraisPage />} />
-          <Route path="/concept-c" element={<ConceptC />} />
           {/* Tunnel de commande : gabarit épuré (sans navigation) */}
-          <Route path="/commande" element={<Checkout />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/checkout/confirmation" element={<OrderConfirmation />} />
+          {/* Anciennes adresses : redirigées (liens déjà partagés, retours prestataire) */}
+          <Route path="/commande" element={<Navigate to="/checkout" replace />} />
           <Route path="/commande/confirmation" element={<OrderConfirmation />} />
           <Route element={<StoreLayout />}>
             <Route path="/retours-remboursements" element={<Returns />} />
@@ -89,16 +93,20 @@ export default function App() {
             <Route path="/conditions-generales-de-vente" element={<Terms />} />
             <Route path="/mentions-legales" element={<Legal />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/livraison" element={<Shipping />} />
             <Route path="*" element={<NotFound />} />
           </Route>
-          <Route element={<V1Layout />}>
-            <Route path="/v1" element={<Home />} />
-          </Route>
-          <Route path="/concept-a" element={<ConceptA />} />
-          <Route path="/concept-b" element={<ConceptB />} />
-          {/* Page interne de comparaison — non liée publiquement, désactivée en production
-              (sauf VITE_DESIGN_PREVIEW=true pour un environnement de recette). */}
-          {DESIGN_PREVIEW && <Route path="/design" element={<DesignCompare />} />}
+          {DESIGN_PREVIEW && (
+            <>
+              <Route element={<V1Layout />}>
+                <Route path="/v1" element={<Home />} />
+              </Route>
+              <Route path="/concept-a" element={<ConceptA />} />
+              <Route path="/concept-b" element={<ConceptB />} />
+              <Route path="/concept-c" element={<ConceptC />} />
+              <Route path="/design" element={<DesignCompare />} />
+            </>
+          )}
         </Routes>
       </Suspense>
       <CartDrawer />

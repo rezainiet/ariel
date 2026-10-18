@@ -227,7 +227,7 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status }, ctaRef) {
   }
   const direct = () => {
     selectOffer(sel, { openDrawer: false, feedback: false })
-    navigate('/commande')
+    navigate('/checkout')
   }
 
   return (

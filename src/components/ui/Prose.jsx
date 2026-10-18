@@ -1,13 +1,11 @@
-// Mise en page éditoriale sobre pour les pages de contenu / légales.
+// Mise en page des pages de service et légales — style Frais.
 export function PageHeader({ eyebrow, title, intro }) {
   return (
-    <header className="border-b border-line bg-surface">
-      <div className="container-edge max-w-3xl py-12 sm:py-16">
-        {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-          {title}
-        </h1>
-        {intro && <p className="mt-4 text-[0.98rem] leading-relaxed text-muted">{intro}</p>}
+    <header className="border-b border-fr-line bg-fr-mint/45 font-jakarta">
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16 lg:px-8">
+        {eyebrow && <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">{eyebrow}</p>}
+        <h1 className="mt-3 text-[2rem] font-extrabold leading-tight tracking-[-0.025em] text-fr-ink sm:text-[2.6rem]">{title}</h1>
+        {intro && <p className="mt-4 text-[1rem] leading-relaxed text-fr-muted">{intro}</p>}
       </div>
     </header>
   )
@@ -15,8 +13,8 @@ export function PageHeader({ eyebrow, title, intro }) {
 
 export function Prose({ children }) {
   return (
-    <div className="container-edge max-w-3xl py-12 sm:py-14">
-      <div className="space-y-8 text-[0.95rem] leading-relaxed text-ink/85">{children}</div>
+    <div className="mx-auto max-w-3xl px-4 py-12 font-jakarta sm:py-14 lg:px-8">
+      <div className="space-y-9 text-[0.95rem] leading-relaxed text-fr-ink/85">{children}</div>
     </div>
   )
 }
@@ -24,18 +22,8 @@ export function Prose({ children }) {
 export function Block({ title, children }) {
   return (
     <section>
-      <h2 className="text-lg font-bold tracking-tight text-ink">{title}</h2>
-      <div className="mt-2 space-y-3 text-muted">{children}</div>
+      <h2 className="text-[1.15rem] font-extrabold tracking-[-0.015em] text-fr-ink">{title}</h2>
+      <div className="mt-2.5 space-y-3 text-fr-muted">{children}</div>
     </section>
-  )
-}
-
-// Encart « à confirmer par le marchand » — transparence.
-export function TodoNote({ children }) {
-  return (
-    <p className="rounded-xl border border-dashed border-forest/30 bg-sage/25 p-4 text-sm text-ink/75">
-      <strong className="font-semibold text-forest">À confirmer avant la mise en ligne&nbsp;:</strong>{' '}
-      {children}
-    </p>
   )
 }

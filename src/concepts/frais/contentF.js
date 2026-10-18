@@ -4,7 +4,7 @@
 // (mode d'emploi, dosage), OFSP (stockage des capsules), Tox Info Suisse.
 // Aucune allégation ajoutée : chaque promesse produit est attribuée à l'emballage ou au fabricant.
 // ─────────────────────────────────────────────────────────────
-import { DELIVERY, STORE } from '../../config/store.js'
+import { DELIVERY, storeRef } from '../../config/store.js'
 
 // Typographie française : espace insécable avant « ? », « ! », « : », « ; » (jamais de ponctuation orpheline).
 const nb = (t) => t.replace(/ ([?!:;])/g, '\u00a0$1')
@@ -82,7 +82,7 @@ const FAQ_RAW = [
   },
   {
     q: 'Quand vais-je recevoir ma commande ?',
-    a: `La livraison est estimée à environ ${DELIVERY.estimateDays} jours ouvrables. Vous recevez une confirmation d’expédition par e-mail.`,
+    a: `${DELIVERY.estimateDays ? `La livraison est estimée à environ ${DELIVERY.estimateDays} jours ouvrables. ` : ''}Vous recevez une confirmation d’expédition par e-mail, avec un lien de suivi lorsqu’il est disponible.`,
   },
   {
     q: 'Puis-je retourner ma commande ?',
@@ -90,7 +90,7 @@ const FAQ_RAW = [
   },
   {
     q: 'Est-ce le site officiel d’Ariel ?',
-    a: `Non. ${STORE.name} revend des produits Ariel. Ariel est une marque de The Procter & Gamble Company.`,
+    a: `Non. ${storeRef(true)} revend des produits Ariel. Ariel est une marque de The Procter & Gamble Company.`,
   },
 ]
 

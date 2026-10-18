@@ -1,4 +1,4 @@
-import { Hourglass, PackageCheck, Timer, Eye } from 'lucide-react'
+import { Hourglass, PackageCheck, Timer } from 'lucide-react'
 import { useCountdown } from '../../lib/storeStatus.js'
 
 const two = (n) => String(n).padStart(2, '0')
@@ -64,18 +64,13 @@ function StockLine({ stock }) {
 
 // Bloc de motivation d'achat sous le bouton : uniquement des informations vérifiées.
 export default function UrgencyPanel({ status }) {
-  const { limited, stock, campaign, offset, isSample } = status
+  const { limited, stock, campaign, offset } = status
   const t = useCountdown(campaign?.endsAt, offset)
   const hasCountdown = Boolean(t)
   const hasStock = Boolean(stock && stock.available > 0)
   if (!limited && !hasCountdown && !hasStock) return null
   return (
     <div className="mt-4">
-      {import.meta.env.DEV && isSample && (
-        <p className="mb-1.5 inline-flex items-center gap-1.5 rounded-md border border-dashed border-amber-500/60 bg-amber-50 px-2 py-0.5 text-[0.68rem] font-semibold text-amber-900">
-          <Eye size={12} aria-hidden="true" /> Aperçu — exemple de données (développement uniquement)
-        </p>
-      )}
       <div className="divide-y divide-fr-line overflow-hidden rounded-2xl border border-fr-line bg-white">
         {limited && (
           <p className="flex items-center gap-2.5 px-4 py-3 text-[0.82rem] text-fr-ink">

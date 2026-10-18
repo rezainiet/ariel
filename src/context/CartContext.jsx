@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useReducer, useCallback } from 'react'
+import { createContext, useContext, useMemo, useReducer, useCallback, useEffect } from 'react'
 import { getOffer, PRODUCT } from '../config/store'
 import { trackAddCart } from '../lib/pixel'
 
@@ -11,8 +11,20 @@ import { trackAddCart } from '../lib/pixel'
 
 const CartContext = createContext(null)
 
+// Le panier survit à un rechargement de page dans le même onglet (sessionStorage) :
+// seule l'offre choisie est conservée — aucune donnée personnelle.
+const CART_KEY = 'cart-offer-v1'
+function readCart() {
+  try {
+    const id = sessionStorage.getItem(CART_KEY)
+    return getOffer(id) ? id : null
+  } catch {
+    return null
+  }
+}
+
 const initialState = {
-  offerId: null, // id de l'offre sélectionnée, ou null
+  offerId: readCart(), // id de l'offre sélectionnée, ou null
   drawerOpen: false,
   addedAt: 0, // horodatage du dernier ajout (retour visuel « ajouté »)
   skin: null, // habillage visuel du panier selon le concept affiché ('a' | 'b' | 'c')
@@ -41,6 +53,15 @@ export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
   const offer = state.offerId ? getOffer(state.offerId) : null
+
+  useEffect(() => {
+    try {
+      if (state.offerId) sessionStorage.setItem(CART_KEY, state.offerId)
+      else sessionStorage.removeItem(CART_KEY)
+    } catch {
+      /* stockage indisponible : le panier reste en mémoire */
+    }
+  }, [state.offerId])
 
   // Sélectionne une offre (remplace), ouvre le drawer, déclenche ADD_CART
   // uniquement lors d'une vraie sélection utilisateur.

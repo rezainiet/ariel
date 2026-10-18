@@ -1,48 +1,59 @@
-import { PageHeader, Prose, Block, TodoNote } from '../components/ui/Prose.jsx'
-import { STORE } from '../config/store.js'
+import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
+import { STORE, MERCHANT } from '../config/store.js'
+import { isPixelEnabled } from '../lib/pixel.js'
 
+// Politique de confidentialité : description des traitements réellement prévus par la boutique.
 export default function Privacy() {
+  const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return (
     <>
       <PageHeader
         eyebrow="Confidentialité"
         title="Politique de confidentialité"
-        intro="Nous accordons de l'importance à la protection de vos données personnelles. Cette page décrit, à titre de modèle, les traitements prévus."
+        intro="Comment nous traitons vos données personnelles, conformément à la loi suisse sur la protection des données (nLPD)."
       />
       <Prose>
+        {MERCHANT.legalName && (
+          <Block title="Responsable du traitement">
+            <p>
+              {MERCHANT.legalName}
+              {address ? `, ${address}` : ''}
+              {STORE.supportEmail ? ` · ${STORE.supportEmail}` : ''}
+            </p>
+          </Block>
+        )}
         <Block title="Données collectées">
           <p>
-            Dans le cadre d'une commande, nous collectons les informations nécessaires à
-            son traitement&nbsp;: nom, prénom, adresse de livraison, e-mail et, le cas
-            échéant, numéro de téléphone.
+            Pour traiter une commande, nous collectons votre prénom, votre nom, votre adresse de livraison, votre adresse e-mail
+            et, si vous le fournissez, votre numéro de téléphone. Les données de paiement sont saisies directement chez notre
+            prestataire de paiement : nous n’y avons pas accès.
           </p>
         </Block>
-        <Block title="Finalité">
+        <Block title="Finalités">
+          <p>Ces données servent à préparer, expédier et suivre votre commande, et à vous répondre (confirmations, retours, service client).</p>
+        </Block>
+        <Block title="Destinataires">
           <p>
-            Ces données servent à préparer, expédier et suivre votre commande, ainsi qu'à
-            la relation client (confirmations, retours, support).
+            Vos données sont transmises uniquement aux prestataires nécessaires à votre commande : le prestataire de paiement et
+            le transporteur.
           </p>
         </Block>
-        <Block title="Mesure d'audience">
-          <p>
-            Un pixel de mesure (Snapchat) peut être utilisé pour évaluer la performance de
-            nos campagnes publicitaires, dans le respect des exigences de consentement
-            applicables.
-          </p>
+        <Block title="Mesure d’audience">
+          {isPixelEnabled() ? (
+            <p>
+              Avec votre accord seulement, un pixel publicitaire (Snapchat) mesure l’efficacité de nos annonces. Vous pouvez
+              refuser ce suivi dans la bannière de consentement.
+            </p>
+          ) : (
+            <p>Aucun outil de mesure publicitaire n’est utilisé sur ce site.</p>
+          )}
         </Block>
         <Block title="Vos droits">
           <p>
-            Vous disposez d'un droit d'accès, de rectification et de suppression de vos
-            données. Pour l'exercer, contactez-nous.
+            Vous pouvez demander l’accès à vos données, leur rectification ou leur suppression
+            {STORE.supportEmail ? ` en écrivant à ${STORE.supportEmail}` : ' en contactant notre service client'}.
           </p>
         </Block>
-        <TodoNote>
-          le responsable du traitement, la base légale, les sous-traitants (paiement,
-          logistique, analytics), les durées de conservation, les modalités de consentement
-          et le contact du délégué le cas échéant — conformément à la nLPD suisse (et au
-          RGPD si des clients de l'UE sont concernés).
-        </TodoNote>
-        {STORE.supportEmail && <p className="text-sm text-muted">Contact&nbsp;: {STORE.supportEmail}</p>}
       </Prose>
     </>
   )

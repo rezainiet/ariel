@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Clock, Loader2 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { PRODUCT, STORE } from '../config/store.js'
+import { PRODUCT, storeRef } from '../config/store.js'
 import { verifyOrder } from '../lib/payment.js'
 import { trackPurchase } from '../lib/pixel.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
@@ -23,6 +23,11 @@ export default function OrderConfirmation() {
       if (order && !fired.current) {
         fired.current = true
         clear()
+        try {
+          sessionStorage.removeItem('checkout-form-v1') // commande confirmée : on efface les coordonnées saisies
+        } catch {
+          /* stockage indisponible */
+        }
         trackPurchase({
           transaction_id: order.orderId,
           price: order.total,
@@ -39,8 +44,8 @@ export default function OrderConfirmation() {
   }, [session, clear])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-fr-soft px-6 py-16 text-center">
-      <Link to="/"><Logo /></Link>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-fr-soft px-6 py-16 text-center font-jakarta">
+      <Logo />
       {state.status === 'loading' && (
         <p className="mt-10 flex items-center gap-2 text-fr-ink/75" role="status">
           <Loader2 size={18} className="animate-spin" /> Vérification de votre paiement…
@@ -61,12 +66,12 @@ export default function OrderConfirmation() {
           <Clock size={40} className="mx-auto text-fr-muted" />
           <h1 className="mt-4 font-extrabold tracking-[-0.03em] text-3xl text-fr-ink">Paiement non confirmé</h1>
           <p className="mt-2 text-fr-ink/75">
-            Nous n’avons pas pu confirmer de paiement pour cette page. Si vous avez été débité, contactez {STORE.name} avec la
+            Nous n’avons pas pu confirmer de paiement pour cette page. Si vous avez été débité, contactez {storeRef()} avec la
             référence de votre paiement.
           </p>
         </div>
       )}
-      <Link to="/" className="mt-8 rounded-xl bg-fr-green px-6 py-3 font-bold text-white">Retour à la boutique</Link>
+      <Link to="/" className="mt-8 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white">Retour à la boutique</Link>
     </div>
   )
 }
