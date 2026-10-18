@@ -11,6 +11,9 @@ const FORBIDDEN = [
   'Yverdon-les-Bains',
   // marqueurs « à fournir » (Pending.jsx, dev uniquement)
   'À fournir :',
+  // aperçu d'urgence (src/lib/storeStatus.js, bloc DEV) : jamais de stock ou de compte à rebours d'exemple
+  'Aperçu — exemple',
+  'VITE_URGENCY_PREVIEW',
 ]
 
 function walk(dir) {

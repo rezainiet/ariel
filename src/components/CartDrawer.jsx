@@ -40,7 +40,21 @@ const SKINS = {
     cta: 'rounded-full bg-pollen font-grotesk text-night hover:bg-night hover:text-white',
     foot: 'bg-white',
   },
-  // Boutique : mêmes ivoire, serif et boutons que la page et la commande.
+  // Boutique « Frais » (approuvée) : blanc, menthe, Plus Jakarta Sans, boutons pilule verts.
+  f: {
+    panel: 'bg-white font-jakarta',
+    head: 'border-b border-fr-line',
+    title: 'font-jakarta text-lg font-extrabold tracking-[-0.02em] text-fr-ink',
+    icon: 'text-fr-green',
+    close: 'text-fr-muted hover:bg-fr-mint hover:text-fr-green',
+    display: 'font-jakarta font-extrabold tracking-[-0.03em] text-fr-green',
+    cta: 'rounded-full bg-fr-green text-white shadow-[0_12px_26px_rgba(14,122,71,0.28)] hover:bg-[#0C6B3E]',
+    foot: 'bg-fr-soft',
+    card: 'border-fr-line bg-white',
+    sentenceCta: true,
+    stack: true,
+  },
+  // Concept C (comparaison) : ivoire, serif.
   c: {
     panel: 'bg-ivory',
     head: 'border-b border-hair',
@@ -52,13 +66,14 @@ const SKINS = {
     foot: 'bg-sand/60',
     card: 'border-hair bg-white',
     sentenceCta: true,
+    stack: true,
   },
 }
 
 export default function CartDrawer() {
   const { drawerOpen, closeDrawer, offer, hasItems, washes, total, clear, changeOffer, skin } = useCart()
-  // La boutique (Concept C) est l'habillage par défaut ; A et B imposent le leur.
-  const S = SKINS[skin] || SKINS.c
+  // La boutique (Frais) est l'habillage par défaut ; les concepts de comparaison imposent le leur.
+  const S = SKINS[skin] || SKINS.f
   const navigate = useNavigate()
   const closeRef = useRef(null)
 
@@ -106,7 +121,7 @@ export default function CartDrawer() {
             <ShoppingBag size={18} className={S.icon} /> Votre panier
             {hasItems && (
               <span className="rounded-full bg-sage px-2 py-0.5 font-sans text-[0.7rem] font-bold text-forest">
-                {offer.packs} pack{offer.packs > 1 ? 's' : ''}
+                {offer.packs} sachet{offer.packs > 1 ? 's' : ''}
               </span>
             )}
           </h2>
@@ -144,10 +159,10 @@ export default function CartDrawer() {
             <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-5">
               <div className={`rounded-2xl border p-4 ${S.card || 'border-line bg-surface'}`}>
                 <div className="flex gap-4">
-                  {S === SKINS.c ? (
+                  {S.stack ? (
                     // Boutique : même pile de sachets réels que le configurateur
                     <span
-                      className="flex h-24 w-24 flex-none items-end justify-center rounded-xl bg-sand/70 pb-2"
+                      className={`flex h-24 w-24 flex-none items-end justify-center rounded-xl pb-2 ${S === SKINS.f ? 'bg-fr-mint' : 'bg-sand/70'}`}
                       role="img"
                       aria-label={`${PRODUCT.name} — ${offer.label}`}
                     >
@@ -172,12 +187,12 @@ export default function CartDrawer() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
-                  <span className="text-sm font-medium text-ink">Nombre de packs</span>
+                  <span className="text-sm font-medium text-ink">Nombre de sachets</span>
                   <div className="flex items-center rounded-full border border-line bg-canvas">
                     <button
                       onClick={() => step(-1)}
                       disabled={idx <= 0}
-                      aria-label="Un pack de moins"
+                      aria-label="Un sachet de moins"
                       className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-colors hover:bg-sage/60 disabled:opacity-30"
                     >
                       <Minus size={16} />
@@ -188,7 +203,7 @@ export default function CartDrawer() {
                     <button
                       onClick={() => step(1)}
                       disabled={idx >= OFFERS.length - 1}
-                      aria-label="Un pack de plus"
+                      aria-label="Un sachet de plus"
                       className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-colors hover:bg-sage/60 disabled:opacity-30"
                     >
                       <Plus size={16} />
@@ -198,7 +213,7 @@ export default function CartDrawer() {
 
                 {saving > 0 && (
                   <p className="mt-3 rounded-lg bg-sage/50 px-3 py-2 text-xs font-medium text-forest">
-                    Vous économisez {formatCHF(saving)} par rapport à {offer.packs} packs achetés séparément.
+                    Vous économisez {formatCHF(saving)} par rapport à {offer.packs} sachets achetés séparément.
                   </p>
                 )}
               </div>

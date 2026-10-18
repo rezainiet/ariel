@@ -76,13 +76,27 @@ Chaque valeur se configure dans `.env.local` (voir `.env.example`). Justificatio
       étoile ou nombre d'avis n'est affiché dans la boutique (le composant est prêt).
 - Le build échoue automatiquement si des avis d'exemple se retrouvent dans le bundle (`scripts/check-bundle.mjs`).
 
+## 8 bis. Motivation d'achat — Optionnel, uniquement avec des données réelles
+
+| Élément | Condition d'affichage | Variable |
+| --- | --- | --- |
+| « Quantités limitées · offre valable jusqu'à épuisement du stock » | Le marchand confirme par écrit que c'est exact | `VITE_CLEARANCE_LIMITED=true` |
+| Stock disponible (« En stock · N sachets », « Plus que N sachets ») | Quantité réelle renvoyée par le serveur ; à 0 le bouton passe à « Épuisé » | `VITE_STORE_STATUS_API` (`stock`) |
+| Compte à rebours de l'opération | Date de fin réelle fournie par le serveur ; calcul sur l'heure serveur, disparaît à l'échéance | `VITE_STORE_STATUS_API` (`campaign.endsAt`) |
+| Vidéo produit / client | Fichier réel et droits d'utilisation | `VITE_PRODUCT_VIDEO_URL`, `_POSTER`, `_CAPTION` |
+
+- [ ] Jamais de nombre aléatoire, de stock fictif ni d'activité client simulée (« X personnes regardent… »).
+- [ ] Une campagne terminée ne doit plus être présentée comme disponible : mettre `campaign` à `null` ou laisser
+      la date passée (le composant disparaît seul).
+- [ ] Le build échoue si l'aperçu d'urgence de développement se retrouve en production (`scripts/check-bundle.mjs`).
+
 ## 9. Visuels — Fortement recommandé
 
 | Besoin | Pourquoi |
 | --- | --- |
 | **Packshot HD officiel** (≥ 2000 px, fond détouré ou blanc, face avant) | Seul visuel net actuel (1000 px). Indispensable pour un zoom de qualité. |
 | **Packshots HD dos et côté du sachet** | Montrer les mentions en français, le mode d'emploi, les pictogrammes de sécurité. |
-| **Photo HD d'une capsule** (gros plan, fond neutre) | Le gros plan actuel provient du collage (~290 px). |
+| **Photos HD de capsule** (gros plan, main, tambour) | Les visuels « capsule » de la section « Pourquoi choisir » sont agrandis depuis le collage fourni (~290 px d'origine) : nets sur mobile, doux en grand. |
 | **Séance photo avec le vrai produit** (recommandée) | Le héros et la scène « 3 sachets » sont de **vraies photos de buanderie** (Unsplash License, `assets-src/stock/CREDITS.md`) dans lesquelles le packshot réel est posé. Une séance photo réelle restera plus fidèle (perspective, lumière, reflets). |
 | Autorisation d'utiliser les photos fournies | Confirmer les droits sur le collage d'origine. |
 

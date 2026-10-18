@@ -1,0 +1,54 @@
+import { useEffect, useState } from 'react'
+import { ShoppingBag } from 'lucide-react'
+import { useCart } from '../../context/CartContext.jsx'
+import { formatCHF, getOffer } from '../../config/store.js'
+import { Packs } from './HeroF.jsx'
+import { Chf } from './Icons.jsx'
+
+// Barre d'achat mobile : visible seulement une fois le bouton principal dépassé (au-dessus de l'écran),
+// jamais pendant le panier ouvert. Respecte les zones sûres (encoche, barre d'accueil).
+export default function StickyBuyF({ ctaRef, sel, disabled }) {
+  const { selectOffer, drawerOpen } = useCart()
+  const [past, setPast] = useState(false)
+  useEffect(() => {
+    const el = ctaRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => setPast(!e.isIntersecting && e.boundingClientRect.top < 0), { threshold: 0 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [ctaRef])
+  const offer = getOffer(sel)
+  const shown = past && !drawerOpen && !disabled
+
+  return (
+    <div
+      aria-hidden={!shown}
+      className={`fixed inset-x-0 bottom-0 z-40 font-jakarta transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden ${
+        shown ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-full opacity-0'
+      }`}
+    >
+      <div className="border-t border-fr-line bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_rgba(11,61,42,0.10)] backdrop-blur-md">
+        <div className="mx-auto flex max-w-lg items-center gap-3">
+          <a href="#offres" tabIndex={shown ? 0 : -1} className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="Changer d’offre">
+            <span className="flex h-10 w-11 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1 max-[359px]:hidden">
+              <Packs n={offer.packs} size="sm" />
+            </span>
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate text-[0.82rem] font-bold text-fr-ink">
+                {offer.packs} sachet{offer.packs > 1 ? 's' : ''}
+              </span>
+              <span className="block text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green"><Chf v={offer.price} format={formatCHF} /></span>
+            </span>
+          </a>
+          <button
+            onClick={() => selectOffer(sel)}
+            tabIndex={shown ? 0 : -1}
+            className="flex h-12 flex-none items-center gap-2 rounded-full bg-fr-green px-5 text-[0.92rem] font-extrabold text-white shadow-[0_10px_22px_rgba(14,122,71,0.3)] active:scale-[0.98]"
+          >
+            <ShoppingBag size={17} strokeWidth={2} /> Ajouter au panier
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

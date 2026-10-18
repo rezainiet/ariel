@@ -1,0 +1,167 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ShoppingBag, Truck, RotateCcw, Tag } from 'lucide-react'
+import { useCart } from '../../context/CartContext.jsx'
+import { MERCHANT, STORE, DELIVERY } from '../../config/store.js'
+import { Fact } from '../c/Pending.jsx'
+import { ANNOUNCEMENTS } from './contentF.js'
+
+const ICONS = [Tag, Truck, RotateCcw]
+
+// Bandeau d'annonce : desktop = les trois messages côte à côte ; mobile = fondu enchaîné lent
+// (pas de défilement), en pause au survol/focus et figé si l'utilisateur réduit les animations.
+export function Announcement() {
+  const [i, setI] = useState(0)
+  const [paused, setPaused] = useState(false)
+  useEffect(() => {
+    if (paused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const id = setInterval(() => setI((n) => (n + 1) % ANNOUNCEMENTS.length), 4500)
+    return () => clearInterval(id)
+  }, [paused])
+  return (
+    <div
+      className="relative bg-fr-deep text-[0.75rem] font-semibold text-fr-mint"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <div className="mx-auto flex h-9 max-w-[1320px] items-center justify-center px-4">
+        <ul className="hidden items-center gap-8 md:flex">
+          {ANNOUNCEMENTS.map((m, k) => {
+            const Icon = ICONS[k]
+            return (
+              <li key={m} className={`flex items-center gap-2 ${k === 0 ? 'text-white' : ''}`}>
+                <Icon size={14} strokeWidth={1.9} className="text-fr-leaf" aria-hidden="true" />
+                <span className={k === 0 ? 'uppercase tracking-[0.12em]' : ''}>{m}</span>
+              </li>
+            )
+          })}
+        </ul>
+        <p className="flex items-center gap-2 md:hidden" aria-live="off">
+          {(() => {
+            const Icon = ICONS[i]
+            return (
+              <span key={i} className="flex animate-msg-in items-center gap-2">
+                <Icon size={13} strokeWidth={1.9} className="text-fr-leaf" aria-hidden="true" />
+                <span className={i === 0 ? 'uppercase tracking-[0.1em] text-white' : ''}>{ANNOUNCEMENTS[i]}</span>
+              </span>
+            )
+          })()}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export function Logo() {
+  return (
+    <Link to="/" className="flex items-center gap-2.5 font-jakarta text-[1.02rem] font-extrabold tracking-[-0.02em] text-fr-ink">
+      <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-fr-leaf to-fr-green text-white shadow-[0_4px_10px_rgba(14,122,71,0.3)]">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2.5 21.5 12 12 21.5 2.5 12z" />
+        </svg>
+      </span>
+      <span className="max-[359px]:text-[0.9rem]">{STORE.name === 'NOM DE LA BOUTIQUE' ? 'Nom de la boutique' : STORE.name}</span>
+    </Link>
+  )
+}
+
+const NAV = [
+  ['Offres', '#offres'],
+  ['Pourquoi Ariel', '#pourquoi'],
+  ['Livraison', '#livraison'],
+  ['FAQ', '#faq'],
+]
+
+export function HeaderF() {
+  const { packs, openDrawer } = useCart()
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 40)
+    on()
+    window.addEventListener('scroll', on, { passive: true })
+    return () => window.removeEventListener('scroll', on)
+  }, [])
+  return (
+    <header
+      className={`sticky top-0 z-40 border-b bg-white/90 backdrop-blur-md transition-shadow duration-300 ${
+        scrolled ? 'border-fr-line shadow-[0_6px_24px_rgba(11,61,42,0.06)]' : 'border-transparent'
+      }`}
+    >
+      <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-10 px-4 lg:h-[4.5rem] lg:px-8">
+        <Logo />
+        <nav aria-label="Navigation principale" className="hidden gap-8 font-jakarta text-[0.9rem] font-semibold text-fr-ink/80 lg:flex">
+          {NAV.map(([label, href]) => (
+            <a key={href} href={href} className="relative py-2 transition-colors hover:text-fr-green after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-fr-green after:transition-transform hover:after:scale-x-100">
+              {label}
+            </a>
+          ))}
+        </nav>
+        <button
+          onClick={openDrawer}
+          aria-label={packs ? `Panier : ${packs} sachet${packs > 1 ? 's' : ''}` : 'Panier vide'}
+          className="relative ml-auto flex h-11 items-center gap-2 rounded-full bg-fr-mint px-3.5 font-jakarta text-sm font-bold text-fr-deep transition-colors hover:bg-fr-mint2 lg:px-4"
+        >
+          <ShoppingBag size={19} strokeWidth={1.9} />
+          <span className="hidden lg:inline">Panier</span>
+          <span
+            className={`flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.68rem] font-extrabold ${
+              packs ? 'bg-fr-green text-white' : 'bg-white text-fr-muted'
+            }`}
+          >
+            {packs}
+          </span>
+        </button>
+      </div>
+    </header>
+  )
+}
+
+export function FooterF({ stickyPad = false }) {
+  const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  return (
+    <footer className={`bg-fr-deep font-jakarta text-fr-mint/80 ${stickyPad ? 'pb-28 lg:pb-0' : ''}`}>
+      <div className="mx-auto grid max-w-[1320px] gap-10 px-4 py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
+        <div>
+          <div className="[&_a]:text-white [&_a>span:last-child]:text-white">
+            <Logo />
+          </div>
+          {/* Identité du marchand (LCD art. 3 let. s) : uniquement des données configurées */}
+          <address className="mt-5 space-y-1 text-sm not-italic leading-relaxed">
+            <span className="block empty:hidden"><Fact value={MERCHANT.legalName} missing="raison sociale" /></span>
+            <span className="block empty:hidden"><Fact value={address} missing="adresse postale" /></span>
+            <span className="block empty:hidden"><Fact value={MERCHANT.uid && `IDE ${MERCHANT.uid}`} missing="numéro IDE" /></span>
+            <span className="block empty:hidden"><Fact value={STORE.supportEmail} missing="e-mail du service client" /></span>
+          </address>
+        </div>
+        {[
+          ['La boutique', [['Offres', '/#offres'], ['Pourquoi Ariel', '/#pourquoi'], ['Livraison', '/#livraison'], ['FAQ', '/#faq']]],
+          ['Service', [['Contact', '/contact'], ['Retours & remboursements', '/retours-remboursements']]],
+          ['Informations légales', [['Conditions générales', '/conditions-generales-de-vente'], ['Confidentialité', '/politique-de-confidentialite'], ['Mentions légales', '/mentions-legales']]],
+        ].map(([title, links]) => (
+          <div key={title}>
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-fr-mint/50">{title}</p>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {links.map(([label, to]) => (
+                <li key={label}>
+                  {to.startsWith('/#') ? (
+                    <a href={to} className="transition-colors hover:text-white">{label}</a>
+                  ) : (
+                    <Link to={to} className="transition-colors hover:text-white">{label}</Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-white/10">
+        <div className="mx-auto flex max-w-[1320px] flex-col gap-2 px-4 py-6 text-xs text-fr-mint/55 lg:flex-row lg:justify-between lg:px-8">
+          <p>Prix en CHF · Livraison offerte en Suisse · Retour sous {DELIVERY.returnWindowDays} jours</p>
+          <p>Ariel est une marque de The Procter &amp; Gamble Company. Cette boutique n’est pas le site officiel de la marque.</p>
+        </div>
+      </div>
+    </footer>
+  )
+}

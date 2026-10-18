@@ -13,13 +13,14 @@ import Terms from './pages/Terms.jsx'
 import Legal from './pages/Legal.jsx'
 import Contact from './pages/Contact.jsx'
 import NotFound from './pages/NotFound.jsx'
-// Boutique (Concept C révisé) : chargée immédiatement — c'est la page d'arrivée des publicités.
-import ConceptC from './concepts/c/ConceptC.jsx'
-import { HeaderC, FooterC } from './concepts/c/ChromeC.jsx'
+// Boutique (Concept 2 « Frais », approuvé) : chargée immédiatement — page d'arrivée des publicités.
+import FraisPage from './concepts/frais/FraisPage.jsx'
+import { Announcement, HeaderF, FooterF } from './concepts/frais/ChromeF.jsx'
 import { trackPageView } from './lib/pixel.js'
 
 // Comparaison / archives : chargées à la demande.
 const Home = lazy(() => import('./pages/Home.jsx')) // v1, conservée pour comparaison
+const ConceptC = lazy(() => import('./concepts/c/ConceptC.jsx')) // version précédente, pour comparaison
 const ConceptA = lazy(() => import('./concepts/a/ConceptA.jsx'))
 const ConceptB = lazy(() => import('./concepts/b/ConceptB.jsx'))
 const DesignCompare = lazy(() => import('./pages/DesignCompare.jsx'))
@@ -39,12 +40,13 @@ function RouteEffects() {
 // Pages de service et légales : habillage de la boutique.
 function StoreLayout() {
   return (
-    <div className="flex min-h-screen flex-col bg-ivory">
-      <HeaderC />
+    <div className="flex min-h-screen flex-col bg-white font-jakarta">
+      <Announcement />
+      <HeaderF />
       <main className="flex-1">
         <Outlet />
       </main>
-      <FooterC />
+      <FooterF />
     </div>
   )
 }
@@ -76,7 +78,7 @@ export default function App() {
       <RouteEffects />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<ConceptC />} />
+          <Route path="/" element={<FraisPage />} />
           <Route path="/concept-c" element={<ConceptC />} />
           {/* Tunnel de commande : gabarit épuré (sans navigation) */}
           <Route path="/commande" element={<Checkout />} />

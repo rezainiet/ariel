@@ -63,6 +63,11 @@
   }
 }
 
+/* Boutique Frais : les variantes stylistiques de Manrope (ss01/cv01) ne s'appliquent pas à Plus Jakarta Sans */
+.font-jakarta {
+  font-feature-settings: normal;
+}
+
 /* Masque la barre de défilement interne du drawer tout en gardant le scroll */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

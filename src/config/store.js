@@ -41,6 +41,26 @@ export const MERCHANT = {
   clearanceReason: env.VITE_CLEARANCE_REASON || '', // raison RÉELLE du déstockage
 }
 
+// ─────────────────────────────────────────────────────────────
+// Motivation d'achat — uniquement à partir de données réelles.
+// Rien n'est affiché par défaut : ni stock, ni compte à rebours, ni « quantités limitées ».
+//  - limitedConfirmed : le marchand confirme que les quantités sont réellement limitées.
+//  - statusApi : point d'accès serveur renvoyant l'heure serveur, la campagne (date de fin)
+//    et le stock réel (contrat dans src/lib/storeStatus.js).
+// Jamais de nombre aléatoire, jamais d'activité client simulée.
+// ─────────────────────────────────────────────────────────────
+export const URGENCY = {
+  limitedConfirmed: env.VITE_CLEARANCE_LIMITED === 'true',
+  statusApi: env.VITE_STORE_STATUS_API || '',
+}
+
+// Vidéo produit / client réelle (fichier hébergé par le marchand). Vide = section masquée.
+export const VIDEO = {
+  src: env.VITE_PRODUCT_VIDEO_URL || '',
+  poster: env.VITE_PRODUCT_VIDEO_POSTER || '',
+  caption: env.VITE_PRODUCT_VIDEO_CAPTION || '',
+}
+
 // Moyens de paiement réellement activés chez le prestataire (liste séparée par des virgules).
 // Valeurs reconnues : twint, visa, mastercard, amex, apple_pay, google_pay, postfinance, invoice.
 // Vide = aucun moyen affiché comme actif.

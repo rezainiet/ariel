@@ -16,8 +16,8 @@ import {
 } from '../config/store.js'
 import { trackStartCheckout } from '../lib/pixel.js'
 import { startPayment } from '../lib/payment.js'
-import { Wordmark } from '../concepts/c/ChromeC.jsx'
-import { PackStack } from '../concepts/c/BuyBoxC.jsx'
+import { Logo } from '../concepts/frais/ChromeF.jsx'
+import { Packs } from '../concepts/frais/HeroF.jsx'
 import { Fact, Pending } from '../concepts/c/Pending.jsx'
 
 // Champs — adresse suisse, clavier mobile adapté, autocomplétion standard.
@@ -52,9 +52,9 @@ function Field({ f, value, error, onChange, onBlur }) {
   const id = `f-${f.name}`
   return (
     <div className={f.half ? 'col-span-1' : f.npa ? 'col-span-1 sm:col-span-1' : f.city ? 'col-span-1' : 'col-span-2'}>
-      <label htmlFor={id} className="block text-sm font-semibold text-ink">
+      <label htmlFor={id} className="block text-sm font-semibold text-fr-ink">
         {f.label}
-        {f.optional && <span className="ml-1 font-normal text-muted">(facultatif)</span>}
+        {f.optional && <span className="ml-1 font-normal text-fr-muted">(facultatif)</span>}
       </label>
       <input
         id={id}
@@ -68,8 +68,8 @@ function Field({ f, value, error, onChange, onBlur }) {
         aria-describedby={error ? `${id}-err` : f.hint ? `${id}-hint` : undefined}
         onChange={(e) => onChange(f.name, e.target.value)}
         onBlur={() => onBlur(f.name)}
-        className={`mt-1.5 h-12 w-full rounded-xl border bg-white px-4 text-base text-ink outline-none transition-colors focus:border-forest focus:ring-2 focus:ring-forest/15 ${
-          error ? 'border-red-500' : 'border-hair'
+        className={`mt-1.5 h-12 w-full rounded-xl border bg-white px-4 text-base text-fr-ink outline-none transition-colors focus:border-fr-green focus:ring-2 focus:ring-fr-green/15 ${
+          error ? 'border-red-500' : 'border-fr-line'
         }`}
       />
       {error ? (
@@ -77,7 +77,7 @@ function Field({ f, value, error, onChange, onBlur }) {
           <AlertCircle size={13} /> {error}
         </p>
       ) : (
-        f.hint && <p id={`${id}-hint`} className="mt-1 text-xs text-muted">{f.hint}</p>
+        f.hint && <p id={`${id}-hint`} className="mt-1 text-xs text-fr-muted">{f.hint}</p>
       )}
     </div>
   )
@@ -91,13 +91,13 @@ function Steps({ current }) {
         <li key={s} className="flex items-center gap-2" aria-current={k === current ? 'step' : undefined}>
           <span
             className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] ${
-              k < current ? 'bg-forest text-white' : k === current ? 'bg-forest text-white ring-4 ring-mint' : 'bg-sand text-muted'
+              k < current ? 'bg-fr-green text-white' : k === current ? 'bg-fr-green text-white ring-4 ring-fr-mint' : 'bg-fr-line text-fr-muted'
             }`}
           >
             {k + 1}
           </span>
-          <span className={k === current ? 'text-ink' : 'text-muted'}>{s}</span>
-          {k < steps.length - 1 && <span className="h-px w-5 bg-hair sm:w-8" />}
+          <span className={k === current ? 'text-fr-ink' : 'text-fr-muted'}>{s}</span>
+          {k < steps.length - 1 && <span className="h-px w-5 bg-fr-line sm:w-8" />}
         </li>
       ))}
     </ol>
@@ -108,29 +108,29 @@ function Summary({ offer, changeOffer }) {
   const idx = OFFERS.findIndex((o) => o.id === offer.id)
   const save = savingsFor(offer)
   return (
-    <div className="rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
-      <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-forest">Votre commande</h2>
+    <div className="rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
+      <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-fr-green">Votre commande</h2>
       <div className="mt-4 flex items-center gap-4">
-        <span className="flex h-16 w-20 flex-none items-end justify-center rounded-xl bg-sand/70 pb-1">
-          <PackStack packs={offer.packs} />
+        <span className="flex h-16 w-20 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1">
+          <Packs n={offer.packs} size="sm" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-bold leading-tight text-ink">{PRODUCT.name}</p>
-          <p className="text-sm text-muted">
+          <p className="font-bold leading-tight text-fr-ink">{PRODUCT.name}</p>
+          <p className="text-sm text-fr-muted">
             {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · {offer.washes} lavages
           </p>
         </div>
       </div>
       {/* Correction possible avant l'achat (LCD art. 3 let. s) */}
-      <div className="mt-4 flex items-center justify-between rounded-xl bg-sand/50 px-3 py-2">
-        <span className="text-sm font-semibold text-ink">Nombre de packs</span>
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-fr-soft px-3 py-2">
+        <span className="text-sm font-semibold text-fr-ink">Nombre de sachets</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => OFFERS[idx - 1] && changeOffer(OFFERS[idx - 1].id)}
             disabled={idx <= 0}
-            aria-label="Un pack de moins"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-forest disabled:opacity-30"
+            aria-label="Un sachet de moins"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-fr-green disabled:opacity-30"
           >
             <Minus size={15} />
           </button>
@@ -139,35 +139,35 @@ function Summary({ offer, changeOffer }) {
             type="button"
             onClick={() => OFFERS[idx + 1] && changeOffer(OFFERS[idx + 1].id)}
             disabled={idx >= OFFERS.length - 1}
-            aria-label="Un pack de plus"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-forest disabled:opacity-30"
+            aria-label="Un sachet de plus"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-fr-green disabled:opacity-30"
           >
             <Plus size={15} />
           </button>
         </div>
       </div>
       <dl className="mt-4 space-y-1.5 text-sm">
-        <div className="flex justify-between text-ink/75"><dt>Prix de l’offre</dt><dd className="tabular-nums">{formatCHF(offer.price)}</dd></div>
-        <div className="flex justify-between text-ink/75"><dt>Prix par capsule</dt><dd className="tabular-nums">≈ {formatCHF(pricePerCapsule(offer))}</dd></div>
-        <div className="flex justify-between text-ink/75"><dt>Livraison (Suisse)</dt><dd className="font-semibold text-forest">Offerte</dd></div>
+        <div className="flex justify-between text-fr-ink/75"><dt>Prix de l’offre</dt><dd className="tabular-nums">{formatCHF(offer.price)}</dd></div>
+        <div className="flex justify-between text-fr-ink/75"><dt>Prix par capsule</dt><dd className="tabular-nums">≈ {formatCHF(pricePerCapsule(offer))}</dd></div>
+        <div className="flex justify-between text-fr-ink/75"><dt>Livraison (Suisse)</dt><dd className="font-semibold text-fr-green">Offerte</dd></div>
         {save > 0 && (
-          <div className="flex justify-between text-ink/75"><dt>Économie vs packs séparés</dt><dd className="tabular-nums text-forest">− {formatCHF(save)}</dd></div>
+          <div className="flex justify-between text-fr-ink/75"><dt>Économie vs sachets à l’unité</dt><dd className="tabular-nums text-fr-green">− {formatCHF(save)}</dd></div>
         )}
-        <div className="mt-2 flex items-baseline justify-between border-t border-hair pt-3">
-          <dt className="text-base font-bold text-ink">Total à payer</dt>
-          <dd className="font-serif text-2xl font-medium tabular-nums text-forest">{formatCHF(offer.price)}</dd>
+        <div className="mt-2 flex items-baseline justify-between border-t border-fr-line pt-3">
+          <dt className="text-base font-bold text-fr-ink">Total à payer</dt>
+          <dd className="font-extrabold tracking-[-0.03em] text-2xl font-medium tabular-nums text-fr-green">{formatCHF(offer.price)}</dd>
         </div>
-        <p className="text-right text-xs text-muted">
+        <p className="text-right text-xs text-fr-muted">
           <Fact value={MERCHANT.vatNote} missing="mention TVA (ex. « TVA incluse »)" />
         </p>
       </dl>
-      <ul className="mt-4 space-y-1.5 border-t border-hair pt-4 text-xs text-ink/75">
-        <li className="flex gap-2"><Truck size={14} className="flex-none text-forest" /> Livraison estimée sous {DELIVERY.estimateDays} jours ouvrables</li>
-        <li className="flex gap-2"><RotateCcw size={14} className="flex-none text-forest" /> Retour possible sous {DELIVERY.returnWindowDays} jours après réception</li>
+      <ul className="mt-4 space-y-1.5 border-t border-fr-line pt-4 text-xs text-fr-ink/75">
+        <li className="flex gap-2"><Truck size={14} className="flex-none text-fr-green" /> Livraison estimée sous {DELIVERY.estimateDays} jours ouvrables</li>
+        <li className="flex gap-2"><RotateCcw size={14} className="flex-none text-fr-green" /> Retour possible sous {DELIVERY.returnWindowDays} jours après réception</li>
       </ul>
-      <p className="mt-4 border-t border-hair pt-4 text-xs text-muted">
+      <p className="mt-4 border-t border-fr-line pt-4 text-xs text-fr-muted">
         Vendeur : <Fact value={MERCHANT.legalName} missing="raison sociale" /> ·{' '}
-        <Link to="/mentions-legales" className="font-semibold text-forest underline">mentions légales</Link>
+        <Link to="/mentions-legales" className="font-semibold text-fr-green underline">mentions légales</Link>
       </p>
     </div>
   )
@@ -224,11 +224,11 @@ export default function Checkout() {
 
   if (!hasItems) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-ivory px-6 text-center">
-        <Wordmark />
-        <h1 className="mt-8 font-serif text-3xl text-ink">Votre panier est vide</h1>
-        <p className="mt-2 max-w-sm text-muted">Choisissez une offre avant de passer commande.</p>
-        <Link to="/#offres" className="mt-6 flex h-12 items-center rounded-xl bg-forest px-6 font-bold text-white">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-fr-soft px-6 text-center font-jakarta">
+        <Logo />
+        <h1 className="mt-8 font-extrabold tracking-[-0.03em] text-3xl text-fr-ink">Votre panier est vide</h1>
+        <p className="mt-2 max-w-sm text-fr-muted">Choisissez une offre avant de passer commande.</p>
+        <Link to="/#offres" className="mt-6 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white">
           Voir les offres
         </Link>
       </div>
@@ -236,25 +236,25 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-ivory">
-      <header className="border-b border-hair bg-white">
+    <div className="min-h-screen bg-fr-soft font-jakarta">
+      <header className="border-b border-fr-line bg-white">
         <div className="mx-auto flex h-14 max-w-[1120px] items-center justify-between px-4 lg:h-16 lg:px-8">
-          <Link to="/" aria-label="Retour à la boutique"><Wordmark compact /></Link>
-          <span className="hidden items-center gap-1.5 text-xs font-semibold text-ink/70 sm:flex">
-            <Lock size={14} className="text-forest" /> Commande en CHF
+          <Logo />
+          <span className="hidden items-center gap-1.5 text-xs font-semibold text-fr-ink/70 sm:flex">
+            <Lock size={14} className="text-fr-green" /> Commande en CHF
           </span>
         </div>
       </header>
 
       <div className="mx-auto max-w-[1120px] px-4 py-6 lg:px-8 lg:py-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-forest">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-fr-muted hover:text-fr-green">
             <ArrowLeft size={16} /> Continuer mes achats
           </Link>
           <Steps current={submitted && !errorList.length ? 2 : 1} />
         </div>
 
-        <h1 className="mt-5 font-serif text-[2rem] font-medium tracking-tight text-ink lg:text-[2.6rem]">Finaliser la commande</h1>
+        <h1 className="mt-5 font-extrabold text-[2rem] tracking-[-0.025em] text-fr-ink lg:text-[2.6rem]">Finaliser la commande</h1>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_1fr] lg:gap-10">
           <aside className="lg:order-2">
@@ -264,18 +264,18 @@ export default function Checkout() {
               onClick={() => setShowSummary((v) => !v)}
               aria-expanded={showSummary}
               aria-controls="recapitulatif"
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-hair bg-white px-4 py-3 text-left lg:hidden"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-fr-line bg-white px-4 py-3 text-left lg:hidden"
             >
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-sm font-bold text-forest">
+                <span className="flex items-center gap-1.5 text-sm font-bold text-fr-green">
                   {showSummary ? 'Masquer' : 'Afficher'} le récapitulatif
                   <ChevronDown size={16} className={`transition-transform ${showSummary ? 'rotate-180' : ''}`} />
                 </span>
-                <span className="block truncate text-xs text-muted">
-                  {offer.packs} pack{offer.packs > 1 ? 's' : ''} · {offer.washes} lavages · livraison offerte
+                <span className="block truncate text-xs text-fr-muted">
+                  {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} lavages · livraison offerte
                 </span>
               </span>
-              <span className="font-serif text-xl tabular-nums text-forest">{formatCHF(offer.price)}</span>
+              <span className="font-extrabold tracking-[-0.03em] text-xl tabular-nums text-fr-green">{formatCHF(offer.price)}</span>
             </button>
             <div id="recapitulatif" className={`${showSummary ? 'mt-3 block' : 'hidden'} lg:sticky lg:top-6 lg:mt-0 lg:block`}>
               <Summary offer={offer} changeOffer={changeOffer} />
@@ -298,8 +298,8 @@ export default function Checkout() {
               </div>
             )}
 
-            <fieldset className="rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
-              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-forest">1 · Vos coordonnées</legend>
+            <fieldset className="rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
+              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-fr-green">1 · Vos coordonnées</legend>
               <div className="mt-2 grid grid-cols-2 gap-4">
                 {CONTACT.map((f) => (
                   <Field key={f.name} f={f} value={values[f.name]} error={shownErrors[f.name]} onChange={set} onBlur={blur} />
@@ -307,28 +307,28 @@ export default function Checkout() {
               </div>
             </fieldset>
 
-            <fieldset className="mt-4 rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
-              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-forest">2 · Adresse de livraison</legend>
+            <fieldset className="mt-4 rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
+              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-fr-green">2 · Adresse de livraison</legend>
               <div className="mt-2 grid grid-cols-2 gap-4">
                 {ADDRESS.map((f) => (
                   <Field key={f.name} f={f} value={values[f.name]} error={shownErrors[f.name]} onChange={set} onBlur={blur} />
                 ))}
-                <p className="col-span-2 rounded-lg bg-sand/60 px-3 py-2 text-xs text-ink/75">Pays : <strong>Suisse</strong> — livraison en Suisse uniquement.</p>
+                <p className="col-span-2 rounded-lg bg-fr-mint/60 px-3 py-2 text-xs text-fr-ink/75">Pays : <strong>Suisse</strong> — livraison en Suisse uniquement.</p>
               </div>
             </fieldset>
 
-            <fieldset className="mt-4 rounded-[1.25rem] border border-hair bg-white p-5 lg:p-6">
-              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-forest">3 · Paiement</legend>
+            <fieldset className="mt-4 rounded-[1.5rem] border border-fr-line bg-white p-5 lg:p-6">
+              <legend className="px-1 text-sm font-bold uppercase tracking-[0.14em] text-fr-green">3 · Paiement</legend>
               {PAYMENT_METHODS.length ? (
                 <div role="radiogroup" aria-label="Moyen de paiement" className="mt-2 grid gap-2 sm:grid-cols-2">
                   {PAYMENT_METHODS.map((m) => (
                     <label
                       key={m}
                       className={`flex h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 text-sm font-semibold ${
-                        method === m ? 'border-forest bg-mint/40' : 'border-hair'
+                        method === m ? 'border-fr-green bg-fr-mint/60' : 'border-fr-line'
                       }`}
                     >
-                      <input type="radio" name="method" value={m} checked={method === m} onChange={() => setMethod(m)} className="accent-forest" />
+                      <input type="radio" name="method" value={m} checked={method === m} onChange={() => setMethod(m)} className="accent-[#0E7A47]" />
                       {PAYMENT_LABELS[m] || m}
                     </label>
                   ))}
@@ -336,7 +336,7 @@ export default function Checkout() {
               ) : (
                 <div className="mt-2 space-y-2">
                   <Pending block>prestataire et moyens de paiement réellement activés</Pending>
-                  <p className="text-sm text-ink/75">
+                  <p className="text-sm text-fr-ink/75">
                     Le paiement sera traité sur la page sécurisée de notre prestataire. Aucune donnée de carte n’est saisie ni
                     conservée par {STORE.name}.
                   </p>
@@ -359,7 +359,7 @@ export default function Checkout() {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-forest text-base font-extrabold text-white transition-all hover:bg-forest-700 active:scale-[0.99] disabled:opacity-70"
+              className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-fr-green shadow-[0_14px_28px_rgba(14,122,71,0.28)] text-base font-extrabold text-white transition-all hover:bg-[#0C6B3E] active:scale-[0.99] disabled:opacity-70"
             >
               {status === 'loading' ? (
                 <>
@@ -371,7 +371,7 @@ export default function Checkout() {
                 </>
               )}
             </button>
-            <p className="mt-3 text-center text-xs leading-relaxed text-muted">
+            <p className="mt-3 text-center text-xs leading-relaxed text-fr-muted">
               En cliquant sur « Acheter », vous passez une commande avec obligation de paiement et acceptez nos{' '}
               <Link to="/conditions-generales-de-vente" className="underline">conditions générales de vente</Link>. Une confirmation vous
               est envoyée par e-mail.
