@@ -14,12 +14,18 @@ const CartContext = createContext(null)
 const initialState = {
   offerId: null, // id de l'offre sélectionnée, ou null
   drawerOpen: false,
+  addedAt: 0, // horodatage du dernier ajout (retour visuel « ajouté »)
+  skin: null, // habillage visuel du panier selon le concept affiché ('a' | 'b' | 'c')
 }
 
 function reducer(state, action) {
   switch (action.type) {
     case 'SELECT_OFFER':
       return { ...state, offerId: action.offerId }
+    case 'MARK_ADDED':
+      return { ...state, addedAt: action.at }
+    case 'SET_SKIN':
+      return { ...state, skin: action.skin }
     case 'CLEAR':
       return { ...state, offerId: null }
     case 'OPEN_DRAWER':
@@ -38,10 +44,11 @@ export function CartProvider({ children }) {
 
   // Sélectionne une offre (remplace), ouvre le drawer, déclenche ADD_CART
   // uniquement lors d'une vraie sélection utilisateur.
-  const selectOffer = useCallback((offerId, { openDrawer = true } = {}) => {
+  const selectOffer = useCallback((offerId, { openDrawer = true, feedback = true } = {}) => {
     const o = getOffer(offerId)
     if (!o) return
     dispatch({ type: 'SELECT_OFFER', offerId })
+    if (feedback) dispatch({ type: 'MARK_ADDED', at: Date.now() })
     if (openDrawer) dispatch({ type: 'OPEN_DRAWER' })
     trackAddCart({
       currency: 'CHF',
@@ -52,7 +59,14 @@ export function CartProvider({ children }) {
     })
   }, [])
 
+  // Change le bundle déjà présent dans le panier (stepper du panier).
+  // Pas d'événement ADD_CART : ce n'est pas un nouvel ajout.
+  const changeOffer = useCallback((offerId) => {
+    if (getOffer(offerId)) dispatch({ type: 'SELECT_OFFER', offerId })
+  }, [])
+
   const clear = useCallback(() => dispatch({ type: 'CLEAR' }), [])
+  const setSkin = useCallback((skin) => dispatch({ type: 'SET_SKIN', skin }), [])
   const openDrawer = useCallback(() => dispatch({ type: 'OPEN_DRAWER' }), [])
   const closeDrawer = useCallback(() => dispatch({ type: 'CLOSE_DRAWER' }), [])
 
@@ -67,12 +81,16 @@ export function CartProvider({ children }) {
       subtotal: total,
       total, // livraison offerte -> total = sous-total
       drawerOpen: state.drawerOpen,
+      addedAt: state.addedAt,
+      skin: state.skin,
       selectOffer,
+      changeOffer,
       clear,
+      setSkin,
       openDrawer,
       closeDrawer,
     }
-  }, [offer, state.offerId, state.drawerOpen, selectOffer, clear, openDrawer, closeDrawer])
+  }, [offer, state.offerId, state.drawerOpen, state.addedAt, state.skin, selectOffer, changeOffer, clear, setSkin, openDrawer, closeDrawer])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

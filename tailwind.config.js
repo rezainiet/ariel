@@ -16,9 +16,22 @@ export default {
         ink: '#172A20', // primary text
         muted: '#6B746D', // secondary text
         line: '#E6E9E3', // subtle borders
+        // Concept A — Swiss Luxury
+        ivory: '#FAF8F3',
+        sand: '#F1ECE1',
+        hair: '#E4DFD3',
+        // Concept B — Modern Product (jaune repris du bandeau « 60 PODS »)
+        night: { DEFAULT: '#0C1310', 800: '#141D19', 700: '#1C2722' },
+        mist: '#EEF2EE',
+        pollen: '#F2D94E',
+        // Concept C — Conversion
+        cloud: '#F4F6F3',
+        mint: '#E4F2E9',
       },
       fontFamily: {
         sans: ['"Manrope Variable"', 'Manrope', 'system-ui', 'sans-serif'],
+        serif: ['"Fraunces Variable"', 'Georgia', 'serif'],
+        grotesk: ['"Space Grotesk Variable"', '"Manrope Variable"', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         xl2: '1.25rem',

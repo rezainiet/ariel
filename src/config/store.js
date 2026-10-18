@@ -72,9 +72,27 @@ export function getOffer(id) {
   return OFFERS.find((o) => o.id === id) || null
 }
 
-// Formatage monétaire suisse : « CHF 4.– », « CHF 7.– ».
+// Formatage monétaire suisse : « CHF 4.– », « CHF 3.50 ».
 export function formatCHF(amount) {
   const whole = Number.isInteger(amount)
-  const value = whole ? `${amount}.–` : amount.toFixed(2).replace('.', ',')
+  const value = whole ? `${amount}.–` : amount.toFixed(2)
   return `CHF ${value}`
+}
+
+// ── Comparaisons de prix (calculées, jamais de prix de référence inventé) ──
+// Référence = achat de packs séparés au prix de l'offre 1 pack.
+export const SINGLE_PACK_PRICE = OFFERS[0].price
+
+// Économie réelle vs. N packs achetés séparément : 2 packs -> 1, 3 packs -> 2.
+export function savingsFor(offer) {
+  return offer.packs * SINGLE_PACK_PRICE - offer.price
+}
+
+export function pricePerPack(offer) {
+  return offer.price / offer.packs
+}
+
+// Prix par lavage en centimes, arrondi à 0.1 ct (ex. 6.7 ct).
+export function centsPerWash(offer) {
+  return Math.round((offer.price / offer.washes) * 1000) / 10
 }

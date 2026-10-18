@@ -12,6 +12,21 @@ npm run build    # build de production
 npm run preview  # prévisualisation du build
 ```
 
+## Concepts de design (branche `three-concepts`)
+
+| Route | Concept |
+| ----- | ------- |
+| `/concept-a` | A — Swiss Luxury Commerce (éditorial, ivoire, serif Fraunces) |
+| `/concept-b` | B — Modern Product Experience (immersif, sombre, Space Grotesk) |
+| `/concept-c` | C — Premium Conversion Commerce (compact, barre d'achat collante) |
+| `/design` | Comparaison interne côte à côte — dev uniquement (`VITE_DESIGN_PREVIEW=true` pour la recette) |
+
+La v1 reste accessible sur `/` et sur la branche `main`. Revue complète, scores et
+captures : `design-review/DESIGN-REVIEW.md`.
+
+Les avis d'exemple (`src/data/reviews.js`) ne sont chargés qu'en développement ; en production,
+un état vide s'affiche tant que `VITE_REVIEWS_ENDPOINT` n'est pas branché.
+
 ## Architecture
 
 - `src/config/store.js` — **source unique de vérité** : offres, prix (bundles fixes), livraison, boutique.
