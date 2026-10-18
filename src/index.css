@@ -1,0 +1,73 @@
+@import '@fontsource-variable/manrope';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-feature-settings: 'ss01', 'cv01';
+    text-rendering: optimizeLegibility;
+    /* Safe-area support (encoche iPhone) */
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Titres : resserrés, éditoriaux */
+  h1, h2, h3 {
+    @apply tracking-tight;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-forest/60 ring-offset-2 ring-offset-canvas rounded;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-edge {
+    @apply mx-auto w-full max-w-content px-5 sm:px-8;
+  }
+
+  /* Libellé « surtitre » éditorial */
+  .eyebrow {
+    @apply inline-flex items-center gap-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-forest;
+  }
+
+  .hairline {
+    @apply border-t border-line;
+  }
+}
+
+/* Masque la barre de défilement interne du drawer tout en gardant le scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
