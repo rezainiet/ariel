@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept 2 — Frais</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#FFFFFF; --mint:#E9F6EF; --mint2:#D4EEDF; --green:#0E7A47; --deep:#0B3D2A; --ink:#14201A; --muted:#66756D; --line:#E4ECE7; --sky:#EAF3FB }
+  * { box-sizing:border-box; margin:0; padding:0 }
+  body { background:var(--bg); color:var(--ink); font:400 15px/1.5 'Plus Jakarta Sans', sans-serif; -webkit-font-smoothing:antialiased }
+  .bar { height:38px; display:flex; align-items:center; justify-content:center; gap:28px; background:var(--deep); color:#DDF3E6; font-size:12.5px; font-weight:500 }
+  .bar b { color:#fff; font-weight:700 }
+  .bar i { width:4px; height:4px; border-radius:50%; background:#5FC48E }
+  header { height:76px; display:flex; align-items:center; gap:48px; padding:0 56px; border-bottom:1px solid var(--line) }
+  .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; letter-spacing:-.02em }
+  .logo span { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#19A463,#0E7A47); display:grid; place-items:center; color:#fff; font-size:15px }
+  header nav { display:flex; gap:30px; font-weight:600; font-size:14px; color:#2D3A33 }
+  .search { margin-left:auto; display:flex; align-items:center; gap:10px; height:42px; width:260px; padding:0 16px; border-radius:999px; background:#F3F6F4; color:var(--muted); font-size:13.5px }
+  .cart { width:44px; height:44px; border-radius:50%; background:var(--mint); display:grid; place-items:center; position:relative }
+  .cart em { position:absolute; top:-2px; right:-2px; width:18px; height:18px; border-radius:50%; background:var(--green); color:#fff; font-size:10.5px; font-style:normal; font-weight:800; display:grid; place-items:center }
+
+  .wrap { display:grid; grid-template-columns:1.12fr 1fr; gap:48px; padding:30px 56px 0; height:calc(900px - 38px - 76px) }
+  .panel { position:relative; border-radius:32px; background:radial-gradient(120% 90% at 30% 20%, #F4FBF7 0%, var(--mint) 45%, var(--mint2) 100%); overflow:hidden; display:flex; align-items:center; justify-content:center; height:740px }
+  .panel:after { content:''; position:absolute; width:520px; height:520px; border-radius:50%; background:rgba(255,255,255,.55); top:90px; left:50%; transform:translateX(-50%) }
+  .panel img { position:relative; z-index:2; width:500px; filter:drop-shadow(0 34px 34px rgba(11,61,42,.25)) }
+  .chip { position:absolute; z-index:3; display:flex; align-items:center; gap:10px; padding:10px 16px 10px 10px; border-radius:16px; background:#fff; box-shadow:0 12px 30px rgba(11,61,42,.12); font-size:13px; font-weight:600 }
+  .chip span { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; background:var(--mint); color:var(--green); font-weight:800; font-size:13px }
+  .chip small { display:block; color:var(--muted); font-weight:500; font-size:11.5px }
+  .c1 { top:40px; left:36px } .c2 { bottom:120px; right:30px } .c3 { bottom:40px; left:36px }
+  .thumbs { position:absolute; z-index:3; right:28px; top:36px; display:flex; flex-direction:column; gap:10px }
+  .thumbs div { width:58px; height:58px; border-radius:14px; background:#fff; overflow:hidden; box-shadow:0 6px 16px rgba(11,61,42,.1); display:grid; place-items:center }
+  .thumbs div:first-child { outline:2px solid var(--green) }
+  .thumbs img { width:100%; height:100%; object-fit:cover }
+
+  .buy { padding-top:20px }
+  .tag { display:inline-flex; align-items:center; gap:8px; height:30px; padding:0 14px; border-radius:999px; background:var(--mint); color:var(--green); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase }
+  h1 { margin-top:18px; font-size:54px; line-height:1.02; font-weight:800; letter-spacing:-.035em }
+  .sub { margin-top:12px; color:var(--muted); font-size:16px }
+  .price { margin-top:26px; display:flex; align-items:flex-end; gap:14px }
+  .price small { font-weight:600; color:var(--muted); padding-bottom:9px }
+  .price strong { font-size:58px; line-height:1; font-weight:800; letter-spacing:-.04em; color:var(--green) }
+  .price span { padding-bottom:9px; font-size:13px; color:var(--muted) }
+  .label { margin-top:28px; display:flex; justify-content:space-between; font-weight:700; font-size:15px }
+  .label span { color:var(--muted); font-weight:500; font-size:13px }
+  .offers { margin-top:12px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px }
+  .o { position:relative; padding:16px 14px 14px; border-radius:20px; border:1.5px solid var(--line); background:#fff }
+  .o.on { border:2px solid var(--green); background:linear-gradient(180deg,#F5FBF8,#fff); box-shadow:0 14px 30px rgba(14,122,71,.12) }
+  .o .pk { height:52px; display:flex; align-items:flex-end }
+  .o .pk img { width:44px; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)) } .o .pk img + img { margin-left:-24px }
+  .o b { display:block; margin-top:10px; font-size:15px; font-weight:800 }
+  .o small { display:block; color:var(--muted); font-size:12px }
+  .o strong { display:block; margin-top:8px; font-size:24px; font-weight:800; letter-spacing:-.03em }
+  .o .save { display:inline-block; margin-top:4px; font-size:11.5px; font-weight:700; color:var(--green) }
+  .o .badge { position:absolute; top:-11px; left:14px; padding:3px 10px; border-radius:999px; background:var(--green); color:#fff; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase }
+  .o .tick { position:absolute; top:12px; right:12px; width:20px; height:20px; border-radius:50%; background:var(--green); color:#fff; display:grid; place-items:center; font-size:11px }
+  .cta { margin-top:20px; display:flex; align-items:center; justify-content:center; gap:12px; height:62px; border-radius:999px; background:var(--green); color:#fff; font-weight:800; font-size:17px; box-shadow:0 14px 28px rgba(14,122,71,.28) }
+  .perks { margin-top:20px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px }
+  .perks div { display:flex; gap:10px; align-items:center; padding:12px; border-radius:16px; background:#F6F8F7; font-size:12.5px; font-weight:600; line-height:1.3 }
+  .perks svg { flex:none }
+
+  @media (max-width:600px) {
+    .bar { height:32px; font-size:11.5px; gap:10px } .bar .x { display:none }
+    header { height:60px; padding:0 16px; gap:0 } header nav, .search { display:none }
+    .logo { font-size:15.5px } .logo span { width:30px; height:30px; font-size:13px } .cart { margin-left:auto; width:40px; height:40px }
+    .wrap { display:block; padding:12px 16px 0; height:auto }
+    .panel { height:300px; border-radius:24px } .panel:after { width:250px; height:250px; top:26px }
+    .panel img { width:240px }
+    .thumbs { display:none }
+    .chip { padding:7px 11px 7px 7px; font-size:11px; border-radius:12px } .chip span { width:26px; height:26px; font-size:11px; border-radius:8px } .chip small { font-size:10px }
+    .c1 { top:14px; left:12px } .c2 { bottom:14px; right:12px } .c3 { display:none }
+    .buy { padding-top:14px }
+    .tag { height:24px; font-size:10px; padding:0 10px }
+    h1 { font-size:30px; margin-top:8px }
+    .sub { font-size:13.5px; margin-top:4px }
+    .price { margin-top:8px } .price strong { font-size:34px } .price small, .price span { padding-bottom:4px; font-size:12px }
+    .label { margin-top:12px; font-size:14px } .label span { font-size:11.5px }
+    .offers { gap:8px; margin-top:12px } .o { padding:12px 8px 10px; border-radius:16px; text-align:center }
+    .o .pk { height:36px; justify-content:center } .o .pk img { width:32px } .o .pk img + img { margin-left:-18px }
+    .o b { font-size:13px; margin-top:6px } .o small { font-size:10.5px } .o strong { font-size:19px; margin-top:4px } .o .save { font-size:10px; margin-top:0 }
+    .o .badge { left:50%; transform:translateX(-50%); font-size:9px; padding:2px 8px; white-space:nowrap } .o .tick { width:16px; height:16px; top:8px; right:8px; font-size:9px }
+    .cta { height:54px; font-size:15.5px; margin-top:14px }
+    .perks { display:none }
+  }
+</style>
+</head>
+<body>
+  <div class="bar"><b>Livraison offerte en Suisse</b><i></i><span>Retour sous 15 jours</span><i class="x"></i><span class="x">Paiement sécurisé</span></div>
+  <header>
+    <div class="logo"><span>◆</span>Nom de la boutique</div>
+    <nav><a>Offres</a><a>Le produit</a><a>Mode d’emploi</a><a>Livraison</a><a>FAQ</a></nav>
+    <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#66756D" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Rechercher</div>
+    <div class="cart"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B3D2A" stroke-width="2"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><em>0</em></div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <div class="chip c1"><span>60</span><div>60 capsules<small>par sachet</small></div></div>
+      <div class="chip c2"><span>❄</span><div>Même à l’eau froide<small>selon l’emballage</small></div></div>
+      <div class="chip c3"><span>✓</span><div>Universal+<small>linge blanc et clair</small></div></div>
+      <div class="thumbs"><div><img src="img/packshot-cutout.webp" style="object-fit:contain;padding:6px" alt=""></div><div><img src="img/c3-tall.jpg" alt=""></div><div><img src="img/pod-water.webp" alt=""></div><div><img src="img/handpod.webp" alt=""></div></div>
+      <img src="img/packshot-cutout.webp" alt="Ariel All-in-1 PODS 60 capsules">
+    </section>
+
+    <section class="buy">
+      <span class="tag">● Déstockage en Suisse</span>
+      <h1>Ariel All‑in‑1 PODS</h1>
+      <p class="sub">Capsules de lessive · 60 lavages par sachet</p>
+      <div class="price"><small>Dès</small><strong>CHF 4.–</strong><span>≈ CHF 0.07 / lavage</span></div>
+      <div class="label">Choisir mon offre <span>Prix total, livraison incluse</span></div>
+      <div class="offers">
+        <div class="o"><div class="pk"><img src="img/packshot-cutout.webp" alt=""></div><b>1 pack</b><small>60 lavages</small><strong>CHF 4.–</strong><span class="save">&nbsp;</span></div>
+        <div class="o on"><span class="badge">Populaire</span><span class="tick">✓</span><div class="pk"><img src="img/packshot-cutout.webp" alt=""><img src="img/packshot-cutout.webp" alt=""></div><b>2 packs</b><small>120 lavages</small><strong>CHF 7.–</strong><span class="save">− CHF 1.–</span></div>
+        <div class="o"><span class="badge" style="background:#0B3D2A">Meilleure offre</span><div class="pk"><img src="img/packshot-cutout.webp" alt=""><img src="img/packshot-cutout.webp" alt=""><img src="img/packshot-cutout.webp" alt=""></div><b>3 packs</b><small>180 lavages</small><strong>CHF 10.–</strong><span class="save">− CHF 2.–</span></div>
+      </div>
+      <div class="cta">Ajouter au panier · CHF 7.– <span>→</span></div>
+      <div class="perks">
+        <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E7A47" stroke-width="1.8"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.6"/><circle cx="17" cy="17.5" r="1.6"/></svg>Livraison offerte en Suisse</div>
+        <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E7A47" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"/><path d="M4 4v4.5h4.5"/></svg>Retour sous 15 jours</div>
+        <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E7A47" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Paiement sécurisé</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

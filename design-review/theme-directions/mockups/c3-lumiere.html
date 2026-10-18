@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept 3 — Lumière</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1C1A16; --warm:#F4EFE7; --muted:#6F675B; --green:#16432F; --line:rgba(28,26,22,.14) }
+  * { box-sizing:border-box; margin:0; padding:0 }
+  body { color:var(--ink); font:400 15px/1.5 'Inter Tight', sans-serif; -webkit-font-smoothing:antialiased; background:#EDE6DA }
+  .scene { position:relative; width:100%; height:900px; overflow:hidden }
+  .scene > img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:0% 100% }
+  .veil { position:absolute; inset:0; background:linear-gradient(90deg, rgba(244,239,231,0) 42%, rgba(244,239,231,.6) 60%, rgba(244,239,231,.86) 100%) }
+  header { position:absolute; inset:0 0 auto 0; z-index:5; display:flex; align-items:center; justify-content:space-between; height:92px; padding:0 64px }
+  .logo { font:400 30px/1 'Instrument Serif', serif; letter-spacing:-.01em }
+  .logo small { font:500 10px/1 'Inter Tight'; letter-spacing:.28em; text-transform:uppercase; margin-left:12px; color:var(--muted); vertical-align:middle }
+  header nav { display:flex; gap:34px; font-size:14px; font-weight:500 }
+  .hbtn { display:flex; align-items:center; gap:10px; height:44px; padding:0 18px; border-radius:999px; background:rgba(255,255,255,.7); backdrop-filter:blur(10px); font-weight:600; font-size:14px }
+
+  .story { position:absolute; z-index:4; right:88px; top:150px; width:480px }
+  .kicker { font-size:11.5px; font-weight:600; letter-spacing:.3em; text-transform:uppercase; color:var(--green) }
+  h1 { margin-top:20px; font:400 96px/.9 'Instrument Serif', serif; letter-spacing:-.025em }
+  h1 em { color:var(--green) }
+  .lede { margin-top:26px; font-size:18px; line-height:1.55; color:#3B362F; max-width:420px }
+  .lede b { font-weight:600; color:var(--ink) }
+  .row { margin-top:34px; display:flex; align-items:center; gap:26px }
+  .btn { display:flex; align-items:center; gap:14px; height:60px; padding:0 30px; border-radius:999px; background:var(--ink); color:#fff; font-weight:600; font-size:16px }
+  .price { line-height:1.15 } .price small { display:block; font-size:12px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase }
+  .price b { font:400 44px/1 'Instrument Serif', serif }
+
+  .free { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--green) }
+  .offers { margin-top:22px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px }
+  .offers div { height:64px; border-radius:16px; border:1px solid var(--line); background:rgba(255,255,255,.45); backdrop-filter:blur(8px); display:flex; flex-direction:column; align-items:center; justify-content:center }
+  .offers .on { background:#fff; border:1.5px solid var(--ink) }
+  .offers span { font-size:12px; color:var(--muted) } .offers b { font:400 26px/1.05 'Instrument Serif', serif }
+  .btn.big { margin-top:14px; height:62px; justify-content:center }
+  .caption { position:absolute; z-index:4; left:64px; bottom:44px; color:#fff; font-size:13px; font-weight:500; text-shadow:0 1px 10px rgba(0,0,0,.35) }
+  .caption b { display:block; font:400 30px/1.1 'Instrument Serif', serif }
+
+  .dock { position:absolute; z-index:5; left:64px; right:64px; bottom:36px; height:88px; display:grid; grid-template-columns:1.3fr repeat(3,1fr) 1.2fr; align-items:center; border-radius:24px; background:rgba(250,247,242,.82); backdrop-filter:blur(18px); box-shadow:0 20px 50px rgba(40,30,15,.18); padding:0 12px 0 28px }
+  .dock .t { font-size:12px; color:var(--muted) } .dock .t b { display:block; font-size:15px; color:var(--ink); font-weight:600 }
+  .dock .o { height:56px; margin:0 6px; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:12px; border:1px solid var(--line) }
+  .dock .o.on { background:#fff; border-color:var(--ink) }
+  .dock .o span { font-size:12.5px; color:var(--muted) } .dock .o b { font:400 26px/1 'Instrument Serif', serif }
+  .dock .free { justify-self:end; display:flex; align-items:center; gap:10px; font-size:13px; font-weight:600; padding-right:16px }
+
+  @media (max-width:600px) {
+    .scene { height:844px; background:var(--warm) }
+    .scene > img { height:548px; inset:0 0 auto 0; object-position:42% 100% }
+    .veil { height:548px; background:linear-gradient(180deg, rgba(244,239,231,.88) 0%, rgba(244,239,231,.55) 30%, rgba(244,239,231,0) 52%) }
+    header { height:64px; padding:0 18px } header nav { display:none }
+    .logo { font-size:23px } .logo small { display:none } .hbtn { height:38px; padding:0 13px; font-size:13px }
+    .story { right:auto; left:0; top:78px; width:100%; padding:0 20px }
+    .kicker { font-size:10px }
+    h1 { font-size:54px; margin-top:10px }
+    .lede, .caption, .row, .offers, .story .btn { display:none }
+    .sheet { display:block !important }
+  }
+  .sheet { display:none; position:absolute; z-index:6; left:0; right:0; bottom:0; height:306px; border-radius:28px 28px 0 0; background:var(--warm); padding:18px 20px 0; box-shadow:0 -14px 40px rgba(40,30,15,.14) }
+  .sheet .hd { display:flex; justify-content:space-between; align-items:flex-end }
+  .sheet .name { font-weight:600; font-size:17px } .sheet .name small { display:block; font-weight:400; font-size:13px; color:var(--muted) }
+  .sheet .p { text-align:right } .sheet .p small { display:block; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted) } .sheet .p b { font:400 40px/1 'Instrument Serif', serif }
+  .sheet .os { margin-top:16px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px }
+  .sheet .os div { height:62px; border-radius:16px; border:1px solid var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center }
+  .sheet .os .on { background:#fff; border:1.5px solid var(--ink) }
+  .sheet .os span { font-size:11.5px; color:var(--muted) } .sheet .os b { font:400 23px/1.1 'Instrument Serif', serif }
+  .sheet .btn { margin-top:14px; height:56px; justify-content:center }
+  .sheet .f { margin-top:12px; text-align:center; font-size:12.5px; color:var(--muted) } .sheet .f b { color:var(--green); font-weight:600 }
+</style>
+</head>
+<body>
+  <div class="scene">
+    <img src="img/c3-wide.jpg" alt="" id="bg">
+    <div class="veil"></div>
+    <header>
+      <div class="logo">Nom de la boutique <small>Déstockage · Suisse</small></div>
+      <nav><a>Le produit</a><a>Le geste</a><a>Offres</a><a>Livraison</a></nav>
+      <div class="hbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1C1A16" stroke-width="1.8"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>Panier</div>
+    </header>
+
+    <section class="story">
+      <p class="kicker">Déstockage en Suisse</p>
+      <h1>Le linge,<br><em>tout simplement.</em></h1>
+      <p class="lede"><b>Ariel All‑in‑1 PODS</b> — une capsule, un lavage. 60 capsules par sachet, livrées chez vous sans frais, partout en Suisse.</p>
+      <div class="row">
+        <div class="price"><small>Dès</small><b>CHF 4.–</b></div>
+        <p class="free"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16432F" stroke-width="1.8"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.6"/><circle cx="17" cy="17.5" r="1.6"/></svg>Livraison offerte en Suisse</p>
+      </div>
+      <div class="offers">
+        <div><span>1 sachet</span><b>CHF 4.–</b></div>
+        <div class="on"><span>2 sachets</span><b>CHF 7.–</b></div>
+        <div><span>3 sachets</span><b>CHF 10.–</b></div>
+      </div>
+      <div class="btn big">Choisir mon offre <span>→</span></div>
+    </section>
+
+    <p class="caption"><b>Ariel All‑in‑1 PODS</b>Sachet de 60 capsules · Universal+</p>
+
+    <div class="sheet">
+      <div class="hd">
+        <div class="name">Ariel All‑in‑1 PODS<small>60 capsules · 60 lavages</small></div>
+        <div class="p"><small>Dès</small><b>CHF 4.–</b></div>
+      </div>
+      <div class="os">
+        <div><span>1 sachet</span><b>CHF 4.–</b></div>
+        <div class="on"><span>2 sachets</span><b>CHF 7.–</b></div>
+        <div><span>3 sachets</span><b>CHF 10.–</b></div>
+      </div>
+      <div class="btn">Choisir mon offre <span>→</span></div>
+      <p class="f"><b>Livraison offerte en Suisse</b> · Retour sous 15 jours</p>
+    </div>
+  </div>
+  <script>
+    if (innerWidth < 600) document.getElementById('bg').src = 'img/c3-tall.jpg'
+  </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="fr-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept 4 — Express</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --night:#0C2A1F; --green:#127A4A; --lime:#D8F36A; --ink:#101814; --muted:#5F6B65; --line:#E3E8E5; --soft:#F3F5F4 }
+  * { box-sizing:border-box; margin:0; padding:0 }
+  body { background:#fff; color:var(--ink); font:400 15px/1.45 Archivo, sans-serif; -webkit-font-smoothing:antialiased }
+  .util { height:34px; display:flex; align-items:center; justify-content:space-between; padding:0 48px; background:var(--soft); font-size:12.5px; color:#34413A; font-weight:500 }
+  .util div { display:flex; gap:26px } .util b { color:var(--green); font-weight:700 }
+  header { height:68px; display:flex; align-items:center; gap:44px; padding:0 48px; background:var(--night); color:#fff }
+  .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; letter-spacing:-.01em }
+  .logo i { width:30px; height:30px; border-radius:8px; background:var(--lime); display:grid; place-items:center; color:var(--night); font-style:normal; font-weight:900; font-size:14px }
+  header nav { display:flex; gap:28px; font-size:14px; font-weight:500; color:#C9D8D0 }
+  .cart { margin-left:auto; display:flex; align-items:center; gap:10px; height:42px; padding:0 16px; border-radius:10px; background:rgba(255,255,255,.08); font-weight:600; font-size:14px }
+  .cart em { font-style:normal; min-width:20px; height:20px; border-radius:6px; background:var(--lime); color:var(--night); font-size:11px; font-weight:800; display:grid; place-items:center }
+
+  main { display:grid; grid-template-columns:600px 1fr; gap:56px; padding:28px 48px 0 }
+  .crumbs { font-size:12.5px; color:var(--muted); margin-bottom:14px }
+  .gal { position:relative; height:600px; border-radius:20px; background:var(--soft); display:grid; place-items:center }
+  .gal img { width:440px; filter:drop-shadow(0 26px 26px rgba(12,42,31,.2)) }
+  .gal .pill { position:absolute; left:18px; top:18px; padding:6px 12px; border-radius:8px; background:var(--night); color:var(--lime); font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase }
+  .gal .count { position:absolute; right:18px; bottom:18px; padding:6px 11px; border-radius:8px; background:#fff; font-size:12px; font-weight:600 }
+  .thumbs { margin-top:12px; display:grid; grid-template-columns:repeat(5,1fr); gap:10px }
+  .thumbs div { height:92px; border-radius:12px; background:var(--soft); overflow:hidden; display:grid; place-items:center; border:1.5px solid transparent }
+  .thumbs div.on { border-color:var(--night) }
+  .thumbs img { width:100%; height:100%; object-fit:cover } .thumbs .ct img { width:70%; height:auto; object-fit:contain }
+
+  .info { padding-top:30px }
+  .k { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--green) }
+  .k:before { content:''; width:8px; height:8px; border-radius:2px; background:var(--green) }
+  h1 { margin-top:10px; font-size:44px; font-weight:800; letter-spacing:-.03em; line-height:1.02 }
+  .facts { margin-top:12px; display:flex; gap:8px }
+  .facts span { padding:5px 10px; border-radius:7px; background:var(--soft); font-size:12.5px; font-weight:600 }
+  .pr { margin-top:18px; display:flex; align-items:baseline; gap:12px }
+  .pr small { font-size:15px; font-weight:600 } .pr strong { font-size:46px; font-weight:900; letter-spacing:-.04em } .pr span { font-size:13px; color:var(--muted) }
+  .pr em { font-style:normal; margin-left:auto; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--green) }
+
+  .list { margin-top:18px; border:1.5px solid var(--line); border-radius:16px; overflow:hidden }
+  .row { display:grid; grid-template-columns:22px 64px 1fr auto; align-items:center; gap:16px; padding:14px 18px; border-top:1.5px solid var(--line); position:relative }
+  .row:first-child { border-top:none }
+  .row.on { background:#F4FAF6; box-shadow:inset 0 0 0 2px var(--green); border-radius:14px }
+  .radio { width:22px; height:22px; border-radius:50%; border:2px solid #B9C4BE }
+  .on .radio { border:7px solid var(--green) }
+  .pk { display:flex; align-items:flex-end; justify-content:center; height:46px } .pk img { width:40px; filter:drop-shadow(0 3px 4px rgba(0,0,0,.15)) } .pk img + img { margin-left:-24px }
+  .row b { display:block; font-size:16px; font-weight:800 } .row small { color:var(--muted); font-size:13px }
+  .row .badge { margin-left:8px; padding:2px 8px; border-radius:6px; font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; background:var(--lime); color:var(--night); vertical-align:2px }
+  .row .badge.d { background:var(--night); color:#fff }
+  .row .p { text-align:right } .row .p strong { display:block; font-size:22px; font-weight:900; letter-spacing:-.03em } .row .p span { font-size:12px; font-weight:700; color:var(--green) }
+
+  .buy { margin-top:16px; display:grid; grid-template-columns:1fr; gap:10px }
+  .cta { height:62px; border-radius:14px; background:var(--night); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 24px; font-size:17px; font-weight:800 }
+  .cta span { display:flex; align-items:center; gap:10px } .cta i { font-style:normal; padding:5px 10px; border-radius:8px; background:var(--lime); color:var(--night); font-size:15px }
+  .assure { margin-top:14px; display:grid; grid-template-columns:repeat(3,1fr); gap:0; border:1.5px solid var(--line); border-radius:14px }
+  .assure div { padding:12px 14px; font-size:12.5px; color:var(--muted); line-height:1.35 } .assure div + div { border-left:1.5px solid var(--line) }
+  .assure b { display:block; color:var(--ink); font-size:13.5px; font-weight:700 }
+  .steps { margin-top:14px; display:flex; gap:18px; font-size:12.5px; color:var(--muted) } .steps b { color:var(--ink) }
+
+  .sticky { display:none }
+
+  @media (max-width:600px) {
+    .util { height:30px; padding:0 14px; font-size:11px; justify-content:center } .util div:last-child, .util .x { display:none }
+    header { height:56px; padding:0 14px } header nav { display:none } .logo { font-size:15px } .logo i { width:26px; height:26px }
+    .cart { height:38px; padding:0 11px; font-size:13px } .cart .t { display:none }
+    main { display:block; padding:12px 14px 0 }
+    .crumbs { display:none }
+    .top { display:grid; grid-template-columns:138px 1fr; gap:14px; align-items:center }
+    .gal { height:150px; border-radius:16px } .gal img { width:118px } .gal .pill { left:8px; top:8px; font-size:9px; padding:3px 7px } .gal .count { display:none }
+    .thumbs { display:none }
+    .info { padding-top:0 }
+    .k { font-size:10px } h1 { font-size:24px; margin-top:4px }
+    .facts { margin-top:6px; gap:5px } .facts span { font-size:10.5px; padding:3px 6px } .facts span:last-child { display:none }
+    .pr { margin-top:12px } .pr strong { font-size:32px } .pr small { font-size:13px } .pr span { font-size:11.5px }
+    .pr em { font-size:12px; white-space:nowrap } .pr strong { white-space:nowrap } .pr span { display:none }
+    .gal .pill { display:none }
+    .row .badge { white-space:nowrap; font-size:8.5px; letter-spacing:.02em }
+    .row b { white-space:nowrap } .row .badge { display:table; margin:3px 0 1px 0 !important }
+    .assure div { font-size:0 !important; padding:11px 6px !important; text-align:center } .assure b { font-size:11.5px !important }
+    .row .p strong { white-space:nowrap; font-size:17px !important } .row { gap:9px !important }
+    .sticky .s small { white-space:nowrap }
+    .steps { display:flex; justify-content:center; gap:8px; font-size:11.5px; margin-top:14px }
+    .list { margin-top:12px }
+    .row { grid-template-columns:20px 48px 1fr auto; gap:10px; padding:11px 12px }
+    .radio { width:20px; height:20px } .on .radio { border-width:6px }
+    .pk { height:36px } .pk img { width:30px } .pk img + img { margin-left:-19px }
+    .row b { font-size:14.5px } .row small { font-size:11.5px } .row .badge { font-size:9px; padding:2px 5px; margin-left:5px }
+    .row .p strong { font-size:19px } .row .p span { font-size:10.5px }
+    .buy { display:none }
+    .assure { margin-top:12px } .assure div { padding:9px 10px; font-size:10.5px } .assure b { font-size:11.5px }
+    .sticky { display:flex; position:fixed; left:0; right:0; bottom:0; gap:10px; align-items:center; padding:12px 14px 22px; background:rgba(255,255,255,.96); border-top:1px solid var(--line); box-shadow:0 -10px 30px rgba(12,42,31,.08) }
+    .sticky .s { flex:1; line-height:1.2 } .sticky .s small { display:block; color:var(--muted); font-size:11.5px } .sticky .s b { font-size:20px; font-weight:900; letter-spacing:-.02em }
+    .sticky .cta { height:54px; flex:none; width:220px; font-size:15.5px; padding:0 18px }
+  }
+</style>
+</head>
+<body>
+  <div class="util"><div><span><b>Livraison offerte en Suisse</b></span><span class="x">Retour sous 15 jours</span><span class="x">Paiement sécurisé</span></div><div><span>Aide & contact</span><span>FR</span></div></div>
+  <header>
+    <div class="logo"><i>N</i>Nom de la boutique</div>
+    <nav><a>Offres</a><a>Le produit</a><a>Mode d’emploi</a><a>Livraison & retours</a><a>FAQ</a></nav>
+    <div class="cart"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span class="t">Panier</span><em>0</em></div>
+  </header>
+
+  <main>
+    <section>
+      <p class="crumbs">Accueil / Lessive / Ariel All‑in‑1 PODS</p>
+      <div class="top">
+        <div class="gal"><span class="pill">Déstockage</span><img src="img/packshot-cutout.webp" alt="Ariel All-in-1 PODS"><span class="count">1 / 5</span></div>
+        <div class="mob-info" style="display:none"></div>
+      </div>
+      <div class="thumbs"><div class="on ct"><img src="img/packshot-cutout.webp" alt=""></div><div><img src="img/c3-tall.jpg" alt=""></div><div><img src="img/c5-trio.jpg" alt=""></div><div><img src="img/pod-water.webp" alt=""></div><div><img src="img/handpod.webp" alt=""></div></div>
+    </section>
+
+    <section class="info">
+      <span class="k">Déstockage en Suisse</span>
+      <h1>Ariel All‑in‑1 PODS</h1>
+      <div class="facts"><span>60 capsules</span><span>60 lavages / sachet</span><span>Universal+</span></div>
+      <div class="pr"><small>Dès</small><strong>CHF 4.–</strong><span>≈ CHF 0.07 / lavage</span>
+        <em><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#127A4A" stroke-width="2"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.6"/><circle cx="17" cy="17.5" r="1.6"/></svg>Livraison offerte</em></div>
+      <div class="list">
+        <div class="row"><span class="radio"></span><span class="pk"><img src="img/packshot-cutout.webp" alt=""></span><span><b>1 sachet</b><small>60 lavages · 6,7 ct / lavage</small></span><span class="p"><strong>CHF 4.–</strong></span></div>
+        <div class="row on"><span class="radio"></span><span class="pk"><img src="img/packshot-cutout.webp" alt=""><img src="img/packshot-cutout.webp" alt=""></span><span><b>2 sachets<span class="badge">Populaire</span></b><small>120 lavages · 5,8 ct / lavage</small></span><span class="p"><strong>CHF 7.–</strong><span>− CHF 1.–</span></span></div>
+        <div class="row"><span class="radio"></span><span class="pk"><img src="img/packshot-cutout.webp" alt=""><img src="img/packshot-cutout.webp" alt=""><img src="img/packshot-cutout.webp" alt=""></span><span><b>3 sachets<span class="badge d">Meilleure offre</span></b><small>180 lavages · 5,6 ct / lavage</small></span><span class="p"><strong>CHF 10.–</strong><span>− CHF 2.–</span></span></div>
+      </div>
+      <div class="buy">
+        <div class="cta"><span>Commander maintenant</span><i>CHF 7.–</i></div>
+      </div>
+      <div class="assure">
+        <div><b>Livraison offerte</b>Estimée sous 3 jours ouvrables</div>
+        <div><b>Retour 15 jours</b>Conditions claires</div>
+        <div><b>Paiement sécurisé</b>Prestataire spécialisé</div>
+      </div>
+      <p class="steps"><span><b>1</b> Choisissez</span><span>→</span><span><b>2</b> Payez en ligne</span><span>→</span><span><b>3</b> Recevez chez vous</span></p>
+    </section>
+  </main>
+
+  <div class="sticky"><div class="s"><small>2 sachets · port offert</small><b>CHF 7.–</b></div><div class="cta"><span>Commander</span><span>→</span></div></div>
+
+  <script>
+    // Mobile : titre et prix à côté de la photo (même contenu, ordre compact)
+    if (innerWidth < 600) {
+      const info = document.querySelector('.info'), slot = document.querySelector('.mob-info')
+      slot.style.display = 'block'
+      slot.append(info.querySelector('.k'), info.querySelector('h1'), info.querySelector('.facts'))
+    }
+  </script>
+</body>
+</html>

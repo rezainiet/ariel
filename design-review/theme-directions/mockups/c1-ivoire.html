@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept 1 — Ivoire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --ivory:#F6F1E8; --stone:#ECE4D6; --ink:#1E2420; --muted:#7A766D; --green:#1F4A37; --hair:#D9CFBE; }
+  * { box-sizing:border-box; margin:0; padding:0 }
+  body { background:var(--ivory); color:var(--ink); font:300 15px/1.6 Jost, sans-serif; -webkit-font-smoothing:antialiased }
+  .serif { font-family:'Cormorant Garamond', serif }
+  .caps { text-transform:uppercase; letter-spacing:.32em; font-size:10.5px; font-weight:400 }
+
+  header { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; height:84px; padding:0 72px; border-bottom:1px solid var(--hair) }
+  header nav { display:flex; gap:34px }
+  header nav a { color:var(--ink); text-decoration:none }
+  .mark { text-align:center }
+  .mark b { display:block; font:500 25px/1 'Cormorant Garamond', serif; letter-spacing:.24em; text-transform:uppercase }
+  .mark span { display:block; margin-top:6px; color:var(--muted) }
+  .right { display:flex; justify-content:flex-end; align-items:center; gap:26px }
+  .right .caps { color:var(--muted) }
+
+  .hero { display:grid; grid-template-columns:1fr 1.05fr; height:calc(900px - 84px - 64px); padding:0 72px 0 120px }
+  .copy { align-self:center; max-width:470px }
+  .eyebrow { display:flex; align-items:center; gap:16px; color:var(--green) }
+  .eyebrow i { width:44px; height:1px; background:var(--green) }
+  h1 { font:400 92px/.92 'Cormorant Garamond', serif; letter-spacing:-.01em; margin-top:26px }
+  h1 em { font-style:italic; color:var(--green) }
+  .sub { margin-top:22px; font-size:16px; color:#4b4a45 }
+  .rule { height:1px; background:var(--hair); margin:34px 0 26px }
+  .price { display:flex; align-items:baseline; gap:14px }
+  .price small { font-size:14px; color:var(--muted) }
+  .price strong { font:400 64px/1 'Cormorant Garamond', serif; color:var(--green) }
+  .free { margin-top:8px; font-size:14px }
+  .free b { font-weight:500; color:var(--green) }
+  .cta { display:flex; align-items:center; gap:28px; margin-top:34px }
+  .btn { display:inline-flex; align-items:center; gap:18px; height:58px; padding:0 34px; background:var(--green); color:#F6F1E8; text-decoration:none; letter-spacing:.24em; text-transform:uppercase; font-size:12px; font-weight:400 }
+  .link { font-size:13px; color:var(--ink); border-bottom:1px solid var(--ink); padding-bottom:2px }
+
+  .stage { position:relative; display:flex; align-items:center; justify-content:center }
+  .arch { position:absolute; width:500px; height:640px; bottom:24px; border-radius:260px 260px 0 0; background:linear-gradient(180deg, #EFE7DA 0%, #E6DCCB 100%) }
+  .plinth { position:absolute; bottom:24px; width:620px; height:90px; background:linear-gradient(180deg,#E9E1D3,#DDD2C0); }
+  .plinth:before { content:''; position:absolute; inset:0 0 auto 0; height:1px; background:#cdbfa8 }
+  .pack { position:relative; width:430px; margin-top:110px; filter:drop-shadow(0 30px 28px rgba(60,45,25,.22)) }
+  .vert { position:absolute; right:12px; top:50%; transform:rotate(90deg) translateX(-50%); transform-origin:right top; color:var(--muted) }
+  .num { position:absolute; left:28px; top:70px; text-align:left }
+  .num b { display:block; font:400 120px/1 'Cormorant Garamond', serif; color:var(--green); opacity:.9 }
+  .num span { color:var(--muted) }
+
+  .offers { display:grid; grid-template-columns:repeat(3,1fr); margin-top:30px; border-top:1px solid var(--hair); border-bottom:1px solid var(--hair) }
+  .offers div { padding:14px 0 12px; text-align:center }
+  .offers div + div { border-left:1px solid var(--hair) }
+  .offers p { font-size:12px; color:var(--muted); letter-spacing:.18em; text-transform:uppercase }
+  .offers b { font:400 26px/1.3 'Cormorant Garamond', serif }
+  .offers .on b { color:var(--green) }
+  .offers .on p { color:var(--green) }
+
+  footer { height:64px; display:flex; align-items:center; justify-content:center; gap:54px; border-top:1px solid var(--hair); color:var(--muted) }
+  footer span:before { content:'—'; margin-right:12px; color:var(--hair) }
+  footer span:first-child:before { content:none }
+
+  @media (max-width:600px) {
+    header { display:flex; justify-content:space-between; height:66px; padding:0 20px }
+    .mark { text-align:left }
+    header nav, .right .caps { display:none }
+    .mark b { font-size:19px }
+    .mark span { font-size:8.5px; letter-spacing:.28em; margin-top:4px }
+    .hero { display:flex; flex-direction:column; height:auto; padding:0 }
+    .stage { order:-1; height:330px; overflow:hidden }
+    .arch { width:250px; height:300px; bottom:0; border-radius:130px 130px 0 0 }
+    .plinth { width:100%; height:34px; bottom:0 }
+    .pack { width:228px; margin-top:52px }
+    .num, .vert { display:none }
+    .copy { padding:22px 22px 0; text-align:center; max-width:none }
+    .eyebrow { justify-content:center } .eyebrow i { width:24px }
+    h1 { font-size:46px; margin-top:12px }
+    .sub { margin-top:10px; font-size:14px }
+    .rule { margin:18px 0 14px }
+    .price { justify-content:center } .price strong { font-size:44px }
+    .free { font-size:13px; margin-top:4px }
+    .offers { margin-top:16px } .offers div { padding:9px 0 7px } .offers b { font-size:21px } .offers p { font-size:9.5px }
+    .cta { flex-direction:column; gap:12px; margin-top:16px }
+    .btn { width:100%; justify-content:center; height:54px }
+    footer { display:none }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <nav class="caps"><a>Offres</a><a>Le produit</a><a>Livraison</a></nav>
+    <div class="mark"><b>Nom de la boutique</b><span class="caps">Déstockage · Suisse</span></div>
+    <div class="right"><span class="caps">FR</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E2420" stroke-width="1.3"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></div>
+  </header>
+
+  <main class="hero">
+    <section class="copy">
+      <p class="eyebrow caps"><i></i>Déstockage en Suisse</p>
+      <h1>Ariel<br><em>All‑in‑1</em> PODS</h1>
+      <p class="sub">Capsules de lessive · 60 lavages par sachet</p>
+      <div class="rule"></div>
+      <div class="price"><small>Dès</small><strong>CHF 4.–</strong></div>
+      <p class="free"><b>Livraison offerte en Suisse</b> · prix final, port compris</p>
+      <div class="offers">
+        <div><p>1 sachet</p><b>CHF 4.–</b></div>
+        <div class="on"><p>2 sachets</p><b>CHF 7.–</b></div>
+        <div><p>3 sachets</p><b>CHF 10.–</b></div>
+      </div>
+      <div class="cta">
+        <a class="btn">Choisir mon offre <span>→</span></a>
+        <a class="link">Découvrir le produit</a>
+      </div>
+    </section>
+    <section class="stage">
+      <div class="arch"></div>
+      <div class="plinth"></div>
+      <div class="num"><b>60</b><span class="caps">lavages</span></div>
+      <img class="pack" src="img/packshot-cutout.webp" alt="Ariel All-in-1 PODS, sachet de 60 capsules">
+      <p class="vert caps">Universal+ · 60 capsules</p>
+    </section>
+  </main>
+
+  <footer class="caps"><span>Expédié depuis la Suisse</span><span>Retour sous 15 jours</span><span>Paiement sécurisé</span></footer>
+</body>
+</html>
