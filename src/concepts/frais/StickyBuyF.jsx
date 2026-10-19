@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ShoppingBag } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../context/CartContext.jsx'
 import { formatCHF, getOffer } from '../../config/store.js'
 import { Packs } from './HeroF.jsx'
@@ -9,6 +10,12 @@ import { Chf } from './Icons.jsx'
 // jamais pendant le panier ouvert. Respecte les zones sûres (encoche, barre d'accueil).
 export default function StickyBuyF({ ctaRef, sel, disabled }) {
   const { selectOffer, drawerOpen } = useCart()
+  const navigate = useNavigate()
+  // Achat direct : l'offre choisie est placée au panier (sans doublon) puis la commande s'ouvre.
+  const buyNow = () => {
+    selectOffer(sel, { openDrawer: false, feedback: false })
+    navigate('/checkout')
+  }
   const [past, setPast] = useState(false)
   useEffect(() => {
     const el = ctaRef.current
@@ -41,11 +48,11 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
             </span>
           </a>
           <button
-            onClick={() => selectOffer(sel)}
+            onClick={buyNow}
             tabIndex={shown ? 0 : -1}
             className="flex h-12 flex-none items-center gap-2 rounded-full bg-fr-green px-5 text-[0.92rem] font-extrabold text-white shadow-[0_10px_22px_rgba(14,122,71,0.3)] active:scale-[0.98]"
           >
-            <ShoppingBag size={17} strokeWidth={2} /> Ajouter au panier
+            Acheter maintenant <ArrowRight size={17} strokeWidth={2.2} />
           </button>
         </div>
       </div>

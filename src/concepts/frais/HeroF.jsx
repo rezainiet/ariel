@@ -273,31 +273,39 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status }, ctaRef) {
         )}
       </p>
 
-      <div ref={ctaRef} className="mt-4">
+      {/* Achat direct (principal) : sélection → page de commande, sans passer par le panier.
+          Ajout au panier (secondaire) : pour vérifier ou modifier avant de commander. */}
+      <div ref={ctaRef} className="mt-4 grid gap-2.5">
         <button
-          onClick={add}
+          onClick={direct}
           disabled={soldOut}
           className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1rem] font-extrabold text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-all duration-200 hover:-translate-y-px hover:bg-[#0C6B3E] hover:shadow-[0_18px_32px_rgba(14,122,71,0.32)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-fr-muted disabled:shadow-none lg:h-[3.75rem] lg:text-[1.05rem]"
         >
           {soldOut ? (
             'Épuisé'
-          ) : added ? (
-            <>
-              <Check size={19} strokeWidth={2.6} /> Ajouté au panier
-            </>
           ) : (
             <>
-              <ShoppingBag size={19} strokeWidth={1.9} />
               <span>
-                Ajouter au panier · <Chf v={offer.price} format={formatCHF} />
+                Acheter maintenant · <Chf v={offer.price} format={formatCHF} />
               </span>
               <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
             </>
           )}
         </button>
         {!soldOut && (
-          <button onClick={direct} className="mx-auto mt-2 flex items-center gap-1 text-[0.82rem] font-semibold text-fr-green underline-offset-4 hover:underline">
-            ou commander directement <ArrowRight size={14} />
+          <button
+            onClick={add}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-fr-green bg-white text-[0.95rem] font-bold text-fr-green transition-colors duration-200 hover:bg-fr-mint lg:h-[3.25rem]"
+          >
+            {added ? (
+              <>
+                <Check size={18} strokeWidth={2.6} /> Ajouté au panier
+              </>
+            ) : (
+              <>
+                <ShoppingBag size={18} strokeWidth={1.9} /> Ajouter au panier
+              </>
+            )}
           </button>
         )}
       </div>
