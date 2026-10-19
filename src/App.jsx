@@ -22,6 +22,8 @@ import { trackPageView } from './lib/pixel.js'
 // Archives de conception (v1, concepts A/B/C, page de comparaison) : INTERNES uniquement.
 // Absentes du build public (VITE_DESIGN_PREVIEW=true seulement pour un environnement de recette).
 const DESIGN_PREVIEW = import.meta.env.VITE_DESIGN_PREVIEW === 'true'
+// Administration (paiement) : chargée à la demande, protégée côté serveur, non indexée.
+const Admin = lazy(() => import('./pages/Admin.jsx'))
 const Home = DESIGN_PREVIEW ? lazy(() => import('./pages/Home.jsx')) : null
 const ConceptC = DESIGN_PREVIEW ? lazy(() => import('./concepts/c/ConceptC.jsx')) : null
 const ConceptA = DESIGN_PREVIEW ? lazy(() => import('./concepts/a/ConceptA.jsx')) : null
@@ -87,6 +89,7 @@ export default function App() {
           {/* Anciennes adresses : redirigées (liens déjà partagés, retours prestataire) */}
           <Route path="/commande" element={<Navigate to="/checkout" replace />} />
           <Route path="/commande/confirmation" element={<OrderConfirmation />} />
+          <Route path="/admin" element={<Admin />} />
           <Route element={<StoreLayout />}>
             <Route path="/retours-remboursements" element={<Returns />} />
             <Route path="/politique-de-confidentialite" element={<Privacy />} />

@@ -21,24 +21,31 @@ Chaque valeur se règle dans `.env.local` (modèle : `.env.example`). Justificat
 
 ## 2. Paiement — Bloquant
 
-État actuel : **aucun prestataire connecté**. Le formulaire de commande fonctionne (validation, récapitulatif),
-mais « Acheter » n'envoie rien : le client lit « le paiement en ligne n'est pas encore ouvert : aucune commande n'a
-été enregistrée et aucun montant n'a été débité ».
+Deux voies existent ; la redirection externe est prioritaire quand elle est activée.
 
-- [ ] Choisir le prestataire (cartes, Apple Pay, Google Pay, TWINT) avec **page de paiement hébergée** ou champs
-      sécurisés du prestataire. Aucune donnée de carte ne doit passer par nos formulaires.
-- [ ] Serveur de commande (`VITE_CHECKOUT_API`) :
-  - `POST /checkout-session` : valider avec `server/validate-order.mjs` (mêmes règles que le navigateur,
-    **montant recalculé depuis l'offre**, jamais repris du client), créer la session, renvoyer `{ redirectUrl }` ;
-  - `GET /orders/verify?session=…` : vérifier le paiement auprès du prestataire (API/webhook), renvoyer
-    `{ verified: true, orderId, total, currency, packs }` ;
-  - envoyer l'e-mail de confirmation de commande, puis l'e-mail d'expédition.
-- [ ] URL de retour chez le prestataire : succès `/checkout/confirmation?session=…`, annulation
-      `/checkout?paiement=annule`, erreur `/checkout?paiement=erreur` (le formulaire est conservé).
-- [ ] `VITE_PAYMENT_PROVIDER` + `VITE_CHECKOUT_API` renseignés ; `VITE_PAYMENT_METHODS` = **uniquement** les moyens
-      réellement activés (`card`, `twint`, `apple_pay`, `google_pay`, …).
-- [ ] Tester paiement réussi, refusé, annulé ; la confirmation n'affiche un succès et n'envoie PURCHASE (Snap)
-      **qu'après** vérification serveur.
+### A. Redirection vers une page de paiement externe (prête) — réglée dans `/admin`
+
+- [ ] Déployer avec le serveur Node (`npm run build` puis `npm start`, voir README) et définir `ADMIN_PASSWORD`
+      (12 caractères minimum, jamais dans le dépôt) et `PUBLIC_ORIGIN` (adresse publique de la boutique, pour l'URL
+      de la photo produit).
+- [ ] Dans `/admin` → Paiement : domaine de paiement, chemin (`/{code}` par défaut), **un code par offre**
+      (1, 2, 3 sachets), noms de produit, photo (facultatif), paramètres d'URL (valeurs par défaut : `sub10` prénom,
+      `adv3` nom, `sub3` code postal, `sub4` e-mail, `sub6` ville, `sub7` adresse + complément, `sub8` téléphone,
+      `adv1` produit, `adv2` photo). Vérifier l'aperçu, puis **Activer** et **Enregistrer**.
+- [ ] Données personnelles dans l'URL : le domaine de paiement doit être de confiance (HTTPS, contrat de
+      sous-traitance). La politique de confidentialité le mentionne automatiquement quand la redirection est active.
+- [ ] Confirmation de commande et e-mails : gérés par la page de paiement externe. La boutique ne reçoit aucun
+      retour de paiement : l'événement PURCHASE (Snap) n'est pas envoyé dans cette voie (aucun succès non vérifié).
+- [ ] Tester une commande réelle par offre (1, 2, 3 sachets) avant la mise en ligne.
+
+### B. Prestataire intégré avec vérification serveur (non connecté)
+
+- [ ] `VITE_PAYMENT_PROVIDER` + `VITE_CHECKOUT_API` : `POST /checkout-session` (valider avec `server/validate-order.mjs`,
+      montant recalculé), `GET /orders/verify?session=…` ; retours `/checkout/confirmation?session=…`,
+      `/checkout?paiement=annule`, `/checkout?paiement=erreur`.
+- [ ] `VITE_PAYMENT_METHODS` = uniquement les moyens réellement activés.
+
+Sans voie active, « Acheter » n'envoie rien : le client lit « le paiement en ligne n'est pas encore ouvert ».
 
 ## 3. Livraison — Bloquant pour afficher un délai
 

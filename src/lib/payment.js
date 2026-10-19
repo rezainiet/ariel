@@ -62,3 +62,40 @@ export async function verifyOrder(sessionId) {
     return null
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Paiement par REDIRECTION EXTERNE (réglé dans /admin, servi par server/index.mjs).
+// Le serveur valide la commande (mêmes règles que le navigateur) puis construit l'URL
+// (domaine + code de l'offre + paramètres). Aucune URL n'est construite côté navigateur.
+// ─────────────────────────────────────────────────────────────
+export async function getRedirectPayment() {
+  try {
+    const res = await fetch('/api/payment/config', { headers: { Accept: 'application/json' }, cache: 'no-store' })
+    if (!res.ok) return { enabled: false, domain: '' }
+    const data = await res.json()
+    return { enabled: data?.externalRedirect?.enabled === true, domain: data?.externalRedirect?.domain || '' }
+  } catch {
+    return { enabled: false, domain: '' }
+  }
+}
+
+// order = { offerId, termsAccepted, customer } → { status: 'redirecting' | 'invalid' | 'unavailable' | 'error', errors? }
+export async function startRedirectPayment(order) {
+  try {
+    const res = await fetch('/api/checkout/redirect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (res.status === 422) return { status: 'invalid', errors: data.errors || {} }
+    if (res.status === 409) return { status: 'unavailable' }
+    if (res.ok && /^https:\/\//.test(data.redirectUrl || '')) {
+      window.location.assign(data.redirectUrl)
+      return { status: 'redirecting' }
+    }
+    return { status: 'error' }
+  } catch {
+    return { status: 'error' }
+  }
+}

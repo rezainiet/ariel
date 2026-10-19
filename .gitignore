@@ -7,3 +7,6 @@ dist-ssr
 .env.*.local
 .DS_Store
 *.log
+
+# Données du serveur (configuration du paiement)
+server/data/

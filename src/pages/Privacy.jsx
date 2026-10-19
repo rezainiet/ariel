@@ -1,9 +1,15 @@
+import { useEffect, useState } from 'react'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
 import { STORE, MERCHANT } from '../config/store.js'
 import { isPixelEnabled } from '../lib/pixel.js'
+import { getRedirectPayment } from '../lib/payment.js'
 
 // Politique de confidentialité : description des traitements réellement prévus par la boutique.
 export default function Privacy() {
+  const [redirect, setRedirect] = useState({ enabled: false, domain: '' })
+  useEffect(() => {
+    getRedirectPayment().then(setRedirect)
+  }, [])
   const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return (
     <>
@@ -37,6 +43,13 @@ export default function Privacy() {
             Vos données sont transmises uniquement aux prestataires nécessaires à votre commande : le prestataire de paiement et
             le transporteur.
           </p>
+          {redirect.enabled && redirect.domain && (
+            <p>
+              Paiement : en cliquant sur « Acheter », vous êtes redirigé vers la page de paiement de {redirect.domain}. Votre prénom,
+              votre nom, votre adresse de livraison, votre e-mail, votre téléphone et l’offre choisie lui sont transmis dans le lien
+              de redirection afin de finaliser la commande.
+            </p>
+          )}
         </Block>
         <Block title="Mesure d’audience">
           {isPixelEnabled() ? (

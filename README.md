@@ -13,6 +13,23 @@ npm run preview  # prévisualisation du build
 node server/validate-order.mjs   # auto-test de la validation serveur des commandes
 ```
 
+## Serveur et administration
+
+`server/index.mjs` (Node ≥ 18, sans dépendance) sert l'API de la boutique et, en production, le site compilé :
+
+```bash
+npm run build
+ADMIN_PASSWORD="…12 caractères minimum…" PUBLIC_ORIGIN="https://votre-boutique.ch" NODE_ENV=production npm start
+```
+
+En développement : lancer `npm run server` (port 8787) en parallèle de `npm run dev` (Vite relaie `/api`).
+
+- **`/admin`** (non lié, non indexé, mot de passe `ADMIN_PASSWORD`, session par cookie httpOnly, tentatives limitées) :
+  activer / désactiver le **paiement par redirection externe**, domaine, chemin, un code par offre, paramètres d'URL,
+  aperçu de l'URL générée.
+- Réglages enregistrés dans `server/data/payment-config.json` (hors dépôt ; `DATA_DIR` pour un autre dossier).
+- `POST /api/checkout/redirect` : le serveur revalide la commande puis construit l'URL — jamais le navigateur.
+
 ## Routes
 
 | Route | Contenu |
@@ -22,6 +39,7 @@ node server/validate-order.mjs   # auto-test de la validation serveur des comman
 | `/checkout/confirmation` | Confirmation affichée **uniquement** après vérification serveur du paiement |
 | `/livraison`, `/retours-remboursements`, `/conditions-generales-de-vente`, `/politique-de-confidentialite`, `/mentions-legales`, `/contact` | Pages de service et légales |
 | `/commande` | Ancienne adresse, redirigée vers `/checkout` |
+| `/admin` | Administration du paiement (protégée par mot de passe, côté serveur) |
 
 Les archives de conception (`/concept-a|b|c`, `/v1`, `/design`) ne sont pas publiées : elles n'existent que si
 `VITE_DESIGN_PREVIEW=true` (environnement de recette interne).

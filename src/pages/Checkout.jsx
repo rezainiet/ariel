@@ -17,7 +17,7 @@ import {
 import { useCart } from '../context/CartContext.jsx'
 import { OFFERS, PRODUCT, DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
 import { trackStartCheckout } from '../lib/pixel.js'
-import { startPayment, isPaymentConfigured } from '../lib/payment.js'
+import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
 import { validateCustomer, clean } from '../lib/orderValidation.js'
 import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
@@ -268,7 +268,16 @@ export default function Checkout() {
   const [cities, setCities] = useState([])
   const [streets, setStreets] = useState([])
   const alertRef = useRef(null)
-  const paymentReady = isPaymentConfigured()
+  // Moyen actif : redirection externe (réglée dans /admin) en priorité, sinon prestataire intégré.
+  const [redirect, setRedirect] = useState({ enabled: false, domain: '', checked: false })
+  useEffect(() => {
+    let alive = true
+    getRedirectPayment().then((r) => alive && setRedirect({ ...r, checked: true }))
+    return () => {
+      alive = false
+    }
+  }, [])
+  const paymentReady = redirect.enabled || isPaymentConfigured()
 
   useEffect(() => {
     if (hasItems) trackStartCheckout({ currency: 'CHF', price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs })
@@ -342,6 +351,16 @@ export default function Checkout() {
       return focusAlert()
     }
     setStatus('loading')
+    if (redirect.enabled) {
+      // Le serveur revalide la commande puis renvoie l'URL de la page de paiement externe.
+      const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, customer: clean(values) })
+      if (res.status === 'redirecting') return
+      if (res.status === 'invalid') {
+        setErrors(res.errors)
+        setStatus('idle')
+      } else setStatus(res.status === 'unavailable' ? 'unavailable' : 'error')
+      return focusAlert()
+    }
     // Le serveur recalcule le montant à partir de l'offre ; aucun total n'est transmis.
     const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, customer: clean(values) })
     if (res.status !== 'redirecting') {
@@ -490,7 +509,20 @@ export default function Checkout() {
                 </span>
               }
             >
-              {paymentReady ? (
+              {redirect.enabled ? (
+                <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] leading-relaxed text-fr-ink">
+                  <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
+                  <span>
+                    <strong className="font-bold">Paiement sur une page sécurisée.</strong> Après « Acheter », vous êtes redirigé vers{' '}
+                    <strong className="font-bold">{redirect.domain}</strong> pour régler {formatCHF(offer.price)}. Vos coordonnées de
+                    livraison (nom, adresse, e-mail, téléphone) lui sont transmises pour finaliser la commande.
+                  </span>
+                </p>
+              ) : !redirect.checked ? (
+                <p className="flex items-center gap-2 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] text-fr-muted">
+                  <Loader2 size={16} className="animate-spin" /> Chargement des moyens de paiement…
+                </p>
+              ) : paymentReady ? (
                 <div className="space-y-3">
                   {PAYMENT_METHODS.length > 0 && <MethodPicker method={method} setMethod={setMethod} />}
                   <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.84rem] leading-relaxed text-fr-muted">
