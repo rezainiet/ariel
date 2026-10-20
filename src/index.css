@@ -7,6 +7,29 @@
 @layer base {
   :root {
     color-scheme: light;
+
+    /* ── Système de mouvement ──────────────────────────────────
+       Courbes et durées communes à toute la boutique (Tailwind : ease-out-soft,
+       duration-base, animate-*). Courtes, sans rebond : un changement d'état se
+       comprend sans jamais retarder l'interaction. */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --dur-fast: 140ms; /* survol, couleur */
+    --dur-base: 220ms; /* sélection, bouton, message */
+    --dur-slow: 340ms; /* changement d'image, accordéon */
+    --dur-enter: 480ms; /* entrée de section au défilement */
+    --dur-drawer: 320ms; /* ouverture du panier */
+    --dur-exit: 200ms; /* toute sortie : plus rapide que l'entrée */
+    --motion-rise: 8px; /* amplitude des glissements (mobile : plus sobre) */
+    --reveal-stagger: 0.5; /* décalage des cascades sur mobile */
+  }
+
+  @media (min-width: 1024px) {
+    :root {
+      --motion-rise: 14px;
+      --dur-enter: 560ms;
+      --reveal-stagger: 1;
+    }
   }
 
   * {
@@ -16,6 +39,8 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    /* La barre de défilement garde sa place quand le panier ou la galerie bloquent le scroll : pas de saut de mise en page. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -36,14 +61,21 @@
     @apply outline-none ring-2 ring-forest/60 ring-offset-2 ring-offset-canvas rounded;
   }
 
+  /* Mouvement réduit : aucun déplacement ni boucle ; chaque état (sélection, erreur, panier ouvert)
+     s'affiche immédiatement dans sa forme finale, couleurs et anneaux compris. */
   @media (prefers-reduced-motion: reduce) {
+    :root {
+      --motion-rise: 0px;
+    }
     html {
       scroll-behavior: auto;
     }
     *, *::before, *::after {
       animation-duration: 0.001ms !important;
+      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
+      transition-delay: 0s !important;
     }
   }
 }
@@ -60,6 +92,60 @@
 
   .hairline {
     @apply border-t border-line;
+  }
+
+  /* Entrée au défilement (<Rise>) : fondu + léger glissement, une seule fois.
+     Les couleurs restent animables (survol) sans hériter du délai de cascade. */
+  .reveal {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-rise), 0);
+    transition-property: opacity, transform, background-color, color, box-shadow;
+    transition-duration: var(--dur-enter), var(--dur-enter), var(--dur-base), var(--dur-base), var(--dur-base);
+    transition-timing-function: var(--ease-out);
+    transition-delay: calc(var(--reveal-delay, 0ms) * var(--reveal-stagger)), calc(var(--reveal-delay, 0ms) * var(--reveal-stagger)), 0ms, 0ms, 0ms;
+  }
+  .reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Révélation d'image (<RevealFrame>) — desktop : le cadre s'ouvre et la photo se pose ;
+     mobile : simple fondu (pas d'animation de découpe pendant le défilement tactile). */
+  .reveal-frame {
+    opacity: 0;
+    transition: opacity var(--dur-enter) var(--ease-out);
+    transition-delay: calc(var(--reveal-delay, 0ms) * var(--reveal-stagger));
+  }
+  .reveal-frame.is-in {
+    opacity: 1;
+  }
+  @media (min-width: 1024px) {
+    .reveal-frame {
+      opacity: 1;
+      clip-path: inset(4% 4% 4% 4% round var(--frame-radius));
+      transition: clip-path 760ms var(--ease-out) var(--reveal-delay, 0ms);
+    }
+    .reveal-frame.is-in {
+      clip-path: inset(0 0 0 0 round var(--frame-radius));
+    }
+    .reveal-frame > .reveal-media {
+      transform: scale(1.04);
+      transition: transform 900ms var(--ease-out) var(--reveal-delay, 0ms);
+    }
+    .reveal-frame.is-in > .reveal-media {
+      transform: none;
+    }
+  }
+
+  /* Impression : tout le contenu est visible, même les sections pas encore révélées à l'écran. */
+  @media print {
+    .reveal,
+    .reveal-frame,
+    .reveal-media {
+      opacity: 1 !important;
+      transform: none !important;
+      clip-path: none !important;
+    }
   }
 }
 

@@ -73,7 +73,7 @@ export default function Lightbox({ images, index, onClose, onIndex }) {
           key={img.src}
           src={img.src}
           alt={img.alt}
-          className="max-h-[78vh] w-auto animate-fade-in rounded-xl bg-white object-contain"
+          className="max-h-[78vh] w-auto animate-swap-in rounded-xl bg-white object-contain"
         />
         <figcaption className="mt-4 text-center text-sm text-white/75">
           {img.alt} <span className="text-white/40">· {index + 1}/{images.length}</span>

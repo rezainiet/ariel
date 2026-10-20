@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { formatCHF } from '../config/store.js'
+import { usePresence } from '../lib/motion.js'
 
 // Confirmation discrète après un VRAI ajout au panier (quand le panier reste fermé).
 export default function AddedToast() {
@@ -21,18 +22,25 @@ export default function AddedToast() {
     return () => clearTimeout(t)
   }, [addedAt])
 
-  if (!visible || !offer || drawerOpen || pathname.startsWith('/checkout')) return null
+  const show = Boolean(visible && offer && !drawerOpen && !pathname.startsWith('/checkout'))
+  // Garde la dernière offre affichée pendant le fondu de sortie.
+  const last = useRef(offer)
+  if (offer) last.current = offer
+  const { mounted, leaving } = usePresence(show)
+  if (!mounted || !last.current) return null
+  const shownOffer = last.current
 
   return (
     <div
       role="status"
-      className="fixed inset-x-4 top-[max(0.75rem,env(safe-area-inset-top))] z-[55] mx-auto flex max-w-md animate-fade-up items-center gap-3 rounded-2xl border border-fr-line bg-white p-3 pl-4 font-jakarta shadow-[0_12px_40px_rgba(11,61,42,0.16)]"
+      inert={leaving ? '' : undefined}
+      className={`fixed inset-x-4 top-[max(0.75rem,env(safe-area-inset-top))] z-[55] mx-auto flex max-w-md ${leaving ? 'pointer-events-none animate-toast-out' : 'animate-toast-in'} items-center gap-3 rounded-2xl border border-fr-line bg-white p-3 pl-4 font-jakarta shadow-[0_12px_40px_rgba(11,61,42,0.16)]`}
     >
       <CheckCircle2 size={22} className="flex-none text-fr-green" />
       <p className="flex-1 text-sm text-fr-ink">
         <span className="font-semibold">Ajouté au panier</span>
         <span className="block text-xs text-fr-muted">
-          {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · {formatCHF(offer.price)}
+          {shownOffer.packs} sachet{shownOffer.packs > 1 ? 's' : ''} · {shownOffer.washes} capsules · {formatCHF(shownOffer.price)}
         </span>
       </p>
       <button
@@ -40,7 +48,7 @@ export default function AddedToast() {
           setVisible(false)
           openDrawer()
         }}
-        className="h-10 flex-none rounded-full bg-fr-green px-4 text-xs font-bold text-white hover:bg-[#0C6B3E]"
+        className="h-10 flex-none rounded-full bg-fr-green px-4 text-xs font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.97]"
       >
         Voir le panier
       </button>

@@ -101,7 +101,7 @@ export function ReviewsF() {
           ))}
         </ul>
         {reviews.length > 3 && !all && (
-          <button onClick={() => setAll(true)} className="mt-5 h-11 rounded-full px-6 font-jakarta text-sm font-bold text-fr-green ring-1 ring-fr-green/40 hover:bg-fr-mint">
+          <button onClick={() => setAll(true)} className="mt-5 h-11 rounded-full px-6 font-jakarta text-sm font-bold text-fr-green ring-1 ring-fr-green/40 transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint motion-safe:active:scale-[0.98]">
             Voir plus d’avis
           </button>
         )}
@@ -135,7 +135,7 @@ export function VideoF() {
               className="group absolute inset-0 flex items-center justify-center bg-gradient-to-t from-fr-deep/50 to-transparent"
               aria-label="Lire la vidéo"
             >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-fr-green shadow-xl transition-transform group-hover:scale-105 lg:h-20 lg:w-20">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-fr-green shadow-xl transition-transform duration-base ease-out-soft can-hover:group-hover:scale-105 lg:h-20 lg:w-20">
                 <Play size={26} className="ml-1 fill-current" />
               </span>
             </button>
@@ -262,15 +262,20 @@ export function FaqF() {
                 <button
                   onClick={() => setOpen(isOpen ? null : k)}
                   aria-expanded={isOpen}
+                  aria-controls={`faq-${k}`}
                   className="flex min-h-[3.6rem] w-full items-center justify-between gap-4 py-3 text-left text-[0.98rem] font-bold text-fr-ink transition-colors hover:text-fr-green"
                 >
                   {f.q}
-                  <span className={`flex h-8 w-8 flex-none items-center justify-center rounded-full transition-all duration-300 ${isOpen ? 'rotate-45 bg-fr-green text-white' : 'bg-fr-mint text-fr-green'}`}>
+                  <span className={`flex h-8 w-8 flex-none items-center justify-center rounded-full transition-[transform,background-color,color] duration-slow ease-out-soft ${isOpen ? 'rotate-45 bg-fr-green text-white' : 'bg-fr-mint text-fr-green'}`}>
                     <Plus size={16} strokeWidth={2.2} />
                   </span>
                 </button>
-                <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                  <p className="overflow-hidden pr-10 text-[0.9rem] leading-relaxed text-fr-muted">
+                <div
+                  id={`faq-${k}`}
+                  inert={isOpen ? undefined : ''}
+                  className={`grid transition-[grid-template-rows,opacity] duration-slow ease-out-soft ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+                >
+                  <p className="min-h-0 overflow-hidden pr-10 text-[0.9rem] leading-relaxed text-fr-muted">
                     <span className="block pb-5">{f.a}</span>
                   </p>
                 </div>

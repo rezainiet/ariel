@@ -18,6 +18,7 @@ import { Rise, RevealFrame, useRevealed } from './motion.jsx'
 import { STORY } from './mediaF.js'
 import { COLD_HOTSPOTS, ROUTINE, PRODUCT_DETAILS } from './contentF.js'
 import { Packs } from './HeroF.jsx'
+import { Swap } from '../../lib/motion.js'
 
 const W = 'mx-auto max-w-[1320px] px-4 lg:px-8'
 const cents = (o) => String(centsPerWash(o)).replace('.', ',')
@@ -121,11 +122,11 @@ function CapsuleGrid({ packs, shown }) {
             {Array.from({ length: 60 }).map((_, k) => (
               <span
                 key={k}
-                className="h-[7px] w-[7px] rounded-[2.5px] bg-gradient-to-br from-[#3FC283] to-[#4C9BE8] transition-[opacity,transform] duration-300 lg:h-2 lg:w-2"
+                className="h-[7px] w-[7px] rounded-[2.5px] bg-gradient-to-br from-[#3FC283] to-[#4C9BE8] transition-[opacity,transform] duration-base ease-out-soft lg:h-2 lg:w-2"
                 style={{
                   opacity: shown ? 1 : 0,
                   transform: shown ? 'scale(1)' : 'scale(0.3)',
-                  transitionDelay: shown ? `${g * 160 + k * 7}ms` : '0ms',
+                  transitionDelay: shown ? `${g * 110 + k * 4}ms` : '0ms',
                 }}
               />
             ))}
@@ -182,7 +183,7 @@ function FeatureQuantity({ setSel }) {
                   role="tab"
                   aria-selected={o.packs === n}
                   onClick={() => setN(o.packs)}
-                  className={`h-10 rounded-full text-[0.82rem] font-bold transition-all duration-200 ${
+                  className={`h-10 rounded-full text-[0.82rem] font-bold transition-[background-color,color,box-shadow] duration-base ease-out-soft ${
                     o.packs === n ? 'bg-fr-deep text-white shadow-md' : 'text-fr-muted hover:text-fr-ink'
                   }`}
                 >
@@ -196,15 +197,15 @@ function FeatureQuantity({ setSel }) {
             <dl className="mt-6 grid grid-cols-3 divide-x divide-fr-line border-y border-fr-line py-3 text-center font-jakarta">
               <div>
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Capsules</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">{offer.washes}</dd>
+                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]"><Swap value={n}>{offer.washes}</Swap></dd>
               </div>
               <div>
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Prix total</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]"><Chf v={offer.price} format={formatCHF} /></dd>
+                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]"><Swap value={n}><Chf v={offer.price} format={formatCHF} /></Swap></dd>
               </div>
               <div>
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Par lavage*</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-green lg:text-[1.6rem]">{cents(offer)} ct</dd>
+                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-green lg:text-[1.6rem]"><Swap value={n}>{cents(offer)} ct</Swap></dd>
               </div>
             </dl>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -217,7 +218,7 @@ function FeatureQuantity({ setSel }) {
                   'Le format découverte'
                 )}
               </p>
-              <button onClick={choose} className="inline-flex h-11 items-center gap-2 rounded-full bg-fr-green px-5 font-jakarta text-[0.88rem] font-bold text-white transition-colors hover:bg-[#0C6B3E]">
+              <button onClick={choose} className="inline-flex h-11 items-center gap-2 rounded-full bg-fr-green px-5 font-jakarta text-[0.88rem] font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.98]">
                 Choisir {n} sachet{n > 1 ? 's' : ''} <ArrowDown size={15} className="-rotate-90 lg:rotate-0" />
               </button>
             </div>
@@ -236,7 +237,7 @@ function ColdDial({ shown }) {
   const C = 2 * Math.PI * R
   return (
     <div className="relative h-28 w-28 flex-none lg:h-32 lg:w-32" aria-hidden="true">
-      <span className={`absolute inset-3 rounded-full bg-fr-mint transition-transform duration-[1200ms] ${shown ? 'scale-100' : 'scale-75'}`} />
+      <span className={`absolute inset-3 rounded-full bg-fr-mint transition-transform duration-[800ms] ease-out-soft ${shown ? 'scale-100' : 'scale-90'}`} />
       <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90">
         <circle cx="60" cy="60" r={R} fill="none" stroke="#E4ECE7" strokeWidth="5" />
         <circle
@@ -249,7 +250,7 @@ function ColdDial({ shown }) {
           strokeLinecap="round"
           strokeDasharray={C}
           strokeDashoffset={shown ? C * 0.3 : C}
-          style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.22,1,0.36,1) 0.2s' }}
+          style={{ transition: 'stroke-dashoffset 900ms var(--ease-out) 150ms' }}
         />
         <defs>
           <linearGradient id="coldGrad" x1="0" y1="0" x2="1" y2="1">
@@ -266,7 +267,12 @@ function ColdDial({ shown }) {
 }
 
 function FeatureCold() {
-  const [active, setActive] = useState(null)
+  const [active, setActiveRaw] = useState(null)
+  const [explored, setExplored] = useState(false)
+  const setActive = (k) => {
+    setActiveRaw(k)
+    if (k !== null) setExplored(true)
+  }
   const [ref, shown] = useRevealed({ threshold: 0.25 })
   return (
     <article id="f-froid" className={`${W} scroll-mt-24 grid items-center gap-7 py-14 lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:py-24`}>
@@ -296,12 +302,12 @@ function FeatureCold() {
               key={h.de}
               delay={150 + k * 80}
               onMouseEnter={() => setActive(k)}
-              className={`flex cursor-default items-start gap-3.5 rounded-2xl p-3 font-jakarta transition-colors duration-200 lg:p-3.5 ${
+              className={`flex cursor-default items-start gap-3.5 rounded-2xl p-3 font-jakarta lg:p-3.5 ${
                 active === k ? 'bg-fr-mint' : 'bg-fr-soft lg:bg-transparent'
               }`}
             >
               <span
-                className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[0.7rem] font-extrabold transition-colors ${
+                className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[0.7rem] font-extrabold transition-colors duration-base ${
                   active === k ? 'bg-fr-deep text-white' : 'bg-fr-green text-white'
                 }`}
               >
@@ -336,10 +342,10 @@ function FeatureCold() {
             className="group absolute z-10 -translate-x-1/2 -translate-y-1/2"
             style={{ left: `${h.x}%`, top: `${h.y}%` }}
           >
-            <span className={`absolute inset-0 rounded-full bg-white/70 ${active === k ? '' : 'animate-ping'} motion-reduce:hidden`} style={{ animationDuration: '2.4s' }} />
+            {!explored && <span className="absolute inset-0 animate-ping rounded-full bg-white/70 motion-reduce:hidden" style={{ animationDuration: '2.4s', animationIterationCount: 3 }} />}
             <span
-              className={`relative flex h-7 w-7 items-center justify-center rounded-full font-jakarta text-[0.72rem] font-extrabold shadow-[0_6px_16px_rgba(10,30,20,0.35)] ring-2 ring-white transition-transform duration-200 lg:h-8 lg:w-8 ${
-                active === k ? 'scale-110 bg-fr-deep text-white' : 'bg-fr-green text-white group-hover:scale-110'
+              className={`relative flex h-7 w-7 items-center justify-center rounded-full font-jakarta text-[0.72rem] font-extrabold shadow-[0_6px_16px_rgba(10,30,20,0.35)] ring-2 ring-white transition-[transform,background-color] duration-base ease-out-soft lg:h-8 lg:w-8 ${
+                active === k ? 'scale-110 bg-fr-deep text-white' : 'bg-fr-green text-white can-hover:group-hover:scale-110'
               }`}
             >
               {k + 1}
@@ -347,7 +353,7 @@ function FeatureCold() {
           </button>
         ))}
         <div
-          className={`pointer-events-none absolute inset-x-3 top-3 z-20 rounded-2xl bg-white/95 p-3 font-jakarta shadow-[0_14px_34px_rgba(11,61,42,0.18)] backdrop-blur transition-all duration-300 lg:inset-x-6 lg:top-6 lg:p-4 ${
+          className={`pointer-events-none absolute inset-x-3 top-3 z-20 rounded-2xl bg-white/95 p-3 font-jakarta shadow-[0_14px_34px_rgba(11,61,42,0.18)] backdrop-blur transition-[opacity,transform] duration-base ease-out-soft lg:inset-x-6 lg:top-6 lg:p-4 ${
             active === null ? '-translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
           }`}
           aria-live="polite"
@@ -384,12 +390,16 @@ function Detail({ d }) {
       >
         <IconTile icon={Icon} size="sm" />
         <span className="flex-1 text-[0.92rem] font-bold text-fr-ink">{d.title}</span>
-        <span className={`flex h-7 w-7 items-center justify-center rounded-full bg-fr-soft text-fr-green transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full bg-fr-soft text-fr-green transition-transform duration-slow ease-out-soft ${open ? 'rotate-180' : ''}`}>
           <ChevronDown size={16} />
         </span>
       </button>
-      <div id={`detail-${d.id}`} className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-        <div className="overflow-hidden">
+      <div
+        id={`detail-${d.id}`}
+        inert={open ? undefined : ''}
+        className={`grid transition-[grid-template-rows,opacity] duration-slow ease-out-soft ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+      >
+        <div className="min-h-0 overflow-hidden">
           <ul className="space-y-1.5 px-4 pb-4 pl-[3.6rem] font-jakarta text-[0.86rem] leading-relaxed text-fr-muted">
             {d.body.map((t) => (
               <li key={t}>{t}</li>
@@ -476,7 +486,7 @@ export default function StoryF({ setSel }) {
             <a
               key={id}
               href={`#${id}`}
-              className="flex flex-none items-center gap-2 rounded-full bg-fr-soft py-1.5 pl-1.5 pr-4 font-jakarta text-[0.8rem] font-bold text-fr-ink ring-1 ring-fr-line transition-colors hover:bg-fr-mint hover:ring-fr-green/30"
+              className="flex flex-none items-center gap-2 rounded-full bg-fr-soft py-1.5 pl-1.5 pr-4 font-jakarta text-[0.8rem] font-bold text-fr-ink ring-1 ring-fr-line transition-[background-color,box-shadow] duration-fast hover:bg-fr-mint hover:ring-fr-green/30"
             >
               <IconTile icon={Icon} size="sm" round tone="white" className="!h-7 !w-7" /> {label}
             </a>
@@ -496,7 +506,7 @@ export default function StoryF({ setSel }) {
         <p className="font-jakarta text-[1.05rem] font-bold text-fr-ink lg:text-[1.2rem]">
           Dès {formatCHF(4)} le sachet de 60 capsules · livraison offerte en Suisse
         </p>
-        <a href="#offres" className="inline-flex h-12 items-center gap-2 rounded-full bg-fr-deep px-6 font-jakarta text-[0.92rem] font-bold text-white transition-colors hover:bg-fr-green">
+        <a href="#offres" className="inline-flex h-12 items-center gap-2 rounded-full bg-fr-deep px-6 font-jakarta text-[0.92rem] font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-green motion-safe:active:scale-[0.98]">
           Choisir mon offre <ArrowDown size={16} />
         </a>
       </div>

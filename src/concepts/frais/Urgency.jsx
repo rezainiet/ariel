@@ -46,7 +46,7 @@ function StockLine({ stock }) {
   return (
     <p className="flex items-center gap-2.5 px-4 py-3 text-[0.82rem] text-fr-ink">
       <span className="relative flex h-[17px] w-[17px] flex-none items-center justify-center" aria-hidden="true">
-        <span className={`absolute h-2.5 w-2.5 rounded-full ${low ? 'bg-amber-500' : 'bg-fr-leaf'} animate-pulse-soft`} />
+        <span className={`absolute h-2.5 w-2.5 rounded-full ${low ? 'bg-amber-500' : 'bg-fr-leaf'}`} />
       </span>
       {low ? (
         <span>

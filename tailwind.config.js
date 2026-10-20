@@ -56,18 +56,61 @@ export default {
         soft: '0 1px 2px rgba(23, 42, 32, 0.04)',
         card: '0 2px 10px rgba(23, 42, 32, 0.05)',
       },
+      // Système de mouvement : valeurs définies une seule fois dans src/index.css (:root),
+      // réduites sur mobile et neutralisées si l'utilisateur réduit les animations.
+      transitionTimingFunction: {
+        'out-soft': 'var(--ease-out)', // entrées, sélections, retours d'état
+        'in-soft': 'var(--ease-in)', // sorties
+      },
+      transitionDuration: {
+        fast: 'var(--dur-fast)',
+        base: 'var(--dur-base)',
+        slow: 'var(--dur-slow)',
+        enter: 'var(--dur-enter)',
+      },
       keyframes: {
         'fade-up': {
-          '0%': { opacity: '0', transform: 'translateY(12px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+          '0%': { opacity: '0', transform: 'translate3d(0, var(--motion-rise), 0)' },
+          '100%': { opacity: '1', transform: 'none' },
         },
         'fade-in': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        'fade-out': {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
         'drawer-in': {
-          '0%': { transform: 'translateX(100%)' },
-          '100%': { transform: 'translateX(0)' },
+          '0%': { transform: 'translate3d(100%, 0, 0)' },
+          '100%': { transform: 'none' },
+        },
+        'drawer-out': {
+          '0%': { transform: 'none' },
+          '100%': { transform: 'translate3d(100%, 0, 0)' },
+        },
+        'toast-in': {
+          '0%': { opacity: '0', transform: 'translate3d(0, calc(var(--motion-rise) * -1), 0)' },
+          '100%': { opacity: '1', transform: 'none' },
+        },
+        'toast-out': {
+          '0%': { opacity: '1', transform: 'none' },
+          '100%': { opacity: '0', transform: 'translate3d(0, calc(var(--motion-rise) * -0.6), 0)' },
+        },
+        // Message, erreur ou avis qui apparaît sous un champ : glisse de quelques pixels vers le bas.
+        'reveal-down': {
+          '0%': { opacity: '0', transform: 'translate3d(0, -4px, 0)' },
+          '100%': { opacity: '1', transform: 'none' },
+        },
+        // Valeur qui change (prix, quantité) : jamais invisible, seulement un léger fondu.
+        'swap-in': {
+          '0%': { opacity: '0.55', transform: 'translate3d(0, 2px, 0)' },
+          '100%': { opacity: '1', transform: 'none' },
+        },
+        // Coche de validation, pastille du panier : mise à l'échelle sans rebond.
+        pop: {
+          '0%': { opacity: '0.3', transform: 'scale(0.7)' },
+          '100%': { opacity: '1', transform: 'none' },
         },
         'msg-in': {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
@@ -79,13 +122,24 @@ export default {
         },
       },
       animation: {
-        'fade-up': 'fade-up 0.5s ease-out both',
-        'fade-in': 'fade-in 0.4s ease-out both',
-        'drawer-in': 'drawer-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both',
-        'msg-in': 'msg-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'fade-up': 'fade-up var(--dur-enter) var(--ease-out) both',
+        'fade-in': 'fade-in var(--dur-base) ease-out both',
+        'fade-out': 'fade-out var(--dur-exit) var(--ease-in) both',
+        'drawer-in': 'drawer-in var(--dur-drawer) var(--ease-out) both',
+        'drawer-out': 'drawer-out var(--dur-exit) var(--ease-in) both',
+        'toast-in': 'toast-in var(--dur-slow) var(--ease-out) both',
+        'toast-out': 'toast-out var(--dur-exit) var(--ease-in) both',
+        'reveal-down': 'reveal-down var(--dur-base) var(--ease-out) both',
+        'swap-in': 'swap-in var(--dur-base) var(--ease-out) both',
+        pop: 'pop var(--dur-base) var(--ease-out) both',
+        'panel-in': 'fade-up var(--dur-slow) var(--ease-out) both',
+        'msg-in': 'msg-in 0.45s var(--ease-out) both',
         'pulse-soft': 'pulse-soft 2.4s ease-in-out infinite',
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // « can-hover: » : effets de survol (soulèvement) réservés aux souris, jamais collés après un toucher.
+    ({ addVariant }) => addVariant('can-hover', '@media (hover: hover) and (pointer: fine)'),
+  ],
 }

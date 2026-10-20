@@ -7,6 +7,7 @@ import { IMAGES } from '../config/assets.js'
 import ProductImage from './ui/ProductImage.jsx'
 import Button from './ui/Button.jsx'
 import { PackStack } from '../concepts/c/BuyBoxC.jsx'
+import { usePresence, Swap } from '../lib/motion.js'
 
 // Habillage par concept : même logique panier, identité visuelle cohérente avec la page.
 const SKINS = {
@@ -76,18 +77,38 @@ export default function CartDrawer() {
   const S = SKINS[skin] || SKINS.f
   const navigate = useNavigate()
   const closeRef = useRef(null)
+  const panelRef = useRef(null)
+  // Reste monté le temps de glisser hors de l'écran (immédiat si mouvement réduit).
+  const { mounted, leaving } = usePresence(drawerOpen)
 
-  // Verrouille le scroll du body, focus initial, fermeture à la touche Échap.
+  // Verrouille le scroll du body, focus initial, Échap, Tab gardé dans le panier ;
+  // à la fermeture, le focus revient sur le bouton qui l'a ouvert.
   useEffect(() => {
     if (!drawerOpen) return
+    const opener = document.activeElement
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     closeRef.current?.focus()
-    const onKey = (e) => e.key === 'Escape' && closeDrawer()
+    const onKey = (e) => {
+      if (e.key === 'Escape') return closeDrawer()
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const items = [...panelRef.current.querySelectorAll('button:not([disabled]), a[href], input:not([disabled])')]
+      if (!items.length) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true })
     }
   }, [drawerOpen, closeDrawer])
 
@@ -103,19 +124,22 @@ export default function CartDrawer() {
     if (next) changeOffer(next.id)
   }
 
-  if (!drawerOpen) return null
+  if (!mounted) return null
   const saving = offer ? savingsFor(offer) : 0
 
   return (
-    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Panier">
+    <div className={`fixed inset-0 z-[60] ${leaving ? 'pointer-events-none' : ''}`} role="dialog" aria-modal="true" aria-label="Panier" inert={leaving ? '' : undefined}>
       <button
         aria-label="Fermer le panier"
         tabIndex={-1}
         onClick={closeDrawer}
-        className="absolute inset-0 animate-fade-in bg-ink/40 backdrop-blur-[2px]"
+        className={`absolute inset-0 bg-ink/40 backdrop-blur-[2px] ${leaving ? 'animate-fade-out' : 'animate-fade-in'}`}
       />
 
-      <div className={`absolute inset-y-0 right-0 flex w-full max-w-[28rem] animate-drawer-in flex-col shadow-2xl ${S.panel}`}>
+      <div
+        ref={panelRef}
+        className={`absolute inset-y-0 right-0 flex w-full max-w-[28rem] flex-col shadow-2xl ${leaving ? 'animate-drawer-out' : 'animate-drawer-in'} ${S.panel}`}
+      >
         <div className={`flex items-center justify-between px-5 py-4 ${S.head}`}>
           <h2 className={`flex items-center gap-2 text-base tracking-tight ${S.title}`}>
             <ShoppingBag size={18} className={S.icon} /> Votre panier
@@ -168,7 +192,9 @@ export default function CartDrawer() {
                       role="img"
                       aria-label={`${PRODUCT.name} — ${offer.label}`}
                     >
-                      <PackStack packs={offer.packs} />
+                      <Swap value={offer.id} anim="animate-fade-in" className="flex">
+                        <PackStack packs={offer.packs} />
+                      </Swap>
                     </span>
                   ) : (
                     <ProductImage
@@ -184,7 +210,7 @@ export default function CartDrawer() {
                     <p className="mt-0.5 text-sm text-muted">
                       {offer.packs} × 60 capsules · {washes} lavages
                     </p>
-                    <p className={`mt-2 text-xl tabular-nums ${S.display}`}>{formatCHF(offer.price)}</p>
+                    <Swap value={offer.id} as="p" className={`mt-2 text-xl tabular-nums ${S.display}`}>{formatCHF(offer.price)}</Swap>
                   </div>
                 </div>
 
@@ -195,18 +221,18 @@ export default function CartDrawer() {
                       onClick={() => step(-1)}
                       disabled={idx <= 0}
                       aria-label="Un sachet de moins"
-                      className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-colors hover:bg-sage/60 disabled:opacity-30"
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-[background-color,transform,opacity] duration-base ease-out-soft hover:bg-sage/60 motion-safe:active:scale-90 disabled:opacity-30"
                     >
                       <Minus size={16} />
                     </button>
                     <span className="w-8 text-center text-base font-bold tabular-nums text-ink" aria-live="polite">
-                      {offer.packs}
+                      <Swap value={offer.packs} className="inline-block">{offer.packs}</Swap>
                     </span>
                     <button
                       onClick={() => step(1)}
                       disabled={idx >= OFFERS.length - 1}
                       aria-label="Un sachet de plus"
-                      className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-colors hover:bg-sage/60 disabled:opacity-30"
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-[background-color,transform,opacity] duration-base ease-out-soft hover:bg-sage/60 motion-safe:active:scale-90 disabled:opacity-30"
                     >
                       <Plus size={16} />
                     </button>
@@ -214,9 +240,9 @@ export default function CartDrawer() {
                 </div>
 
                 {saving > 0 && (
-                  <p className="mt-3 rounded-lg bg-sage/50 px-3 py-2 text-xs font-medium text-forest">
+                  <Swap value={offer.id} as="p" className="mt-3 rounded-lg bg-sage/50 px-3 py-2 text-xs font-medium text-forest">
                     Vous économisez {formatCHF(saving)} par rapport à {offer.packs} sachets achetés séparément.
-                  </p>
+                  </Swap>
                 )}
               </div>
 
@@ -258,20 +284,20 @@ export default function CartDrawer() {
                 </div>
                 <div className="mt-2 flex items-baseline justify-between border-t border-line pt-3">
                   <dt className="text-base font-bold text-ink">Total</dt>
-                  <dd className={`text-2xl tabular-nums ${S.display}`}>{formatCHF(total)}</dd>
+                  <Swap value={total} as="dd" className={`text-2xl tabular-nums ${S.display}`}>{formatCHF(total)}</Swap>
                 </div>
               </dl>
 
               <button
                 onClick={goCheckout}
-                className={`mt-4 flex h-14 w-full items-center justify-center gap-2 text-base font-bold tracking-tight transition-all duration-200 active:scale-[0.99] ${S.cta}`}
+                className={`mt-4 flex h-14 w-full items-center justify-center gap-2 text-base font-bold tracking-tight transition-[background-color,color,transform,box-shadow] duration-base ease-out-soft motion-safe:active:scale-[0.99] ${S.cta}`}
               >
                 {S.sentenceCta ? `Passer commande · ${formatCHF(total)}` : 'PASSER COMMANDE'}
                 <ArrowRight size={18} />
               </button>
               <button
                 onClick={closeDrawer}
-                className="mt-2 w-full py-2 text-center text-sm font-medium text-muted hover:text-forest"
+                className="mt-2 w-full py-2 text-center text-sm font-medium text-muted transition-colors duration-fast hover:text-forest"
               >
                 Continuer mes achats
               </button>

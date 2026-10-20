@@ -9,6 +9,7 @@ import Lightbox from '../shared/Lightbox.jsx'
 import { IconTile, PodIcon, Chf } from './Icons.jsx'
 import UrgencyPanel from './Urgency.jsx'
 import { GALLERY_F } from './mediaF.js'
+import { Swap } from '../../lib/motion.js'
 
 const cents = (o) => String(centsPerWash(o)).replace('.', ',')
 
@@ -68,7 +69,7 @@ function Stage() {
           <div
             key={g.src}
             aria-hidden={k !== i}
-            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ease-out ${k === i ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+            className={`absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-slow ease-out-soft ${k === i ? 'opacity-100' : 'pointer-events-none scale-[1.015] opacity-0'}`}
           >
             {g.kind === 'cutout' ? (
               <>
@@ -101,7 +102,7 @@ function Stage() {
         <button
           onClick={() => setZoom(i)}
           aria-label="Agrandir la photo"
-          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-fr-deep shadow-md transition hover:scale-105 lg:right-6 lg:top-6"
+          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-fr-deep shadow-md transition-[transform,background-color] duration-base ease-out-soft hover:bg-white can-hover:hover:scale-105 motion-safe:active:scale-95 lg:right-6 lg:top-6"
         >
           <Expand size={17} strokeWidth={1.9} />
         </button>
@@ -113,16 +114,16 @@ function Stage() {
               aria-selected={k === i}
               aria-label={`Photo ${k + 1} : ${g.caption}`}
               onClick={() => setI(k)}
-              className={`h-1.5 rounded-full transition-all ${k === i ? 'w-5 bg-fr-deep' : 'w-1.5 bg-fr-deep/25'}`}
+              className={`h-1.5 rounded-full transition-[width,background-color] duration-slow ease-out-soft ${k === i ? 'w-5 bg-fr-deep' : 'w-1.5 bg-fr-deep/25'}`}
             />
           ))}
         </div>
         <div className="absolute bottom-6 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-2 lg:flex">
-          <button onClick={() => go(-1)} aria-label="Photo précédente" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-fr-deep shadow-md transition hover:bg-white">
+          <button onClick={() => go(-1)} aria-label="Photo précédente" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-fr-deep shadow-md transition-[transform,background-color] duration-base ease-out-soft hover:bg-white motion-safe:active:scale-95">
             <ChevronLeft size={18} />
           </button>
-          <span className="rounded-full bg-white/90 px-3 py-1.5 font-jakarta text-xs font-semibold text-fr-ink shadow-md">{item.caption}</span>
-          <button onClick={() => go(1)} aria-label="Photo suivante" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-fr-deep shadow-md transition hover:bg-white">
+          <Swap value={i} anim="animate-fade-in" className="rounded-full bg-white/90 px-3 py-1.5 font-jakarta text-xs font-semibold text-fr-ink shadow-md">{item.caption}</Swap>
+          <button onClick={() => go(1)} aria-label="Photo suivante" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-fr-deep shadow-md transition-[transform,background-color] duration-base ease-out-soft hover:bg-white motion-safe:active:scale-95">
             <ChevronRight size={18} />
           </button>
         </div>
@@ -136,7 +137,7 @@ function Stage() {
             onClick={() => setI(k)}
             aria-label={`Afficher : ${g.caption}`}
             aria-current={k === i}
-            className={`h-[4.5rem] w-[4.5rem] overflow-hidden rounded-2xl bg-fr-mint transition-all ${
+            className={`h-[4.5rem] w-[4.5rem] overflow-hidden rounded-2xl bg-fr-mint transition-[opacity,box-shadow] duration-base ease-out-soft ${
               k === i ? 'ring-2 ring-fr-green ring-offset-2' : 'opacity-70 hover:opacity-100'
             }`}
           >
@@ -159,10 +160,10 @@ function OfferCard({ o, active, onSelect, tabRef, onKeyDown }) {
       tabIndex={active ? 0 : -1}
       onClick={onSelect}
       onKeyDown={onKeyDown}
-      className={`group relative flex flex-col items-center rounded-[1.1rem] px-1.5 pb-3 pt-4 text-center font-jakarta transition-all duration-200 lg:items-start lg:rounded-[1.25rem] lg:px-4 lg:pb-4 lg:pt-5 lg:text-left ${
+      className={`group relative flex flex-col items-center rounded-[1.1rem] px-1.5 pb-3 pt-4 text-center font-jakarta transition-[box-shadow,transform,opacity] duration-base ease-out-soft motion-safe:active:scale-[0.985] lg:items-start lg:rounded-[1.25rem] lg:px-4 lg:pb-4 lg:pt-5 lg:text-left ${
         active
           ? 'bg-gradient-to-b from-[#F3FBF7] to-white shadow-[0_14px_30px_rgba(14,122,71,0.13)] ring-2 ring-fr-green'
-          : 'bg-white ring-1 ring-fr-line hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(11,61,42,0.08)] hover:ring-fr-green/40'
+          : 'bg-white ring-1 ring-fr-line hover:ring-fr-green/40 can-hover:hover:-translate-y-0.5 can-hover:hover:shadow-[0_10px_24px_rgba(11,61,42,0.08)]'
       }`}
     >
       {o.badge && (
@@ -176,7 +177,7 @@ function OfferCard({ o, active, onSelect, tabRef, onKeyDown }) {
         </span>
       )}
       <span
-        className={`absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full transition-all lg:right-3 lg:top-3 ${
+        className={`absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full transition-[transform,background-color,color] duration-base ease-out-soft lg:right-3 lg:top-3 ${
           active ? 'scale-100 bg-fr-green text-white' : 'scale-75 bg-fr-line text-transparent'
         }`}
         aria-hidden="true"
@@ -264,13 +265,15 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status }, ctaRef) {
         ))}
       </div>
       <p className="mt-2.5 text-center text-[0.76rem] text-fr-muted lg:text-left lg:text-[0.8rem]" aria-live="polite">
-        {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · ≈ {cents(offer)} ct par lavage
-        {save > 0 && (
-          <span className="hidden font-semibold text-fr-green lg:inline">
-            {' '}
-            · {formatCHF(save)} de moins que {offer.packs} × {formatCHF(OFFERS[0].price)}
-          </span>
-        )}
+        <Swap value={offer.id}>
+          {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · ≈ {cents(offer)} ct par lavage
+          {save > 0 && (
+            <span className="hidden font-semibold text-fr-green lg:inline">
+              {' '}
+              · {formatCHF(save)} de moins que {offer.packs} × {formatCHF(OFFERS[0].price)}
+            </span>
+          )}
+        </Swap>
       </p>
 
       {/* Achat direct (principal) : sélection → page de commande, sans passer par le panier.
@@ -279,27 +282,27 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status }, ctaRef) {
         <button
           onClick={direct}
           disabled={soldOut}
-          className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1rem] font-extrabold text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-all duration-200 hover:-translate-y-px hover:bg-[#0C6B3E] hover:shadow-[0_18px_32px_rgba(14,122,71,0.32)] active:translate-y-0 disabled:cursor-not-allowed disabled:bg-fr-muted disabled:shadow-none lg:h-[3.75rem] lg:text-[1.05rem]"
+          className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1rem] font-extrabold text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-[transform,background-color,box-shadow] duration-base ease-out-soft hover:bg-[#0C6B3E] can-hover:hover:-translate-y-px can-hover:hover:shadow-[0_18px_32px_rgba(14,122,71,0.32)] active:translate-y-0 motion-safe:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-fr-muted disabled:shadow-none lg:h-[3.75rem] lg:text-[1.05rem]"
         >
           {soldOut ? (
             'Épuisé'
           ) : (
             <>
               <span>
-                Acheter maintenant · <Chf v={offer.price} format={formatCHF} />
+                Acheter maintenant · <Swap value={offer.id}><Chf v={offer.price} format={formatCHF} /></Swap>
               </span>
-              <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight size={18} className="transition-transform duration-base ease-out-soft can-hover:group-hover:translate-x-0.5" />
             </>
           )}
         </button>
         {!soldOut && (
           <button
             onClick={add}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-fr-green bg-white text-[0.95rem] font-bold text-fr-green transition-colors duration-200 hover:bg-fr-mint lg:h-[3.25rem]"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-fr-green bg-white text-[0.95rem] font-bold text-fr-green transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint motion-safe:active:scale-[0.99] lg:h-[3.25rem]"
           >
             {added ? (
               <>
-                <Check size={18} strokeWidth={2.6} /> Ajouté au panier
+                <Check size={18} strokeWidth={2.6} className="animate-pop" /> Ajouté au panier
               </>
             ) : (
               <>

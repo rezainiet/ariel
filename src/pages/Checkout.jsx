@@ -23,6 +23,7 @@ import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
 import { Chf } from '../concepts/frais/Icons.jsx'
+import { Swap, useMediaQuery } from '../lib/motion.js'
 
 // ─────────────────────────────────────────────────────────────
 // Commande — gabarit Frais, pensé d'abord pour mobile.
@@ -88,16 +89,18 @@ function Field({ f, value, error, valid, onChange, onBlur, list }) {
           aria-describedby={described}
           onChange={(e) => onChange(f.name, f.zip ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value)}
           onBlur={() => onBlur(f.name)}
-          className={`h-[3.25rem] w-full rounded-2xl border bg-white px-4 pr-11 text-[1rem] text-fr-ink outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-fr-muted/60 focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${
+          className={`h-[3.25rem] w-full rounded-2xl border bg-white px-4 pr-11 text-[1rem] text-fr-ink outline-none transition-[border-color,box-shadow,background-color] duration-base ease-out-soft placeholder:text-fr-muted/60 focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${
             error ? 'border-red-400 bg-red-50/40' : 'border-fr-line hover:border-fr-green/40'
           }`}
         />
         {valid && !error && (
-          <Check size={17} strokeWidth={2.6} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-fr-green" aria-hidden="true" />
+          <span className="pointer-events-none absolute right-4 top-1/2 flex -translate-y-1/2" aria-hidden="true">
+            <Check size={17} strokeWidth={2.6} className="animate-pop text-fr-green" />
+          </span>
         )}
       </div>
       {error ? (
-        <p id={`${id}-err`} className="mt-1.5 flex items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
+        <p id={`${id}-err`} key={error} className="mt-1.5 flex animate-reveal-down items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
           <AlertCircle size={14} className="flex-none" /> {error}
         </p>
       ) : (
@@ -111,12 +114,25 @@ function Field({ f, value, error, valid, onChange, onBlur, list }) {
   )
 }
 
-function Section({ n, title, children, aside }) {
+function Section({ n, title, children, aside, done = false, style }) {
   return (
-    <section className="rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-7" aria-labelledby={`etape-${n}`}>
+    <section className="animate-fade-up rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-7" style={style} aria-labelledby={`etape-${n}`}>
       <div className="flex items-center justify-between gap-3">
         <h2 id={`etape-${n}`} className="flex items-center gap-3 text-[1.08rem] font-extrabold tracking-[-0.015em] text-fr-ink">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-fr-mint text-[0.78rem] font-extrabold text-fr-green">{n}</span>
+          <span
+            className={`flex h-7 w-7 items-center justify-center rounded-full text-[0.78rem] font-extrabold transition-colors duration-base ${
+              done ? 'bg-fr-green text-white' : 'bg-fr-mint text-fr-green'
+            }`}
+          >
+            {done ? (
+              <>
+                <span className="sr-only">{n}</span>
+                <Check size={14} strokeWidth={3} className="animate-pop" aria-hidden="true" />
+              </>
+            ) : (
+              n
+            )}
+          </span>
           {title}
         </h2>
         {aside}
@@ -155,17 +171,19 @@ function Summary({ offer, changeOffer }) {
       <h2 className="text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-fr-green">Votre commande</h2>
       <div className="mt-4 flex items-center gap-4">
         <span className="flex h-[4.5rem] w-[4.5rem] flex-none items-end justify-center rounded-2xl bg-fr-mint pb-2">
-          <Packs n={offer.packs} size="sm" />
+          <Swap value={offer.id} anim="animate-fade-in" className="flex">
+            <Packs n={offer.packs} size="sm" />
+          </Swap>
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-extrabold leading-tight text-fr-ink">{PRODUCT.name}</p>
-          <p className="mt-0.5 text-[0.86rem] text-fr-muted">
+          <Swap value={offer.id} as="p" className="mt-0.5 text-[0.86rem] text-fr-muted">
             {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules
-          </p>
+          </Swap>
         </div>
-        <p className="text-[1.05rem] font-extrabold tabular-nums text-fr-ink">
+        <Swap value={offer.id} as="p" className="text-[1.05rem] font-extrabold tabular-nums text-fr-ink">
           <Chf v={offer.price} format={formatCHF} />
-        </p>
+        </Swap>
       </div>
 
       {/* Modifier la sélection : remplace l'offre (jamais de doublon), les coordonnées restent saisies */}
@@ -177,7 +195,7 @@ function Summary({ offer, changeOffer }) {
             return (
               <label
                 key={o.id}
-                className={`relative flex cursor-pointer flex-col items-center rounded-xl px-1 py-2 text-center transition-all duration-200 focus-within:ring-2 focus-within:ring-fr-green ${
+                className={`relative flex cursor-pointer flex-col items-center rounded-xl px-1 py-2 text-center transition-[background-color,box-shadow,transform] duration-base ease-out-soft focus-within:ring-2 focus-within:ring-fr-green motion-safe:active:scale-[0.98] ${
                   on ? 'bg-white shadow-[0_6px_16px_rgba(11,61,42,0.10)] ring-1 ring-fr-green' : 'hover:bg-white/70'
                 }`}
               >
@@ -197,9 +215,9 @@ function Summary({ offer, changeOffer }) {
       <dl className="mt-5 space-y-2 text-[0.9rem]">
         <div className="flex justify-between text-fr-muted">
           <dt>Sous-total</dt>
-          <dd className="tabular-nums text-fr-ink">
+          <Swap value={offer.id} as="dd" className="tabular-nums text-fr-ink">
             <Chf v={offer.price} format={formatCHF} />
-          </dd>
+          </Swap>
         </div>
         <div className="flex justify-between text-fr-muted">
           <dt>Livraison (Suisse)</dt>
@@ -208,16 +226,16 @@ function Summary({ offer, changeOffer }) {
         {save > 0 && (
           <div className="flex justify-between text-fr-muted">
             <dt>Vous économisez</dt>
-            <dd className="font-semibold tabular-nums text-fr-green">
+            <Swap value={offer.id} as="dd" className="font-semibold tabular-nums text-fr-green">
               − <Chf v={save} format={formatCHF} />
-            </dd>
+            </Swap>
           </div>
         )}
         <div className="flex items-baseline justify-between border-t border-fr-line pt-3">
           <dt className="text-[1rem] font-extrabold text-fr-ink">Total à payer</dt>
-          <dd className="text-[1.6rem] font-extrabold tabular-nums tracking-[-0.03em] text-fr-green">
+          <Swap value={offer.id} as="dd" className="text-[1.6rem] font-extrabold tabular-nums tracking-[-0.03em] text-fr-green">
             <Chf v={offer.price} format={formatCHF} />
-          </dd>
+          </Swap>
         </div>
       </dl>
       <p className="mt-1 text-right text-[0.74rem] text-fr-muted">
@@ -236,7 +254,7 @@ function MethodPicker({ method, setMethod }) {
         return (
           <label
             key={m}
-            className={`flex h-14 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 text-[0.92rem] font-bold transition-colors focus-within:ring-2 focus-within:ring-fr-green/40 ${
+            className={`flex h-14 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 text-[0.92rem] font-bold transition-colors duration-base focus-within:ring-2 focus-within:ring-fr-green/40 ${
               on ? 'border-fr-green bg-fr-mint/50 text-fr-ink' : 'border-fr-line text-fr-ink hover:border-fr-green/40'
             }`}
           >
@@ -265,6 +283,7 @@ export default function Checkout() {
   })
   const [method, setMethod] = useState(PAYMENT_METHODS[0] || '')
   const [showSummary, setShowSummary] = useState(false)
+  const desktop = useMediaQuery('(min-width: 1024px)')
   const [cities, setCities] = useState([])
   const [streets, setStreets] = useState([])
   const alertRef = useRef(null)
@@ -375,6 +394,8 @@ export default function Checkout() {
   )
   const errorList = [...ORDERED.filter((f) => shown[f.name]), ...(shown.terms ? [{ name: 'terms', label: 'Conditions générales' }] : [])]
   const isValid = (name) => (touched[name] || submitted) && !errors[name] && Boolean((values[name] || '').trim())
+  const telRequired = redirect.provider === 'everflow'
+  const sectionDone = (fields) => fields.every((f) => !(f.required || (f.name === 'tel' && telRequired)) || isValid(f.name))
 
   if (!hasItems) {
     return (
@@ -409,7 +430,7 @@ export default function Checkout() {
           </Link>
           <Steps />
         </div>
-        <h1 className="mt-5 text-[1.85rem] font-extrabold leading-tight tracking-[-0.025em] lg:mt-6 lg:text-[2.5rem]">Finaliser ma commande</h1>
+        <h1 className="mt-5 animate-fade-up text-[1.85rem] font-extrabold leading-tight tracking-[-0.025em] lg:mt-6 lg:text-[2.5rem]">Finaliser ma commande</h1>
 
         <div className="mt-5 grid grid-cols-1 gap-5 lg:mt-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
           {/* Récapitulatif : repliable sur mobile, collant sur desktop */}
@@ -419,25 +440,36 @@ export default function Checkout() {
               onClick={() => setShowSummary((v) => !v)}
               aria-expanded={showSummary}
               aria-controls="recapitulatif"
-              className="flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-fr-line lg:hidden"
+              className="flex w-full animate-fade-up items-center gap-3 rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-fr-line transition-shadow duration-base hover:ring-fr-green/40 lg:hidden"
             >
               <span className="flex h-11 w-11 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1">
-                <Packs n={offer.packs} size="sm" />
+                <Swap value={offer.id} anim="animate-fade-in" className="flex">
+                  <Packs n={offer.packs} size="sm" />
+                </Swap>
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1 text-[0.86rem] font-bold text-fr-green">
                   {showSummary ? 'Masquer' : 'Afficher'} le récapitulatif
-                  <ChevronDown size={16} className={`transition-transform duration-300 ${showSummary ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={16} className={`transition-transform duration-slow ease-out-soft ${showSummary ? 'rotate-180' : ''}`} />
                 </span>
                 <span className="block truncate text-[0.76rem] text-fr-muted">
                   {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · livraison offerte
                 </span>
               </span>
-              <span className="text-[1.15rem] font-extrabold tabular-nums text-fr-ink">
+              <Swap value={offer.id} className="text-[1.15rem] font-extrabold tabular-nums text-fr-ink">
                 <Chf v={offer.price} format={formatCHF} />
-              </span>
+              </Swap>
             </button>
-            <div id="recapitulatif" className={`${showSummary ? 'mt-3 block animate-fade-in' : 'hidden'} lg:mt-0 lg:block`}>
+            <div
+              id="recapitulatif"
+              inert={!showSummary && !desktop ? '' : undefined}
+              className={`grid transition-[grid-template-rows,opacity] duration-slow ease-out-soft lg:block lg:animate-fade-up ${
+                showSummary ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 lg:opacity-100'
+              }`}
+            >
+              {/* p-px : l'anneau du récapitulatif n'est pas rogné pendant le dépliage */}
+              <div className="-m-px min-h-0 overflow-hidden p-px lg:m-0 lg:overflow-visible lg:p-0">
+              <div className="pt-3 lg:pt-0">
               <Summary offer={offer} changeOffer={changeOffer} />
               <ul className="mt-3 hidden space-y-2.5 rounded-[1.6rem] bg-white p-5 text-[0.84rem] ring-1 ring-fr-line lg:block">
                 <li className="flex items-center gap-2.5">
@@ -450,11 +482,13 @@ export default function Checkout() {
                   <RotateCcw size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Retour possible sous {DELIVERY.returnWindowDays} jours après réception
                 </li>
               </ul>
+              </div>
+              </div>
             </div>
           </aside>
 
           <form onSubmit={onSubmit} noValidate className="min-w-0 space-y-4 lg:order-1">
-            <Section n={1} title="Vos coordonnées">
+            <Section n={1} title="Vos coordonnées" done={sectionDone(CONTACT)}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 {CONTACT.map((f) => (
                   <Field key={f.name} {...fieldProps(f)} />
@@ -462,7 +496,7 @@ export default function Checkout() {
               </div>
             </Section>
 
-            <Section n={2} title="Adresse de livraison">
+            <Section n={2} title="Adresse de livraison" done={sectionDone(ADDRESS)} style={{ animationDelay: '50ms' }}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 <div className="col-span-2">
                   <p className="block text-[0.86rem] font-bold text-fr-ink" id="pays-label">
@@ -503,6 +537,7 @@ export default function Checkout() {
             <Section
               n={3}
               title="Paiement"
+              style={{ animationDelay: '100ms' }}
               aside={
                 <span className="hidden items-center gap-1 text-[0.74rem] font-semibold text-fr-muted min-[400px]:flex">
                   <LockKeyhole size={13} /> Page sécurisée
@@ -543,7 +578,7 @@ export default function Checkout() {
             </Section>
 
             {/* Réassurance confirmée, à côté de l'action finale */}
-            <div className="rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-6">
+            <div className="animate-fade-up rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line [animation-delay:150ms] lg:p-6">
               <ul className="space-y-3 text-[0.88rem]">
                 <li className="flex items-start gap-3">
                   <Truck size={19} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
@@ -573,9 +608,9 @@ export default function Checkout() {
               <details className="group mt-3 rounded-2xl bg-fr-soft px-4 py-3 text-[0.84rem]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold text-fr-ink [&::-webkit-details-marker]:hidden">
                   Lire le résumé de la politique de retour
-                  <ChevronDown size={16} className="flex-none text-fr-green transition-transform group-open:rotate-180" />
+                  <ChevronDown size={16} className="flex-none text-fr-green transition-transform duration-slow ease-out-soft group-open:rotate-180" />
                 </summary>
-                <div className="mt-2 space-y-1.5 leading-relaxed text-fr-muted">
+                <div className="mt-2 space-y-1.5 leading-relaxed text-fr-muted group-open:animate-reveal-down">
                   <p>
                     Vous pouvez demander un retour dans les {DELIVERY.returnWindowDays} jours qui suivent la réception, en indiquant
                     votre numéro de commande. Il s’agit d’un engagement de notre boutique : la loi suisse ne prévoit pas de droit de
@@ -586,7 +621,7 @@ export default function Checkout() {
               </details>
 
               <label
-                className={`mt-4 flex cursor-pointer items-start gap-3 rounded-2xl p-3 transition-colors ${shown.terms ? 'bg-red-50 ring-1 ring-red-300' : 'hover:bg-fr-soft'}`}
+                className={`mt-4 flex cursor-pointer items-start gap-3 rounded-2xl p-3 transition-[background-color,box-shadow] duration-base ${shown.terms ? 'bg-red-50 ring-1 ring-red-300' : 'hover:bg-fr-soft'}`}
               >
                 <input
                   id="f-terms"
@@ -608,7 +643,7 @@ export default function Checkout() {
                   </Link>
                   .
                   {shown.terms && (
-                    <span id="f-terms-err" className="mt-1 flex items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
+                    <span id="f-terms-err" className="mt-1 flex animate-reveal-down items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
                       <AlertCircle size={14} /> {shown.terms}
                     </span>
                   )}
@@ -619,7 +654,7 @@ export default function Checkout() {
             {/* Messages : erreurs de saisie, paiement indisponible, annulation, erreur prestataire */}
             <div ref={alertRef} tabIndex={-1} className="space-y-3 outline-none">
               {errorList.length > 0 && (
-                <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                <div role="alert" className="animate-reveal-down rounded-2xl border border-red-200 bg-red-50 p-4">
                   <p className="flex items-center gap-2 text-[0.9rem] font-bold text-red-700">
                     <AlertCircle size={17} /> {errorList.length > 1 ? `Veuillez vérifier ${errorList.length} champs` : 'Veuillez vérifier un champ'}
                   </p>
@@ -636,20 +671,20 @@ export default function Checkout() {
                 </div>
               )}
               {status === 'unavailable' && !errorList.length && (
-                <p role="status" className="flex gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
+                <p role="status" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
                   <Info size={18} className="mt-0.5 flex-none text-fr-green" />
                   Vos informations sont complètes, mais le paiement en ligne n’est pas encore ouvert : aucune commande n’a été
                   enregistrée et aucun montant n’a été débité.
                 </p>
               )}
               {status === 'cancelled' && (
-                <p role="status" className="flex gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
+                <p role="status" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
                   <Info size={18} className="mt-0.5 flex-none text-fr-green" />
                   Paiement annulé : aucune commande n’a été passée. Vos informations sont conservées, vous pouvez réessayer.
                 </p>
               )}
               {status === 'error' && (
-                <p role="alert" className="flex gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-[0.88rem] text-red-700">
+                <p role="alert" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-[0.88rem] text-red-700">
                   <AlertCircle size={18} className="mt-0.5 flex-none" />
                   Le paiement n’a pas pu être lancé. Aucun montant n’a été débité. Veuillez réessayer dans un instant.
                 </p>
@@ -659,7 +694,7 @@ export default function Checkout() {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="flex h-[3.75rem] w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1.02rem] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-all duration-200 hover:-translate-y-px hover:bg-[#0C6B3E] active:translate-y-0 disabled:cursor-wait disabled:opacity-80"
+              className="flex h-[3.75rem] w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1.02rem] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-[transform,background-color,opacity,box-shadow] duration-base ease-out-soft hover:bg-[#0C6B3E] can-hover:hover:-translate-y-px active:translate-y-0 motion-safe:active:scale-[0.99] disabled:cursor-wait disabled:opacity-80"
             >
               {status === 'loading' ? (
                 <>
@@ -669,7 +704,7 @@ export default function Checkout() {
                 <>
                   <LockKeyhole size={18} strokeWidth={2.2} />
                   <span>
-                    Acheter — <Chf v={offer.price} format={formatCHF} />
+                    Acheter — <Swap value={offer.id}><Chf v={offer.price} format={formatCHF} /></Swap>
                   </span>
                 </>
               )}

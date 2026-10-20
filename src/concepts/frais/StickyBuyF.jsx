@@ -5,6 +5,7 @@ import { useCart } from '../../context/CartContext.jsx'
 import { formatCHF, getOffer } from '../../config/store.js'
 import { Packs } from './HeroF.jsx'
 import { Chf } from './Icons.jsx'
+import { Swap } from '../../lib/motion.js'
 
 // Barre d'achat mobile : visible seulement une fois le bouton principal dépassé (au-dessus de l'écran),
 // jamais pendant le panier ouvert. Respecte les zones sûres (encoche, barre d'accueil).
@@ -30,7 +31,7 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
   return (
     <div
       aria-hidden={!shown}
-      className={`fixed inset-x-0 bottom-0 z-40 font-jakarta transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden ${
+      className={`fixed inset-x-0 bottom-0 z-40 font-jakarta transition-[transform,opacity] duration-slow ease-out-soft lg:hidden ${
         shown ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-full opacity-0'
       }`}
     >
@@ -38,19 +39,21 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <a href="#offres" tabIndex={shown ? 0 : -1} className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="Changer d’offre">
             <span className="flex h-10 w-11 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1 max-[359px]:hidden">
-              <Packs n={offer.packs} size="sm" />
+              <Swap value={offer.id} anim="animate-fade-in" className="flex">
+                <Packs n={offer.packs} size="sm" />
+              </Swap>
             </span>
             <span className="min-w-0 leading-tight">
               <span className="block truncate text-[0.82rem] font-bold text-fr-ink">
                 {offer.packs} sachet{offer.packs > 1 ? 's' : ''}
               </span>
-              <span className="block text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green"><Chf v={offer.price} format={formatCHF} /></span>
+              <Swap value={offer.id} className="block text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green"><Chf v={offer.price} format={formatCHF} /></Swap>
             </span>
           </a>
           <button
             onClick={buyNow}
             tabIndex={shown ? 0 : -1}
-            className="flex h-12 flex-none items-center gap-2 rounded-full bg-fr-green px-5 text-[0.92rem] font-extrabold text-white shadow-[0_10px_22px_rgba(14,122,71,0.3)] active:scale-[0.98]"
+            className="flex h-12 flex-none items-center gap-2 rounded-full bg-fr-green px-5 text-[0.92rem] font-extrabold text-white shadow-[0_10px_22px_rgba(14,122,71,0.3)] transition-[transform,background-color] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.98]"
           >
             Acheter maintenant <ArrowRight size={17} strokeWidth={2.2} />
           </button>

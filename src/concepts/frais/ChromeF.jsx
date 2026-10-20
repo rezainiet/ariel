@@ -4,6 +4,7 @@ import { ShoppingBag, Truck, RotateCcw, Tag } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
 import { MERCHANT, STORE, DELIVERY, storeRef } from '../../config/store.js'
 import { ANNOUNCEMENTS } from './contentF.js'
+import { Swap } from '../../lib/motion.js'
 
 const ICONS = [Tag, Truck, RotateCcw]
 
@@ -109,7 +110,7 @@ export function HeaderF() {
         <Logo />
         <nav aria-label="Navigation principale" className="hidden gap-8 font-jakarta text-[0.9rem] font-semibold text-fr-ink/80 lg:flex">
           {NAV.map(([label, href]) => (
-            <a key={href} href={href} className="relative py-2 transition-colors hover:text-fr-green after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-fr-green after:transition-transform hover:after:scale-x-100">
+            <a key={href} href={href} className="relative py-2 transition-colors hover:text-fr-green after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-fr-green after:transition-transform after:duration-base after:ease-out-soft hover:after:scale-x-100">
               {label}
             </a>
           ))}
@@ -117,17 +118,20 @@ export function HeaderF() {
         <button
           onClick={openDrawer}
           aria-label={packs ? `Panier : ${packs} sachet${packs > 1 ? 's' : ''}` : 'Panier vide'}
-          className="relative ml-auto flex h-11 items-center gap-2 rounded-full bg-fr-mint px-3.5 font-jakarta text-sm font-bold text-fr-deep transition-colors hover:bg-fr-mint2 lg:px-4"
+          className="relative ml-auto flex h-11 items-center gap-2 rounded-full bg-fr-mint px-3.5 font-jakarta text-sm font-bold text-fr-deep transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint2 motion-safe:active:scale-[0.97] lg:px-4"
         >
           <ShoppingBag size={19} strokeWidth={1.9} />
           <span className="hidden lg:inline">Panier</span>
-          <span
+          {/* La pastille se pose en douceur quand le contenu du panier change */}
+          <Swap
+            value={packs}
+            anim="animate-pop"
             className={`flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.68rem] font-extrabold ${
               packs ? 'bg-fr-green text-white' : 'bg-white text-fr-muted'
             }`}
           >
             {packs}
-          </span>
+          </Swap>
         </button>
       </div>
     </header>
