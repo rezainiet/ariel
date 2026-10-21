@@ -11,7 +11,7 @@ install -m 644 deploy/ariel.service /etc/systemd/system/ariel.service
 systemctl daemon-reload
 ```
 
-Create `/etc/ariel/ariel.env` with `root:ariel` ownership and mode `640`. It must contain a unique `ADMIN_PASSWORD` of at least 12 characters. Keep `EVERFLOW_ENABLED=false` until the HTTPS domain and the three public image URLs are approved. When ready, add `PUBLIC_ORIGIN=https://your-shop-domain`, `EVERFLOW_IMAGES_APPROVED=true`, and `EVERFLOW_ENABLED=true`. The domain's Nginx site should proxy only to `127.0.0.1:8787`, and its TLS certificate should cover that domain. Do not reuse or alter the existing `twpayment.space` site.
+Create `/etc/ariel/ariel.env` with `root:ariel` ownership and mode `640`. It must contain a unique `ADMIN_PASSWORD` of at least 12 characters. Keep `EVERFLOW_ENABLED=false` until the three public image URLs are approved. When ready, add `PUBLIC_ORIGIN=https://destockage-suisse.store`, `EVERFLOW_IMAGES_APPROVED=true`, and `EVERFLOW_ENABLED=true`. Both `destockage-suisse.store` and `www.destockage-suisse.store` currently resolve to this VPS; a separate TLS certificate and Nginx site are still needed. That site should proxy only to `127.0.0.1:8787`. Do not reuse or alter the existing `twpayment.space` site.
 
 ## GitHub environment
 
