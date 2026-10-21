@@ -1,10 +1,12 @@
-import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, open, readFile, writeFile, rename } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { mkdir, readFile, writeFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { getOffer, PRODUCT } from '../src/config/offers.js'
 import { META_PIXEL_ID } from '../src/config/attribution.js'
 import { validateOrder, normalizePhone } from '../src/lib/orderValidation.js'
-import { reserve, attachOrder } from './stock.mjs'
+import { reserve, attachOrder, loadStock } from './stock.mjs'
+import { ORDERS_DIR, orderPath, claimCustomer, mergeIntoOrder, readOrder, readJsonFile, writeExclusive, fingerprintOf } from './orders.mjs'
+import { sanitizeSource } from '../src/lib/trafficSource.js'
 
 // These are the three offer links supplied for this shop. No admin setting or request
 // value may replace their origin, path, or existing tracking query parameters.
@@ -93,29 +95,41 @@ export function prepareCheckout(body, cfg) {
 // read the same pending order. Persist it before returning the browser URL.
 // Stock is held (server/stock.mjs) before the order exists, keyed by the same idempotency key:
 // a sold-out offer never produces a pending order, and a retry never holds the stock twice.
+// The same customer (e-mail + phone) ordering the same offer again within the dedup window
+// (server/orders.mjs) reuses their pending order and its stock hold, updated with the latest details.
 export async function createPendingOrder(body, cfg, dataDir) {
   const prepared = prepareCheckout(body, cfg)
   if (prepared.status !== 200) return prepared
   const key = body.idempotencyKey.toLowerCase()
+  const source = sanitizeSource(body.source)
+  const fingerprint = fingerprintOf({ order: prepared.order, attribution: prepared.attribution })
+  await mkdir(join(dataDir, ORDERS_DIR), { recursive: true })
+  const live = await claimCustomer(dataDir, prepared.order, key, async (k) => {
+    const record = await readOrder(dataDir, k, { wait: true })
+    if (record?.provider !== 'everflow' || record.status !== 'pending') return false
+    const stock = await loadStock(dataDir)
+    return stock.reservations.some((r) => r.key === k && r.state === 'held' && Date.parse(r.expiresAt) > Date.now())
+  })
+  if (live !== key) {
+    const merged = await mergeIntoOrder(dataDir, live, { order: prepared.order, attribution: prepared.attribution, fingerprint, source, imageUrl: cfg.images[prepared.order.offerId] })
+    if (merged) {
+      return { status: 200, orderId: merged.orderId, statusText: 'pending', duplicate: true,
+        redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.attribution) }
+    }
+  }
   const hold = await reserve(dataDir, { key, offerId: prepared.order.offerId })
   if (!hold.ok) return { status: 409, error: hold.error === 'out_of_stock' ? 'out_of_stock' : 'order_closed' }
-  const dir = join(dataDir, 'everflow-orders')
-  await mkdir(dir, { recursive: true })
-  const path = join(dir, `${key}.json`)
-  const fingerprint = createHash('sha256').update(JSON.stringify({ order: prepared.order, attribution: prepared.attribution })).digest('hex')
+  const path = orderPath(dataDir, key)
   let record
   try {
-    const handle = await open(path, 'wx', 0o600)
-    record = { orderId: randomUUID(), status: 'pending', createdAt: new Date().toISOString(),
-      fingerprint, order: prepared.order, attribution: prepared.attribution,
+    record = { orderId: randomUUID(), provider: 'everflow', status: 'pending', createdAt: new Date().toISOString(),
+      clicks: 1, fingerprint, order: prepared.order, attribution: prepared.attribution, source,
       imageUrl: cfg.images[prepared.order.offerId] }
-    try { await handle.writeFile(JSON.stringify(record)); await handle.sync() } finally { await handle.close() }
+    await writeExclusive(path, JSON.stringify(record))
   } catch (error) {
     if (error.code !== 'EEXIST') throw error
     // Another request may still be writing the newly created file.
-    for (let attempt = 0; attempt < 20; attempt++) {
-      try { record = JSON.parse(await readFile(path, 'utf8')); break } catch { await new Promise((r) => setTimeout(r, 20)) }
-    }
+    record = await readJsonFile(path)
     if (!record) throw new Error('pending_order_unreadable')
     if (record.fingerprint !== fingerprint) return { status: 409, error: 'idempotency_conflict' }
     if (record.status !== 'pending') return { status: 409, error: 'order_closed' }
@@ -124,8 +138,6 @@ export async function createPendingOrder(body, cfg, dataDir) {
   return { status: 200, orderId: record.orderId, statusText: 'pending',
     redirectUrl: buildEverflowUrl(record.order.offerId, record.order.customer, record.imageUrl, record.attribution) }
 }
-
-const orderPath = (dataDir, key) => (ID_RE.test(key || '') ? join(dataDir, 'everflow-orders', `${key.toLowerCase()}.json`) : null)
 
 export async function readPendingOrder(dataDir, key) {
   const path = orderPath(dataDir, key)

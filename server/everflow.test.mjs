@@ -16,8 +16,8 @@ const customer = {
   tel: '+41 (79) 123-45-67', adresse: "Rue de l'Église, 4/B", complement: 'Bât. A, étage 2',
   npa: '1201', ville: 'Genève',
 }
-const request = (offerId, consent = false) => ({
-  offerId, customer, termsAccepted: true, marketingConsent: consent,
+const request = (offerId, consent = false, who = customer) => ({
+  offerId, customer: who, termsAccepted: true, marketingConsent: consent,
   idempotencyKey: crypto.randomUUID(),
 })
 
@@ -26,7 +26,9 @@ test('three offers preserve destination, query, prefill, images and consent', as
   try {
     for (const [offerId, tracking] of Object.entries(TRACKING_LINKS)) {
       for (const consent of [false, true]) {
-        const result = await createPendingOrder(request(offerId, consent), config, dir)
+        // A second customer for the consent run: the same customer + offer would be merged (server/orders.mjs).
+        const who = consent ? { ...customer, tel: '079 765 43 21' } : customer
+        const result = await createPendingOrder(request(offerId, consent, who), config, dir)
         assert.equal(result.status, 200)
         assert.equal(result.statusText, 'pending')
         const url = new URL(result.redirectUrl)
@@ -35,7 +37,7 @@ test('three offers preserve destination, query, prefill, images and consent', as
         for (const [key, value] of original.searchParams) assert.equal(url.searchParams.get(key), value)
         assert.deepEqual(Object.fromEntries(['sub10', 'adv3', 'sub3', 'sub4', 'sub6', 'sub7', 'sub8'].map((k) => [k, url.searchParams.get(k)])), {
           sub10: 'Ana María', adv3: 'D’Été', sub3: '1201', sub4: 'ana.maria@example.ch',
-          sub6: 'Genève', sub7: "Rue de l'Église, 4/B, Bât. A, étage 2", sub8: '+41791234567',
+          sub6: 'Genève', sub7: "Rue de l'Église, 4/B, Bât. A, étage 2", sub8: consent ? '+41797654321' : '+41791234567',
         })
         assert.equal(url.searchParams.get('adv2'), images[offerId])
         assert.match(url.searchParams.get('adv1'), new RegExp(`${{ 'pack-1': 1, 'pack-2': 2, 'pack-3': 3 }[offerId]} sachet`))

@@ -30,10 +30,14 @@ test('checkout redirect and verified purchase events are deduplicated and contai
     trackPurchase({ transaction_id: 'verified-order-1', price: 7, currency: 'CHF', customer: { email: 'private@example.ch' } })
     trackPurchase({ transaction_id: 'verified-order-1', price: 7, currency: 'CHF' })
     const events = window.fbq.queue.map((args) => Array.from(args))
-    assert.deepEqual(events.map((event) => event[1]), ['815653229569193', 'CheckoutRedirect', 'Purchase'])
+    assert.deepEqual(events.map((event) => event[1]), ['815653229569193', 'AddPaymentInfo', 'Purchase'])
     assert.deepEqual(events[1][2], {
       currency: 'CHF', value: 7, content_ids: ['ariel-all-in-1-pods'], content_type: 'product', num_items: 2,
     })
+    // Event IDs let Meta drop duplicates (browser retries, a later server-side event).
+    assert.deepEqual(events[1][3], { eventID: `order-${redirectId}` })
+    assert.deepEqual(events[2][3], { eventID: 'purchase-verified-order-1' })
+    assert.equal(window._fbq, window.fbq)
     assert.equal(JSON.stringify(events).includes('private@example.ch'), false)
     assert.equal(stored.has(`pixel.checkout_redirect.${redirectId}`), true)
     assert.equal(stored.has('pixel.purchase.verified-order-1'), true)

@@ -67,7 +67,7 @@ export function formatCHF(amount) {
 // Référence = achat de sachets séparés au prix de l'offre 1 sachet.
 export const SINGLE_PACK_PRICE = OFFERS[0].price
 
-// Économie réelle vs. N sachets achetés séparément : 2 sachets -> 1, 3 sachets -> 2.
+// Économie réelle vs. N sachets achetés séparément : 2 sachets -> 1, 3 sachets -> 3.
 export function savingsFor(offer) {
   return offer.packs * SINGLE_PACK_PRICE - offer.price
 }

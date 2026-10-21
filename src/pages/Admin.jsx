@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   LockKeyhole, LogOut, Plus, Trash2, Loader2, Check, AlertCircle, ExternalLink, RotateCcw, RefreshCw,
-  Boxes, Star, CreditCard, Clock, ArrowUpRight, PackageCheck, History, Info,
+  Boxes, Star, CreditCard, Clock, ArrowUpRight, PackageCheck, History, Info, ShoppingBag, Download, Mail, Phone, MapPin,
 } from 'lucide-react'
 import { OFFERS, PRODUCT, formatCHF } from '../config/offers.js'
 import { FIELDS, DEFAULT_PARAMS, validateConfig, buildRedirectUrl, normalizeDomain } from '../lib/redirectPayment.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
 import { Swap } from '../lib/motion.js'
+import { CHANNELS, CHANNEL_LABELS } from '../lib/trafficSource.js'
 
 // ─────────────────────────────────────────────────────────────
 // Administration — stock, avis clients, paiement.
@@ -153,11 +154,118 @@ function Pill({ tone, children }) {
   return <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${tones[tone]}`}>{children}</span>
 }
 
+// ── Commandes ──
+// Chaque clic « Acheter » validé par le serveur, dédupliqué (même client + même offre = une commande).
+const CHANNEL_TONES = { meta: 'bg-[#E7F0FF] text-[#1D4ED8]', snapchat: 'bg-[#FFFBD1] text-[#7A6400]', google: 'bg-[#FDECEA] text-[#B3261E]', other: 'bg-fr-soft text-fr-muted ring-1 ring-fr-line', direct: 'bg-fr-soft text-fr-muted ring-1 ring-fr-line' }
+const STATUS_LABELS = { pending: ['Paiement à vérifier', 'amber'], confirmed: ['Confirmée', 'green'], cancelled: ['Annulée', 'muted'] }
+
+function ChannelPill({ channel }) {
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${CHANNEL_TONES[channel] || CHANNEL_TONES.direct}`}>{CHANNEL_LABELS[channel] || 'Direct'}</span>
+}
+
+const csvCell = (v) => {
+  const value = String(v ?? '')
+  // Customer and campaign fields are untrusted; prevent spreadsheet formula execution.
+  const safe = /^\s*[=+\-@]/.test(value) ? `'${value}` : value
+  return `"${safe.replace(/"/g, '""')}"`
+}
+function exportCsv(orders, channel) {
+  const head = ['Date', 'Commande', 'Statut', 'Provenance', 'Source UTM', 'Campagne UTM', 'Offre', 'Sachets', 'Total CHF', 'Prénom', 'Nom', 'E-mail', 'Téléphone', 'Adresse', 'Complément', 'NPA', 'Ville', 'Clics']
+  const rows = orders.map((o) => [
+    o.createdAt, o.orderId, STATUS_LABELS[o.status]?.[0] || o.status, CHANNEL_LABELS[o.channel], o.source?.last?.utmSource, o.source?.last?.utmCampaign,
+    o.offerId, o.packs, o.total, o.customer.prenom, o.customer.nom, o.customer.email, o.customer.tel, o.customer.adresse, o.customer.complement, o.customer.npa, o.customer.ville, o.clicks,
+  ])
+  const csv = '﻿' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `commandes-${channel}-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function OrdersPanel({ data, error, onReload }) {
+  const [channel, setChannel] = useState('all')
+  const orders = useMemo(() => (data?.orders || []).filter((o) => channel === 'all' || o.channel === channel), [data, channel])
+  const filters = [['all', 'Toutes', data?.total], ...CHANNELS.map((c) => [c, CHANNEL_LABELS[c], data?.byChannel?.[c]])]
+  return (
+    <Card
+      icon={ShoppingBag}
+      title="Commandes"
+      desc="Chaque clic sur « Acheter » validé par le serveur, avec les coordonnées du client et sa provenance. Un même client qui recommande la même offre n’est compté qu’une fois."
+      aside={
+        <div className="flex gap-1">
+          <button type="button" onClick={onReload} className={btnQuiet}><RefreshCw size={14} /> Actualiser</button>
+          <button type="button" onClick={() => exportCsv(orders, channel)} disabled={!orders.length} className={btnQuiet}><Download size={14} /> CSV</button>
+        </div>
+      }
+    >
+      {error && <Notice tone="error">{error}</Notice>}
+      <div role="group" aria-label="Filtrer par provenance" className="flex flex-wrap gap-1.5">
+        {filters.map(([id, name, n]) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={channel === id}
+            onClick={() => setChannel(id)}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[0.82rem] font-bold transition duration-base ease-out-soft ${
+              channel === id ? 'bg-fr-deep text-white' : 'bg-white text-fr-ink ring-1 ring-fr-line hover:ring-fr-green/40'
+            }`}
+          >
+            {name}
+            <span className={`rounded-full px-1.5 text-[0.7rem] tabular-nums ${channel === id ? 'bg-white/20' : 'bg-fr-soft text-fr-muted'}`}>{n ?? '…'}</span>
+          </button>
+        ))}
+      </div>
+
+      {!data && !error && <p className="mt-4 flex items-center gap-2 text-[0.85rem] text-fr-muted"><Loader2 size={15} className="animate-spin" /> Chargement des commandes…</p>}
+      {data && !orders.length && <p className="mt-4 rounded-xl bg-fr-soft px-3 py-3 text-[0.85rem] text-fr-muted">Aucune commande{channel !== 'all' ? ` venant de ${CHANNEL_LABELS[channel]}` : ''} pour le moment.</p>}
+
+      <ul className="mt-4 space-y-2.5">
+        {orders.map((o) => {
+          const [statusLabel, statusTone] = STATUS_LABELS[o.status] || [o.status, 'muted']
+          const c = o.customer
+          const campaign = o.source?.last?.utmCampaign || o.source?.last?.utmSource
+          return (
+            <li key={o.orderId} className="rounded-2xl p-3.5 ring-1 ring-fr-line sm:p-4">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <span className="text-[0.95rem] font-extrabold text-fr-ink">{c.prenom} {c.nom}</span>
+                <ChannelPill channel={o.channel} />
+                <Pill tone={statusTone}>{statusLabel}</Pill>
+                {o.clicks > 1 && <Pill tone="muted">{o.clicks} clics fusionnés</Pill>}
+                <span className="ml-auto text-[0.76rem] tabular-nums text-fr-muted">{fmt(o.createdAt)}</span>
+              </div>
+              <div className="mt-2 grid gap-x-4 gap-y-1 text-[0.82rem] text-fr-ink sm:grid-cols-2">
+                <span className="flex min-w-0 items-center gap-1.5"><Mail size={13} className="flex-none text-fr-muted" /><span className="truncate">{c.email}</span></span>
+                <span className="flex items-center gap-1.5"><Phone size={13} className="flex-none text-fr-muted" />{c.tel || '—'}</span>
+                <span className="flex min-w-0 items-center gap-1.5 sm:col-span-2"><MapPin size={13} className="flex-none text-fr-muted" /><span className="truncate">{[c.adresse, c.complement, `${c.npa} ${c.ville}`].filter(Boolean).join(', ')}</span></span>
+              </div>
+              <p className="mt-2 text-[0.78rem] text-fr-muted">
+                <strong className="font-bold text-fr-ink">{sachets(o.packs)} · {formatCHF(o.total)}</strong>
+                {campaign ? ` · campagne « ${campaign} »` : ''}
+                {o.source?.last?.clickIdType ? ` · clic ${o.source.last.clickIdType}` : o.source?.last?.referrerHost ? ` · via ${o.source.last.referrerHost}` : ''}
+                {' · '}{o.provider === 'external' ? 'redirection externe' : 'Everflow'} · n° {o.orderId.slice(0, 8)}
+              </p>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
+  )
+}
+
 // ── Vue d'ensemble ──
-function Overview({ stock, reviews, payment, onOpen }) {
+function Overview({ stock, reviews, payment, orders, onOpen }) {
   const pending = stock?.reservations.filter((r) => r.active) || []
   const expired = stock?.reservations.filter((r) => !r.active) || []
   const tiles = [
+    {
+      tab: 'orders',
+      icon: ShoppingBag,
+      label: 'Commandes',
+      value: !orders ? '…' : String(orders.total),
+      sub: !orders ? 'Chargement' : `Meta ${orders.byChannel.meta} · Snap ${orders.byChannel.snapchat} · Google ${orders.byChannel.google}`,
+    },
     {
       tab: 'stock',
       icon: Boxes,
@@ -186,7 +294,7 @@ function Overview({ stock, reviews, payment, onOpen }) {
     },
   ]
   return (
-    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
       {tiles.map((t) => (
         <button
           key={t.label}
@@ -952,13 +1060,14 @@ function PaymentEditor({ initial, everflow, onSaved, onLogout }) {
 
 // ── Tableau de bord ──
 const TABS = [
+  { id: 'orders', label: 'Commandes', icon: ShoppingBag },
   { id: 'stock', label: 'Stock', icon: Boxes },
   { id: 'reviews', label: 'Avis', icon: Star },
   { id: 'payment', label: 'Paiement', icon: CreditCard },
 ]
 const tabFromHash = () => {
   const id = window.location.hash.slice(1)
-  return TABS.some((t) => t.id === id) ? id : 'stock'
+  return TABS.some((t) => t.id === id) ? id : 'orders'
 }
 
 function Dashboard({ initial, onLogout }) {
@@ -968,6 +1077,8 @@ function Dashboard({ initial, onLogout }) {
   const [stockError, setStockError] = useState('')
   const [reviews, setReviews] = useState(null)
   const [everflow, setEverflow] = useState(null)
+  const [orders, setOrders] = useState(null)
+  const [ordersError, setOrdersError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const tabRefs = useRef([])
   const reservationsRef = useRef(null)
@@ -981,18 +1092,31 @@ function Dashboard({ initial, onLogout }) {
     } else setStockError(r.status === 0 ? 'Serveur injoignable : le stock n’a pas pu être chargé.' : 'Le stock n’a pas pu être chargé.')
   }, [onLogout])
 
+  const loadOrders = useCallback(async () => {
+    const r = await call('/api/admin/orders')
+    if (r.status === 401) return onLogout()
+    if (r.status === 200) {
+      setOrders(r.data)
+      setOrdersError('')
+    } else setOrdersError(r.status === 0 ? 'Serveur injoignable : les commandes n’ont pas pu être chargées.' : 'Les commandes n’ont pas pu être chargées.')
+  }, [onLogout])
+
   const refresh = useCallback(async () => {
     setRefreshing(true)
-    const [, r, p] = await Promise.all([loadStock(), call('/api/admin/reviews'), call('/api/payment/config')])
+    const [, , r, p] = await Promise.all([loadStock(), loadOrders(), call('/api/admin/reviews'), call('/api/payment/config')])
     if (r.status === 401) return onLogout()
     if (r.status === 200) setReviews(Array.isArray(r.data) ? r.data : [])
     if (p.status === 200) setEverflow(p.data.everflow || { enabled: false })
     setRefreshing(false)
-  }, [loadStock, onLogout])
+  }, [loadStock, loadOrders, onLogout])
 
   useEffect(() => {
     refresh()
-    const onVisible = () => document.visibilityState === 'visible' && loadStock()
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      loadStock()
+      loadOrders()
+    }
     const onHash = () => setTab(tabFromHash())
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('hashchange', onHash)
@@ -1000,7 +1124,7 @@ function Dashboard({ initial, onLogout }) {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('hashchange', onHash)
     }
-  }, [refresh, loadStock])
+  }, [refresh, loadStock, loadOrders])
 
   const open = (id, focus) => {
     setTab(id)
@@ -1020,6 +1144,7 @@ function Dashboard({ initial, onLogout }) {
   }
 
   const counts = {
+    orders: orders ? orders.total : null,
     stock: stock ? stock.reservations.length : null,
     reviews: reviews ? reviews.length : null,
   }
@@ -1051,13 +1176,13 @@ function Dashboard({ initial, onLogout }) {
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="text-[1.45rem] font-extrabold leading-tight tracking-[-0.025em] lg:text-[1.7rem]">Tableau de bord</h1>
-            <p className="text-[0.82rem] text-fr-muted">Stock, avis clients et paiement de la boutique.</p>
+            <p className="text-[0.82rem] text-fr-muted">Commandes, stock, avis clients et paiement de la boutique.</p>
           </div>
         </div>
 
-        <Overview stock={stock} reviews={reviews} payment={payment} onOpen={open} />
+        <Overview stock={stock} reviews={reviews} payment={payment} orders={orders} onOpen={open} />
 
-        <div role="tablist" aria-label="Sections de l’administration" className="sticky top-14 z-20 -mx-4 grid grid-cols-3 gap-1 bg-fr-soft/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:inline-grid sm:rounded-full sm:bg-white sm:p-1 sm:ring-1 sm:ring-fr-line">
+        <div role="tablist" aria-label="Sections de l’administration" className="sticky top-14 z-20 -mx-4 grid grid-cols-4 gap-1 bg-fr-soft/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:inline-grid sm:rounded-full sm:bg-white sm:p-1 sm:ring-1 sm:ring-fr-line">
           {TABS.map((t, k) => {
             const on = tab === t.id
             return (
@@ -1072,21 +1197,24 @@ function Dashboard({ initial, onLogout }) {
                 tabIndex={on ? 0 : -1}
                 onClick={() => open(t.id)}
                 onKeyDown={(e) => onTabKey(e, k)}
-                className={`flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-full px-2 text-[0.88rem] font-bold transition duration-base ease-out-soft sm:h-10 sm:gap-2 sm:px-5 ${
+                className={`flex h-11 min-w-0 items-center justify-center gap-1 rounded-full px-1 text-[0.8rem] sm:text-[0.88rem] font-bold transition duration-base ease-out-soft sm:h-10 sm:gap-2 sm:px-5 ${
                   on ? 'bg-fr-deep text-white shadow-[0_6px_14px_rgba(11,61,42,0.18)]' : 'bg-white text-fr-muted ring-1 ring-fr-line hover:text-fr-green sm:bg-transparent sm:ring-0'
                 }`}
               >
-                <t.icon size={16} strokeWidth={2} aria-hidden="true" className="flex-none max-[399px]:hidden" />
+                <t.icon size={16} strokeWidth={2} aria-hidden="true" className="flex-none max-sm:hidden" />
                 {t.label}
                 {counts[t.id] > 0 && (
-                  <span className={`rounded-full px-1.5 text-[0.68rem] tabular-nums ${on ? 'bg-white/20 text-white' : 'bg-fr-mint text-fr-green'}`}>{counts[t.id]}</span>
+                  <span className={`rounded-full px-1.5 text-[0.68rem] tabular-nums max-sm:hidden ${on ? 'bg-white/20 text-white' : 'bg-fr-mint text-fr-green'}`}>{counts[t.id]}</span>
                 )}
               </button>
             )
           })}
         </div>
 
-        {/* Les trois panneaux restent montés : une saisie en cours n'est jamais perdue en changeant d'onglet. */}
+        {/* Les panneaux restent montés : une saisie en cours n'est jamais perdue en changeant d'onglet. */}
+        <div id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" hidden={tab !== 'orders'} className="animate-panel-in">
+          <OrdersPanel data={orders} error={ordersError} onReload={loadOrders} />
+        </div>
         <div id="panel-stock" role="tabpanel" aria-labelledby="tab-stock" hidden={tab !== 'stock'} className="animate-panel-in">
           <StockPanel stock={stock} error={stockError} onStock={setStock} onReload={loadStock} onLogout={onLogout} focusRef={reservationsRef} />
         </div>

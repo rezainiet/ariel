@@ -8,7 +8,9 @@ import { createPendingOrder, readPendingOrder, closePendingOrder } from './everf
 
 const config = { enabled: true, images: { 'pack-1': 'https://a.example.ch/1.webp', 'pack-2': 'https://a.example.ch/2.webp', 'pack-3': 'https://a.example.ch/3.webp' }, metaPixel: '', snapPixel: '' }
 const customer = { prenom: 'Léa', nom: 'Muller', email: 'lea@example.ch', tel: '079 123 45 67', adresse: 'Rue du Lac 4', npa: '1003', ville: 'Lausanne' }
-const order = (offerId) => ({ offerId, customer, termsAccepted: true, idempotencyKey: crypto.randomUUID() })
+// Each call is a different customer: the same customer + offer would be merged into one order (server/orders.mjs).
+let n = 0
+const order = (offerId) => ({ offerId, customer: { ...customer, email: `lea+${++n}@example.ch` }, termsAccepted: true, idempotencyKey: crypto.randomUUID() })
 const withDir = async (fn) => {
   const dir = await mkdtemp(join(tmpdir(), 'ariel-stock-'))
   try { await fn(dir) } finally { await rm(dir, { recursive: true, force: true }) }
@@ -110,7 +112,7 @@ test('admin confirmation deducts permanently; cancellation releases and closes t
   assert.equal((await createPendingOrder(dropped, config, dir)).error, 'order_closed')
   const record = JSON.parse(await readFile(join(dir, 'everflow-orders', `${dropped.idempotencyKey}.json`), 'utf8'))
   assert.equal(record.customer, undefined)
-  assert.equal(record.order.customer.email, 'lea@example.ch')
+  assert.equal(record.order.customer.email, dropped.customer.email)
 }))
 
 test('relative adjustments stay safe and never go below zero', () => withDir(async (dir) => {

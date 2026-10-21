@@ -19,6 +19,7 @@ import { getOffer } from '../src/config/offers.js'
 import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redirectPayment.js'
 import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder } from './everflow.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
+import { recordOrder, listOrders } from './orders.mjs'
 import { listReviews, addReview, deleteReview, saveReviewImage, reviewImageFile } from './reviews.mjs'
 import { loadStock, publicStock, stockSummary, checkAvailable, setStock, adjustStock, commitReservation, cancelReservation } from './stock.mjs'
 
@@ -143,7 +144,7 @@ async function api(req, res, path) {
       if (result.error === 'out_of_stock') console.info('[commande] refusée — stock insuffisant pour', body?.offerId)
       return send(res, result.status, { error: result.error, ...(result.errors ? { errors: result.errors } : {}) })
     }
-    console.info('[commande] Everflow en attente — identifiant', result.orderId)
+    console.info(`[commande] Everflow en attente — identifiant ${result.orderId}${result.duplicate ? ' (doublon fusionné)' : ''}`)
     return send(res, 200, { orderId: result.orderId, status: 'pending', redirectUrl: result.redirectUrl })
   }
 
@@ -168,8 +169,10 @@ async function api(req, res, path) {
     const pkg = r.packages[offer.id]
     if (r.pathTemplate.includes('{code}') && !pkg?.code) return send(res, 409, { error: 'payment_unavailable' })
     const redirectUrl = buildRedirectUrl(config, offer, result.order.customer, { origin: originOf(req) })
-    console.info(`[commande] redirection paiement — offre ${offer.id}`)
-    return send(res, 200, { redirectUrl })
+    // Le clic « Acheter » devient une commande (coordonnées + provenance), dédupliquée.
+    const recorded = await recordOrder(DATA_DIR, { key: body.idempotencyKey, provider: 'external', order: result.order, source: body.source })
+    console.info(`[commande] redirection paiement — offre ${offer.id}, identifiant ${recorded.orderId}${recorded.duplicate ? ' (doublon fusionné)' : ''}`)
+    return send(res, 200, { redirectUrl, orderId: recorded.orderId })
   }
 
   // ── Administration ──
@@ -223,6 +226,7 @@ async function api(req, res, path) {
       return send(res, removed ? 200 : 404, { removed })
     }
     if (path === '/api/admin/stock' && method === 'GET') return send(res, 200, await adminStock())
+    if (path === '/api/admin/orders' && method === 'GET') return send(res, 200, await listOrders(DATA_DIR))
     if ((path === '/api/admin/stock' && method === 'PUT') || (path === '/api/admin/stock/adjust' && method === 'POST')) {
       let body
       try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }

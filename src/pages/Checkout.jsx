@@ -365,7 +365,7 @@ export default function Checkout() {
   }, [soldOut])
 
   useEffect(() => {
-    if (hasItems) trackStartCheckout({ currency: 'CHF', price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs })
+    if (hasItems) trackStartCheckout({ currency: 'CHF', price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs }, offer.id)
   }, [hasItems]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Les coordonnées restent saisies (rechargement, retour depuis les conditions, modification de l'offre).

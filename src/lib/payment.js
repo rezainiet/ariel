@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { trackCheckoutRedirect } from './pixel.js'
+import { getTrafficSource } from './trafficSource.js'
 
 const PROVIDER = import.meta.env.VITE_PAYMENT_PROVIDER || ''
 const API = import.meta.env.VITE_CHECKOUT_API || ''
@@ -85,15 +86,14 @@ export async function getRedirectPayment() {
 // order = { offerId, termsAccepted, customer } → { status: 'redirecting' | 'invalid' | 'sold_out' | 'unavailable' | 'error', errors? }
 export async function startRedirectPayment(order, provider = 'external') {
   try {
-    let payload = order
-    if (provider === 'everflow') {
-      const marketingConsent = localStorage.getItem('consent.marketing.v1') === 'granted'
-      const fingerprint = JSON.stringify({ order, marketingConsent })
-      const stored = JSON.parse(sessionStorage.getItem('everflow-attempt-v1') || 'null')
-      const idempotencyKey = stored?.fingerprint === fingerprint ? stored.key : crypto.randomUUID()
-      sessionStorage.setItem('everflow-attempt-v1', JSON.stringify({ fingerprint, key: idempotencyKey }))
-      payload = { ...order, idempotencyKey, marketingConsent }
-    }
+    // Chaque clic sur « Acheter » enregistre une commande côté serveur. Même clé pour un nouvel essai
+    // identique (double clic, retour arrière, rechargement) : le serveur renvoie la même commande.
+    const marketingConsent = localStorage.getItem('consent.marketing.v1') === 'granted'
+    const fingerprint = JSON.stringify({ provider, order, marketingConsent })
+    const stored = JSON.parse(sessionStorage.getItem('everflow-attempt-v1') || 'null')
+    const idempotencyKey = stored?.fingerprint === fingerprint ? stored.key : crypto.randomUUID()
+    sessionStorage.setItem('everflow-attempt-v1', JSON.stringify({ fingerprint, key: idempotencyKey }))
+    const payload = { ...order, idempotencyKey, source: getTrafficSource(), ...(provider === 'everflow' ? { marketingConsent } : {}) }
     const res = await fetch(provider === 'everflow' ? '/api/checkout/everflow' : '/api/checkout/redirect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -104,7 +104,7 @@ export async function startRedirectPayment(order, provider = 'external') {
     if (res.status === 409 && data.error === 'out_of_stock') return { status: 'sold_out' }
     if (res.status === 409) return { status: 'unavailable' }
     if (res.ok && /^https:\/\//.test(data.redirectUrl || '')) {
-      if (provider === 'everflow') trackCheckoutRedirect(data.orderId, order.offerId)
+      if (data.orderId) trackCheckoutRedirect(data.orderId, order.offerId)
       window.location.assign(data.redirectUrl)
       return { status: 'redirecting' }
     }

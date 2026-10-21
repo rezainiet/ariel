@@ -32,8 +32,13 @@ export default function Privacy() {
         <Block title="Données collectées">
           <p>
             Pour traiter une commande, nous collectons votre prénom, votre nom, votre adresse de livraison, votre adresse e-mail
-            et votre numéro de téléphone lorsque le paiement hébergé le requiert. Les données de paiement sont saisies directement chez notre
-            prestataire de paiement : nous n’y avons pas accès.
+            et votre numéro de téléphone. Ces coordonnées sont enregistrées dès que vous cliquez sur « Acheter ». Les données de paiement sont
+            saisies directement chez notre prestataire de paiement : nous n’y avons pas accès.
+          </p>
+          <p>
+            Nous notons aussi la provenance de votre visite (par exemple une annonce Meta, Snapchat ou Google, ou le nom de la campagne),
+            conservée 30 jours dans votre navigateur puis jointe à votre commande. Elle sert uniquement à savoir quelles annonces
+            fonctionnent ; elle n’est transmise à personne.
           </p>
         </Block>
         <Block title="Finalités">
@@ -55,7 +60,8 @@ export default function Privacy() {
         <Block title="Mesure d’audience">
           {isPixelEnabled() || everflowAttribution ? (
             <p>
-              Avec votre accord seulement, des identifiants publicitaires approuvés peuvent servir à mesurer l’efficacité de nos annonces. Vous pouvez
+              Avec votre accord seulement, les outils publicitaires de Meta, Snapchat et, s’il est activé, Google mesurent l’efficacité de nos annonces
+              (pages vues, ajout au panier, commande), sans votre nom ni vos coordonnées. Vous pouvez
               refuser ce suivi dans la bannière de consentement.
             </p>
           ) : (
