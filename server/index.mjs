@@ -5,7 +5,7 @@
 //  · En production : sert aussi le site compilé (dist/) avec repli SPA.
 //
 // Démarrage :  ADMIN_PASSWORD="…au moins 12 caractères…" node server/index.mjs
-// Variables :  PORT (8787), ADMIN_PASSWORD (obligatoire pour /admin), DATA_DIR (server/data),
+// Variables :  HOST (127.0.0.1 en production), PORT (8787), ADMIN_PASSWORD, DATA_DIR (server/data),
 //              PUBLIC_ORIGIN (ex. https://boutique.ch — pour l'URL absolue de la photo produit)
 // ─────────────────────────────────────────────────────────────
 import { createServer } from 'node:http'
@@ -24,6 +24,7 @@ import { loadStock, publicStock, stockSummary, checkAvailable, setStock, adjustS
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const PORT = Number(process.env.PORT || 8787)
+const HOST = process.env.HOST || (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0')
 const DATA_DIR = resolve(process.env.DATA_DIR || join(ROOT, 'server', 'data'))
 const CONFIG_FILE = join(DATA_DIR, 'payment-config.json')
 const DIST = join(ROOT, 'dist')
@@ -338,6 +339,6 @@ createServer(async (req, res) => {
     console.error('[serveur] erreur', e?.message)
     send(res, 500, { error: 'server_error' })
   }
-}).listen(PORT, () => {
-  console.log(`Serveur boutique : http://localhost:${PORT}  ·  administration ${PASSWORD ? 'activée' : 'désactivée (ADMIN_PASSWORD manquant)'}`)
+}).listen(PORT, HOST, () => {
+  console.log(`Serveur boutique : http://${HOST}:${PORT}  ·  administration ${PASSWORD ? 'activée' : 'désactivée (ADMIN_PASSWORD manquant)'}`)
 })

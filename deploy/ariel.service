@@ -1,0 +1,25 @@
+[Unit]
+Description=Ariel storefront and checkout API
+After=network.target
+
+[Service]
+Type=simple
+User=ariel
+Group=ariel
+WorkingDirectory=/opt/ariel/current
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=DATA_DIR=/var/lib/ariel
+EnvironmentFile=/etc/ariel/ariel.env
+ExecStart=/usr/local/bin/node /opt/ariel/current/server/index.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ariel
+
+[Install]
+WantedBy=multi-user.target

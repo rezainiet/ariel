@@ -1,0 +1,64 @@
+name: Deploy Ariel to VPS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ariel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      DEPLOY_HOST: ${{ vars.VPS_HOST }}
+      DEPLOY_USER: ${{ vars.VPS_USER }}
+      BUILD_ENV: ${{ secrets.VITE_ENV_FILE }}
+      DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
+      KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Check deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_HOST" =~ ^[0-9.]+$ && "$DEPLOY_USER" =~ ^[a-z][a-z0-9_-]*$ ]]
+          test -n "$DEPLOY_KEY"
+          test -n "$KNOWN_HOSTS"
+          test -n "$BUILD_ENV"
+          printf '%s\n' "$BUILD_ENV" > .env.production.local
+          node scripts/check-deploy-env.mjs .env.production.local
+      - name: Build and test
+        run: |
+          npm ci
+          node --test server/*.test.mjs
+          npm run build
+      - name: Package release
+        run: tar -czf "/tmp/ariel-${GITHUB_SHA}.tar.gz" dist server src package.json package-lock.json
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/ariel_deploy"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/ariel_deploy" "$HOME/.ssh/known_hosts"
+      - name: Deploy and verify service
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$HOME/.ssh/ariel_deploy" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
+          scp "${ssh_opts[@]}" "/tmp/ariel-${GITHUB_SHA}.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:/opt/ariel/incoming/${GITHUB_SHA}.tar.gz"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$GITHUB_SHA'" < deploy/deploy-vps.sh
