@@ -2,6 +2,15 @@ name: Deploy Ariel to VPS
 
 on:
   workflow_dispatch:
+    inputs:
+      launch_mode:
+        description: Preview without merchant disclosures or live checkout, or configured production build
+        type: choice
+        required: true
+        default: preview
+        options:
+          - preview
+          - configured
 
 permissions:
   contents: read
@@ -22,6 +31,7 @@ jobs:
       BUILD_ENV: ${{ secrets.VITE_ENV_FILE }}
       DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
       KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+      LAUNCH_MODE: ${{ inputs.launch_mode }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -37,9 +47,14 @@ jobs:
           [[ "$DEPLOY_HOST" =~ ^[0-9.]+$ && "$DEPLOY_USER" =~ ^[a-z][a-z0-9_-]*$ ]]
           test -n "$DEPLOY_KEY"
           test -n "$KNOWN_HOSTS"
-          test -n "$BUILD_ENV"
-          printf '%s\n' "$BUILD_ENV" > .env.production.local
-          node scripts/check-deploy-env.mjs .env.production.local
+          if [[ "$LAUNCH_MODE" == configured ]]; then
+            test -n "$BUILD_ENV"
+            printf '%s\n' "$BUILD_ENV" > .env.production.local
+            node scripts/check-deploy-env.mjs .env.production.local
+          elif [[ "$LAUNCH_MODE" != preview ]]; then
+            echo 'Invalid launch mode' >&2
+            exit 1
+          fi
       - name: Build and test
         run: |
           npm ci
