@@ -13,11 +13,10 @@ import {
   Check,
   CreditCard,
   Info,
-  ArrowUpRight,
   ShieldCheck,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { OFFERS, PRODUCT, DELIVERY, MERCHANT, POLICIES, STORE, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
+import { OFFERS, PRODUCT, DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
 import { trackStartCheckout } from '../lib/pixel.js'
 import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
 import { validateCustomer, clean, swissNational } from '../lib/orderValidation.js'
@@ -310,19 +309,6 @@ function MethodPicker({ method, setMethod }) {
   )
 }
 
-const missingCheckoutDetails = [
-  !STORE.name && 'nom de la boutique',
-  !MERCHANT.legalName && 'raison sociale',
-  (![MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)) && 'adresse du vendeur',
-  !MERCHANT.uid && 'numéro IDE',
-  !STORE.supportEmail && 'e-mail du service client',
-  !POLICIES.returnAddress && 'adresse de retour',
-  !POLICIES.returnCondition && 'état des produits repris',
-  !POLICIES.returnCosts && 'frais de retour',
-  !POLICIES.refundTerms && 'modalités de remboursement',
-  !POLICIES.jurisdiction && 'for juridique',
-].filter(Boolean)
-
 export default function Checkout() {
   const { offer, hasItems, changeOffer } = useCart()
   const storeStatus = useStoreStatus()
@@ -609,26 +595,18 @@ export default function Checkout() {
               </div>
             </Section>
 
-            <Section
-              n={3}
-              title="Paiement"
-              style={{ animationDelay: '100ms' }}
-              aside={
-                <span className="hidden items-center gap-1 text-[0.74rem] font-semibold text-fr-muted min-[400px]:flex">
-                  <LockKeyhole size={13} /> Page sécurisée
-                </span>
-              }
-            >
-              {redirect.enabled ? (
-                <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] leading-relaxed text-fr-ink">
-                  <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
-                  <span>
-                    <strong className="font-bold">Paiement sur une page sécurisée.</strong> Après « Acheter », vous êtes redirigé vers{' '}
-                    <strong className="font-bold">{redirect.domain}</strong> pour régler {formatCHF(offer.price)}. Vos coordonnées de
-                    livraison (nom, adresse, e-mail, téléphone) lui sont transmises pour finaliser la commande.
+            {!redirect.enabled && (
+              <Section
+                n={3}
+                title="Paiement"
+                style={{ animationDelay: '100ms' }}
+                aside={
+                  <span className="hidden items-center gap-1 text-[0.74rem] font-semibold text-fr-muted min-[400px]:flex">
+                    <LockKeyhole size={13} /> Page sécurisée
                   </span>
-                </p>
-              ) : !redirect.checked ? (
+                }
+              >
+              {!redirect.checked ? (
                 <p className="flex items-center gap-2 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] text-fr-muted">
                   <Loader2 size={16} className="animate-spin" /> Chargement des moyens de paiement…
                 </p>
@@ -650,66 +628,12 @@ export default function Checkout() {
                   </span>
                 </p>
               )}
-            </Section>
-
-            {missingCheckoutDetails.length > 0 && (
-              <div role="note" className="rounded-2xl border border-red-300 bg-red-50 p-4 text-[0.86rem] leading-relaxed text-red-800">
-                <p className="font-extrabold">Informations de la boutique à renseigner</p>
-                <p className="mt-1">{missingCheckoutDetails.join(' · ')}</p>
-                <p className="mt-2">
-                  Consultez les{' '}
-                  <Link to="/mentions-legales" target="_blank" rel="noopener" className="font-bold underline">mentions légales</Link>
-                  {' '}et les{' '}
-                  <Link to="/retours-remboursements" target="_blank" rel="noopener" className="font-bold underline">conditions de retour</Link>.
-                </p>
-              </div>
+              </Section>
             )}
 
-            {/* Réassurance confirmée, à côté de l'action finale */}
             <div className="animate-fade-up rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line [animation-delay:150ms] lg:p-6">
-              <ul className="space-y-3 text-[0.88rem]">
-                <li className="flex items-start gap-3">
-                  <Truck size={19} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
-                  <span>
-                    <strong className="font-bold">Livraison offerte en Suisse</strong>
-                    {DELIVERY.estimateDays ? ` · estimée sous ${DELIVERY.estimateDays} jours ouvrables` : ''}
-                    <Link to="/livraison" target="_blank" rel="noopener" className="ml-1.5 inline-flex items-center gap-0.5 font-semibold text-fr-green underline-offset-2 hover:underline">
-                      Conditions <ArrowUpRight size={13} />
-                    </Link>
-                  </span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <RotateCcw size={19} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
-                  <span>
-                    <strong className="font-bold">Retour possible sous {DELIVERY.returnWindowDays} jours après réception</strong>
-                    <Link
-                      to="/retours-remboursements"
-                      target="_blank"
-                      rel="noopener"
-                      className="ml-1.5 inline-flex items-center gap-0.5 font-semibold text-fr-green underline-offset-2 hover:underline"
-                    >
-                      Politique de retour <ArrowUpRight size={13} />
-                    </Link>
-                  </span>
-                </li>
-              </ul>
-              <details className="group mt-3 rounded-2xl bg-fr-soft px-4 py-3 text-[0.84rem]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold text-fr-ink [&::-webkit-details-marker]:hidden">
-                  Lire le résumé de la politique de retour
-                  <ChevronDown size={16} className="flex-none text-fr-green transition-transform duration-slow ease-out-soft group-open:rotate-180" />
-                </summary>
-                <div className="mt-2 space-y-1.5 leading-relaxed text-fr-muted group-open:animate-reveal-down">
-                  <p>
-                    Vous pouvez demander un retour dans les {DELIVERY.returnWindowDays} jours qui suivent la réception, en indiquant
-                    votre numéro de commande. Il s’agit d’un engagement de notre boutique : la loi suisse ne prévoit pas de droit de
-                    rétractation pour les achats en ligne.
-                  </p>
-                  <p>Article endommagé, défectueux ou erroné : contactez-nous dès réception. La garantie légale s’applique.</p>
-                </div>
-              </details>
-
               <label
-                className={`mt-4 flex cursor-pointer items-start gap-3 rounded-2xl p-3 transition-[background-color,box-shadow] duration-base ${shown.terms ? 'bg-red-50 ring-1 ring-red-300' : 'hover:bg-fr-soft'}`}
+                className={`flex cursor-pointer items-start gap-3 rounded-2xl p-3 transition-[background-color,box-shadow] duration-base ${shown.terms ? 'bg-red-50 ring-1 ring-red-300' : 'hover:bg-fr-soft'}`}
               >
                 <input
                   id="f-terms"
