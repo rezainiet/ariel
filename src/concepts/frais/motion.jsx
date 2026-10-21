@@ -4,10 +4,17 @@ export { useRevealed }
 
 // Apparition douce (fondu + léger glissement), décalable pour les entrées en cascade.
 // Durée, amplitude et décalage : variables CSS (.reveal, src/index.css), réduites sur mobile.
-export function Rise({ as: Tag = 'div', delay = 0, className = '', style, children, ...rest }) {
+// `from` : 'up' (défaut), 'left', 'right' ou 'scale' — une direction par section.
+export function Rise({ as: Tag = 'div', delay = 0, from, className = '', style, children, ...rest }) {
   const [ref, shown] = useRevealed()
   return (
-    <Tag ref={ref} style={{ '--reveal-delay': `${delay}ms`, ...style }} className={`reveal ${shown ? 'is-in' : ''} ${className}`} {...rest}>
+    <Tag
+      ref={ref}
+      data-from={from && from !== 'up' ? from : undefined}
+      style={{ '--reveal-delay': `${delay}ms`, ...style }}
+      className={`reveal ${shown ? 'is-in' : ''} ${className}`}
+      {...rest}
+    >
       {children}
     </Tag>
   )

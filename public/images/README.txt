@@ -26,6 +26,12 @@ bannière, gros plans, lifestyle). Résolution limitée par la source ; pour
 une qualité maximale, fournir des fichiers individuels haute résolution et
 remplacer les chemins dans src/config/assets.js.
 
+Images des offres hébergées (dans /everflow) :
+  - pack-1.webp : copie du packshot réel fourni, 1 sachet
+  - pack-2.png et pack-3.png : compositions générées à partir de ce packshot
+    pour illustrer 2 et 3 sachets. Faire approuver ces compositions avant activation.
+  - Leurs URL publiques sont PUBLIC_ORIGIN + /images/everflow/pack-{1,2,3}.
+
 IMPORTANT
   - N'utilisez que des visuels dont vous détenez les droits.
   - L'étiquetage lisible du produit n'a pas été modifié.

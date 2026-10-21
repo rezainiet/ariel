@@ -81,6 +81,20 @@
 }
 
 @layer components {
+  @keyframes checkout-unlock {
+    0%, 15% { opacity: 0; transform: translateY(3px) rotate(-12deg); }
+    35%, 60% { opacity: 1; transform: none; }
+    100% { opacity: 0; transform: translateY(-3px); }
+  }
+
+  @keyframes checkout-ready-bag {
+    0%, 60% { opacity: 0; transform: translateY(3px) scale(0.88); }
+    100% { opacity: 1; transform: none; }
+  }
+
+  .checkout-unlock { animation: checkout-unlock 420ms var(--ease-out) both; }
+  .checkout-ready-bag { animation: checkout-ready-bag 420ms var(--ease-out) both; }
+
   .container-edge {
     @apply mx-auto w-full max-w-content px-5 sm:px-8;
   }
@@ -107,6 +121,52 @@
   .reveal.is-in {
     opacity: 1;
     transform: none;
+  }
+  /* Variantes d'entrée : chaque section garde sa propre direction, toujours avec les mêmes durées. */
+  .reveal[data-from='left'] {
+    transform: translate3d(calc(var(--motion-rise) * -1.5), 0, 0);
+  }
+  .reveal[data-from='right'] {
+    transform: translate3d(calc(var(--motion-rise) * 1.5), 0, 0);
+  }
+  .reveal[data-from='scale'] {
+    transform: scale(0.96);
+  }
+  .reveal[data-from].is-in {
+    transform: none;
+  }
+
+  /* Fil conducteur qui se dessine de haut en bas (étapes du geste). */
+  .reveal-line {
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 900ms var(--ease-out) 120ms;
+  }
+  .is-in .reveal-line,
+  .reveal-line.is-in {
+    transform: none;
+  }
+
+  /* Élément posé en séquence quand son conteneur est révélé (repères, pastilles). */
+  .seq-item {
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
+    transition-delay: var(--seq-delay, 0ms);
+  }
+  .is-in .seq-item {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Retour de sélection : un seul anneau qui s'efface, jamais en boucle (offre choisie, ajout au panier). */
+  .glow-once::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    animation: glow-ring 720ms var(--ease-out) both;
   }
 
   /* Révélation d'image (<RevealFrame>) — desktop : le cadre s'ouvre et la photo se pose ;
@@ -137,9 +197,20 @@
     }
   }
 
+  @keyframes glow-ring {
+    0% {
+      box-shadow: 0 0 0 0 rgba(14, 122, 71, 0.38);
+    }
+    100% {
+      box-shadow: 0 0 0 12px rgba(14, 122, 71, 0);
+    }
+  }
+
   /* Impression : tout le contenu est visible, même les sections pas encore révélées à l'écran. */
   @media print {
     .reveal,
+    .reveal-line,
+    .seq-item,
     .reveal-frame,
     .reveal-media {
       opacity: 1 !important;

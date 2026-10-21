@@ -1,5 +1,9 @@
 import { Hourglass, PackageCheck, Timer } from 'lucide-react'
 import { useCountdown } from '../../lib/storeStatus.js'
+import { formatCHF, savingsFor } from '../../config/offers.js'
+import { getOffer } from '../../config/offers.js'
+import { useFeaturedOffer } from '../../lib/featuredOffer.js'
+import { useStock, isSoldOut } from '../../lib/stock.js'
 
 const two = (n) => String(n).padStart(2, '0')
 
@@ -63,12 +67,44 @@ function StockLine({ stock }) {
 }
 
 // Bloc de motivation d'achat sous le bouton : uniquement des informations vérifiées.
-export default function UrgencyPanel({ status }) {
+export default function UrgencyPanel({ status, offer }) {
+  const featured = useFeaturedOffer()
+  const stockByOffer = useStock()
+  // Jamais de mise en avant d'une offre épuisée.
+  const featuredOffer = featured && !isSoldOut(stockByOffer, featured.offerId) && getOffer(featured.offerId)
+  const featuredTime = useCountdown(featured?.endsAt, featured?.offset)
   const { limited, stock, campaign, offset } = status
   const t = useCountdown(campaign?.endsAt, offset)
   const hasCountdown = Boolean(t)
   const hasStock = Boolean(stock && stock.available > 0)
-  if (!limited && !hasCountdown && !hasStock) return null
+  if (stock?.available === 0) return null
+  if (offer && isSoldOut(stockByOffer, offer.id)) return null
+  if (campaign && !hasCountdown) return null
+  if (!limited && !hasCountdown && !hasStock) {
+    if (!offer) return null
+    const saving = savingsFor(offer)
+    return (
+      <div className="mt-4 rounded-2xl border border-fr-green/20 bg-fr-mint/60 px-4 py-3 text-[0.82rem] leading-relaxed text-fr-ink">
+        <p className="flex items-center gap-2 font-bold text-fr-deep">
+          <Hourglass size={17} strokeWidth={1.75} aria-hidden="true" /> Offre de déstockage en cours
+        </p>
+        <p className="mt-1">
+          {offer.packs} sachet{offer.packs > 1 ? 's' : ''} pour <strong>{formatCHF(offer.price)}</strong>
+          {saving > 0 ? ` · ${formatCHF(saving)} d’économie par rapport aux sachets achetés séparément` : ''}.
+          {' '}Livraison offerte en Suisse.
+        </p>
+        {featuredOffer && featuredTime && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-fr-green/15 pt-2 font-semibold text-fr-deep">
+            <Timer size={16} strokeWidth={1.75} aria-hidden="true" />
+            <span>À la une : {featuredOffer.packs} sachet{featuredOffer.packs > 1 ? 's' : ''} à {formatCHF(featuredOffer.price)}</span>
+            <span className="rounded-full bg-white px-2 py-0.5 text-[0.72rem] tabular-nums ring-1 ring-fr-green/15">
+              Prochaine sélection dans {two(featuredTime.hours + featuredTime.days * 24)}:{two(featuredTime.minutes)}:{two(featuredTime.seconds)}
+            </span>
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="mt-4">
       <div className="divide-y divide-fr-line overflow-hidden rounded-2xl border border-fr-line bg-white">

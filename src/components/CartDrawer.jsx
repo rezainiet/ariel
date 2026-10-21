@@ -1,12 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, ShoppingBag, Truck, RotateCcw, ArrowRight, Minus, Plus, MapPin } from 'lucide-react'
+import { X, ShoppingBag, Truck, RotateCcw, ArrowRight, Minus, Plus, MapPin, CheckCircle2 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { OFFERS, PRODUCT, DELIVERY, MERCHANT, formatCHF, savingsFor } from '../config/store.js'
 import { IMAGES } from '../config/assets.js'
 import ProductImage from './ui/ProductImage.jsx'
 import Button from './ui/Button.jsx'
 import { PackStack } from '../concepts/c/BuyBoxC.jsx'
+import { useStock, isSoldOut } from '../lib/stock.js'
 import { usePresence, Swap } from '../lib/motion.js'
 
 // Habillage par concept : même logique panier, identité visuelle cohérente avec la page.
@@ -72,14 +73,17 @@ const SKINS = {
 }
 
 export default function CartDrawer() {
-  const { drawerOpen, closeDrawer, offer, hasItems, washes, total, clear, changeOffer, skin } = useCart()
+  const { drawerOpen, closeDrawer, offer, hasItems, washes, total, clear, changeOffer, skin, addedAt } = useCart()
   // La boutique (Frais) est l'habillage par défaut ; les concepts de comparaison imposent le leur.
   const S = SKINS[skin] || SKINS.f
+  const stock = useStock()
   const navigate = useNavigate()
   const closeRef = useRef(null)
   const panelRef = useRef(null)
   // Reste monté le temps de glisser hors de l'écran (immédiat si mouvement réduit).
   const { mounted, leaving } = usePresence(drawerOpen)
+  // Ouvert juste après un ajout : courte confirmation d'ajout (le panier, pas la commande).
+  const justAdded = useMemo(() => drawerOpen && Date.now() - addedAt < 1500, [drawerOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Verrouille le scroll du body, focus initial, Échap, Tab gardé dans le panier ;
   // à la fermeture, le focus revient sur le bouton qui l'a ouvert.
@@ -126,6 +130,7 @@ export default function CartDrawer() {
 
   if (!mounted) return null
   const saving = offer ? savingsFor(offer) : 0
+  const soldOut = Boolean(offer) && isSoldOut(stock, offer.id)
 
   return (
     <div className={`fixed inset-0 z-[60] ${leaving ? 'pointer-events-none' : ''}`} role="dialog" aria-modal="true" aria-label="Panier" inert={leaving ? '' : undefined}>
@@ -183,6 +188,12 @@ export default function CartDrawer() {
         ) : (
           <>
             <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-5">
+              {justAdded && (
+                <p role="status" className="mb-3 flex animate-reveal-down items-center gap-2 rounded-xl bg-fr-mint px-3 py-2 text-[0.84rem] font-semibold text-fr-deep [animation-delay:180ms]">
+                  <CheckCircle2 size={17} className="flex-none animate-pop text-fr-green [animation-delay:260ms]" aria-hidden="true" />
+                  Ajouté au panier
+                </p>
+              )}
               <div className={`rounded-2xl border p-4 ${S.card || 'border-line bg-surface'}`}>
                 <div className="flex gap-4">
                   {S.stack ? (
@@ -192,7 +203,7 @@ export default function CartDrawer() {
                       role="img"
                       aria-label={`${PRODUCT.name} — ${offer.label}`}
                     >
-                      <Swap value={offer.id} anim="animate-fade-in" className="flex">
+                      <Swap value={offer.id} anim="animate-fade-in" className={`flex ${justAdded ? 'animate-toast-in [animation-delay:120ms]' : ''}`}>
                         <PackStack packs={offer.packs} />
                       </Swap>
                     </span>
@@ -239,7 +250,12 @@ export default function CartDrawer() {
                   </div>
                 </div>
 
-                {saving > 0 && (
+                {soldOut && (
+                  <p role="status" className="mt-3 animate-reveal-down rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                    Cette offre est épuisée pour le moment. Choisissez un autre nombre de sachets.
+                  </p>
+                )}
+                {saving > 0 && !soldOut && (
                   <Swap value={offer.id} as="p" className="mt-3 rounded-lg bg-sage/50 px-3 py-2 text-xs font-medium text-forest">
                     Vous économisez {formatCHF(saving)} par rapport à {offer.packs} sachets achetés séparément.
                   </Swap>
@@ -290,7 +306,8 @@ export default function CartDrawer() {
 
               <button
                 onClick={goCheckout}
-                className={`mt-4 flex h-14 w-full items-center justify-center gap-2 text-base font-bold tracking-tight transition-[background-color,color,transform,box-shadow] duration-base ease-out-soft motion-safe:active:scale-[0.99] ${S.cta}`}
+                disabled={soldOut}
+                className={`mt-4 flex h-14 disabled:cursor-not-allowed disabled:opacity-50 w-full items-center justify-center gap-2 text-base font-bold tracking-tight transition-[background-color,color,transform,box-shadow] duration-base ease-out-soft motion-safe:active:scale-[0.99] ${S.cta}`}
               >
                 {S.sentenceCta ? `Passer commande · ${formatCHF(total)}` : 'PASSER COMMANDE'}
                 <ArrowRight size={18} />

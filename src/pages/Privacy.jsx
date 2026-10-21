@@ -7,8 +7,12 @@ import { getRedirectPayment } from '../lib/payment.js'
 // Politique de confidentialité : description des traitements réellement prévus par la boutique.
 export default function Privacy() {
   const [redirect, setRedirect] = useState({ enabled: false, domain: '' })
+  const [everflowAttribution, setEverflowAttribution] = useState(false)
   useEffect(() => {
     getRedirectPayment().then(setRedirect)
+    fetch('/api/payment/config').then((r) => r.ok ? r.json() : null).then((data) => {
+      setEverflowAttribution(data?.everflow?.attributionAvailable === true)
+    }).catch(() => {})
   }, [])
   const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return (
@@ -31,7 +35,7 @@ export default function Privacy() {
         <Block title="Données collectées">
           <p>
             Pour traiter une commande, nous collectons votre prénom, votre nom, votre adresse de livraison, votre adresse e-mail
-            et, si vous le fournissez, votre numéro de téléphone. Les données de paiement sont saisies directement chez notre
+            et votre numéro de téléphone lorsque le paiement hébergé le requiert. Les données de paiement sont saisies directement chez notre
             prestataire de paiement : nous n’y avons pas accès.
           </p>
         </Block>
@@ -52,9 +56,9 @@ export default function Privacy() {
           )}
         </Block>
         <Block title="Mesure d’audience">
-          {isPixelEnabled() ? (
+          {isPixelEnabled() || everflowAttribution ? (
             <p>
-              Avec votre accord seulement, un pixel publicitaire (Snapchat) mesure l’efficacité de nos annonces. Vous pouvez
+              Avec votre accord seulement, des identifiants publicitaires approuvés peuvent servir à mesurer l’efficacité de nos annonces. Vous pouvez
               refuser ce suivi dans la bannière de consentement.
             </p>
           ) : (

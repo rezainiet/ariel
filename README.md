@@ -25,10 +25,41 @@ ADMIN_PASSWORD="…12 caractères minimum…" PUBLIC_ORIGIN="https://votre-bouti
 En développement : lancer `npm run server` (port 8787) en parallèle de `npm run dev` (Vite relaie `/api`).
 
 - **`/admin`** (non lié, non indexé, mot de passe `ADMIN_PASSWORD`, session par cookie httpOnly, tentatives limitées) :
+  vue d'ensemble puis trois onglets — **Stock** (quantité, réservations à confirmer, historique), **Avis**, **Paiement** ;
   activer / désactiver le **paiement par redirection externe**, domaine, chemin, un code par offre, paramètres d'URL,
-  aperçu de l'URL générée.
+  aperçu de l'URL générée ; publier et retirer des avis clients avec nom, note sur 5, texte et jusqu'à trois photos.
+- Avis publiés dans `DATA_DIR/reviews.json`, photos dans `DATA_DIR/review-images/` ; le site les lit depuis
+  `GET /api/reviews`. Sans avis publié, la section reste masquée. Les avis saisis par l'administrateur ne portent
+  pas automatiquement le badge « Achat vérifié ». Les photos sont limitées à PNG/JPEG/WebP, 2 Mo chacune.
+- Dix résumés traduits d'avis publics sur la gamme Ariel All-in-1 PODS ont été importés pour l'aperçu local via
+  `DATA_DIR=... node server/import-sourced-reviews.mjs`. Chaque avis indique sa source, sa date d'origine et la
+  contenance connue ; aucun n'est présenté comme un achat dans cette boutique. L'import est idempotent et chaque
+  avis peut être supprimé dans `/admin` → Avis. Les images des auteurs ne sont pas reprises.
+- **Stock** (`/admin` → Stock) : une seule référence, le sachet `ariel-all-in-1-pods` ; chaque offre en retire
+  `packs` (1, 2 ou 3). Enregistré côté serveur dans `DATA_DIR/stock.json` (écritures sérialisées, fichier réécrit
+  atomiquement, saisie absolue refusée si le stock a changé entre-temps ; entrées/sorties relatives sûres).
+  Quantité vide = **non renseignée** : rien n'est limité ni affiché épuisé.
+  Cycle : la création de la commande Everflow `pending` **réserve** les sachets pendant la durée réglée (30 min par
+  défaut) ; une commande sans stock est refusée (`409 out_of_stock`) avant toute redirection. La redirection n'est pas
+  une preuve de paiement : sans action, la réservation expire. « Paiement reçu » (après vérification chez Everflow)
+  **déduit** définitivement et passe la commande en `confirmed` ; « Annuler » libère et la passe en `cancelled`.
+  `GET /api/stock` ne publie que disponible / épuisé par offre, jamais de quantité.
+  `POST /api/checkout/redirect` (redirection générique, sans fiche commande) refuse une offre épuisée mais ne réserve pas.
+  Tester avec `node --test server/*.test.mjs`.
 - Réglages enregistrés dans `server/data/payment-config.json` (hors dépôt ; `DATA_DIR` pour un autre dossier).
 - `POST /api/checkout/redirect` : le serveur revalide la commande puis construit l'URL — jamais le navigateur.
+- `GET /api/featured-offer` : sélection à la une parmi les trois vrais bundles, pendant 20 à 40 minutes.
+  La sélection et son échéance sont conservées dans `DATA_DIR/featured-offer.json` : recharger la page ne
+  relance pas le chronomètre. À l'échéance, une autre offre est mise en avant ; les prix et disponibilités
+  des trois offres ne changent pas. Aucun niveau de stock n'est simulé.
+- Everflow : trois offres figées dans `server/everflow.mjs`, activation séparée par `EVERFLOW_ENABLED=true`,
+  `EVERFLOW_IMAGES_APPROVED=true` et `PUBLIC_ORIGIN` (origine HTTPS publique servant les trois images dans
+  `public/images/everflow/`). Le serveur crée d'abord une commande
+  `pending` idempotente dans `DATA_DIR/everflow-orders/`, puis renvoie l'URL hébergée. Aucune redirection
+  ou visite de retour ne confirme le paiement. Aucun webhook/API de confirmation Everflow n'est configuré.
+  L'identifiant Meta public est défini dans `src/config/attribution.js`. Il sert à `sub5` uniquement après consentement ;
+  avec un identifiant Snap approuvé, les deux identifiants sont séparés par exactement 21 tirets bas.
+  Tester avec `node --test server/everflow.test.mjs` ; ces tests n'ouvrent pas le prestataire et ne paient rien.
 
 ## Routes
 
@@ -56,7 +87,7 @@ Captures et notes : `design-review/frais-finition/`.
 - `src/lib/payment.js` — frontière de paiement : session hébergée chez le prestataire, vérification serveur.
 - `src/lib/storeStatus.js` — stock et campagne réels (jamais de valeur fictive).
 - `src/lib/address.js` — aide à la saisie d'adresse, uniquement via un service configuré.
-- `src/lib/pixel.js` — Snap Pixel après consentement (PAGE_VIEW, ADD_CART, START_CHECKOUT, PURCHASE vérifié).
+- `src/lib/pixel.js` — Meta Pixel et Snap Pixel (si configuré) après consentement ; événement PURCHASE uniquement après paiement vérifié.
 - `src/concepts/frais/` — composants de la boutique Frais ; `src/pages/` — commande et pages de service.
 - `server/validate-order.mjs` — validation à appeler par le serveur de commande avant de créer le paiement.
 

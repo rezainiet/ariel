@@ -92,7 +92,7 @@ const NAV = [
 ]
 
 export function HeaderF() {
-  const { packs, openDrawer } = useCart()
+  const { packs, openDrawer, addedAt } = useCart()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 40)
@@ -102,7 +102,7 @@ export function HeaderF() {
   }, [])
   return (
     <header
-      className={`sticky top-0 z-40 border-b bg-white/90 backdrop-blur-md transition-shadow duration-300 ${
+      className={`sticky top-0 z-40 border-b bg-white/[0.97] transition-shadow duration-300 lg:bg-white/90 lg:backdrop-blur-md ${
         scrolled ? 'border-fr-line shadow-[0_6px_24px_rgba(11,61,42,0.06)]' : 'border-transparent'
       }`}
     >
@@ -120,6 +120,8 @@ export function HeaderF() {
           aria-label={packs ? `Panier : ${packs} sachet${packs > 1 ? 's' : ''}` : 'Panier vide'}
           className="relative ml-auto flex h-11 items-center gap-2 rounded-full bg-fr-mint px-3.5 font-jakarta text-sm font-bold text-fr-deep transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint2 motion-safe:active:scale-[0.97] lg:px-4"
         >
+          {/* Ajout au panier : un seul anneau qui s'efface (jamais une confirmation de commande) */}
+          <Swap value={addedAt} anim="glow-once" className="pointer-events-none absolute inset-0 rounded-full" aria-hidden="true" />
           <ShoppingBag size={19} strokeWidth={1.9} />
           <span className="hidden lg:inline">Panier</span>
           {/* La pastille se pose en douceur quand le contenu du panier change */}

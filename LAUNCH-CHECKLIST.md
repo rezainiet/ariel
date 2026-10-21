@@ -70,6 +70,20 @@ Confirmé et affiché : **retour possible sous 15 jours après réception** ; ga
 - [ ] Confirmer que les sachets vendus sont exactement **Ariel All-in-1 PODS Universal+ « 60 PODS »** et leur EAN.
 - [ ] Étiquetage conforme pour la Suisse (mentions FR/IT au dos), provenance, lot.
 
+### Stock (réglé dans `/admin` → Stock) — à fournir par le marchand
+
+Tant que la quantité n'est pas saisie, le stock reste **non renseigné** : les commandes ne sont pas limitées et rien
+n'est affiché comme épuisé. Aucune quantité n'a été inventée.
+
+- [ ] Nombre réel de sachets 60 PODS prêts à l'expédition (une seule référence : les offres 1/2/3 sachets puisent
+      dans ce stock). Si les lots de 2 ou 3 sont des paquets préconditionnés distincts, le signaler : il faudrait
+      alors un stock par lot.
+- [ ] Durée de réservation pendant le paiement hébergé (30 minutes par défaut), à aligner sur la durée de session Everflow.
+- [ ] Procédure de rapprochement : qui vérifie chez Everflow les paiements reçus et clique « Paiement reçu »
+      (seule action qui déduit définitivement le stock), et à quelle fréquence. Sans webhook/postback Everflow,
+      une réservation non confirmée expire et ses sachets redeviennent vendables.
+- [ ] Un seul processus serveur doit écrire `DATA_DIR/stock.json` (pas de répartition sur plusieurs instances).
+
 ## 6. Mesure d'audience et vie privée
 
 - [ ] `VITE_SNAP_PIXEL_ID` seulement avec la bannière de consentement (intégrée) ; la page Confidentialité s'adapte
@@ -82,7 +96,7 @@ Confirmé et affiché : **retour possible sous 15 jours après réception** ; ga
 | Avis clients vérifiés | `VITE_REVIEWS_ENDPOINT` | Section avis absente |
 | Vidéo produit / client | `VITE_PRODUCT_VIDEO_URL`, `_POSTER`, `_CAPTION` | Section vidéo absente |
 | « Quantités limitées » (confirmé par écrit) | `VITE_CLEARANCE_LIMITED=true` | Mention absente |
-| Stock réel et compte à rebours de campagne | `VITE_STORE_STATUS_API` | Absents (jamais de stock ni de compte à rebours fictif) |
+| Quantité restante et compte à rebours de campagne | `VITE_STORE_STATUS_API` | Absents (jamais de stock ni de compte à rebours fictif) ; l'état « épuisé » vient de `/admin` → Stock |
 | Aide à la saisie d'adresse (service suisse réel) | `VITE_ADDRESS_API` | Aucune suggestion |
 
 ## 8. Visuels — recommandé

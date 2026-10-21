@@ -21,7 +21,7 @@ export const OFFERS = [
     label: '1 SACHET',
     badge: null,
     featured: false,
-    image: '/images/packshot.webp',
+    image: '/images/everflow/pack-1.webp',
   },
   {
     id: 'pack-2',
@@ -31,7 +31,7 @@ export const OFFERS = [
     label: '2 SACHETS',
     badge: 'LE PLUS POPULAIRE',
     featured: true,
-    image: '/images/stacked.webp',
+    image: '/images/everflow/pack-2.png',
   },
   {
     id: 'pack-3',
@@ -41,7 +41,7 @@ export const OFFERS = [
     label: '3 SACHETS',
     badge: 'MEILLEURE OFFRE',
     featured: false,
-    image: '/images/stacked.webp',
+    image: '/images/everflow/pack-3.png',
   },
 ]
 

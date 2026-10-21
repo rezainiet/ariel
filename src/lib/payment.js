@@ -15,6 +15,8 @@
 // Tant que rien n'est configuré, aucune commande n'est simulée.
 // ─────────────────────────────────────────────────────────────
 
+import { trackCheckoutRedirect } from './pixel.js'
+
 const PROVIDER = import.meta.env.VITE_PAYMENT_PROVIDER || ''
 const API = import.meta.env.VITE_CHECKOUT_API || ''
 
@@ -73,24 +75,36 @@ export async function getRedirectPayment() {
     const res = await fetch('/api/payment/config', { headers: { Accept: 'application/json' }, cache: 'no-store' })
     if (!res.ok) return { enabled: false, domain: '' }
     const data = await res.json()
-    return { enabled: data?.externalRedirect?.enabled === true, domain: data?.externalRedirect?.domain || '' }
+    if (data?.everflow?.enabled === true) return { enabled: true, domain: data.everflow.domain, provider: 'everflow' }
+    return { enabled: data?.externalRedirect?.enabled === true, domain: data?.externalRedirect?.domain || '', provider: 'external' }
   } catch {
     return { enabled: false, domain: '' }
   }
 }
 
-// order = { offerId, termsAccepted, customer } → { status: 'redirecting' | 'invalid' | 'unavailable' | 'error', errors? }
-export async function startRedirectPayment(order) {
+// order = { offerId, termsAccepted, customer } → { status: 'redirecting' | 'invalid' | 'sold_out' | 'unavailable' | 'error', errors? }
+export async function startRedirectPayment(order, provider = 'external') {
   try {
-    const res = await fetch('/api/checkout/redirect', {
+    let payload = order
+    if (provider === 'everflow') {
+      const marketingConsent = localStorage.getItem('consent.marketing.v1') === 'granted'
+      const fingerprint = JSON.stringify({ order, marketingConsent })
+      const stored = JSON.parse(sessionStorage.getItem('everflow-attempt-v1') || 'null')
+      const idempotencyKey = stored?.fingerprint === fingerprint ? stored.key : crypto.randomUUID()
+      sessionStorage.setItem('everflow-attempt-v1', JSON.stringify({ fingerprint, key: idempotencyKey }))
+      payload = { ...order, idempotencyKey, marketingConsent }
+    }
+    const res = await fetch(provider === 'everflow' ? '/api/checkout/everflow' : '/api/checkout/redirect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(order),
+      body: JSON.stringify(payload),
     })
     const data = await res.json().catch(() => ({}))
     if (res.status === 422) return { status: 'invalid', errors: data.errors || {} }
+    if (res.status === 409 && data.error === 'out_of_stock') return { status: 'sold_out' }
     if (res.status === 409) return { status: 'unavailable' }
     if (res.ok && /^https:\/\//.test(data.redirectUrl || '')) {
+      if (provider === 'everflow') trackCheckoutRedirect(data.orderId, order.offerId)
       window.location.assign(data.redirectUrl)
       return { status: 'redirecting' }
     }

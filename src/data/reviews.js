@@ -108,7 +108,7 @@ const SAMPLE_REVIEWS = import.meta.env.DEV
     ]
   : []
 
-export const REVIEWS_ENDPOINT = import.meta.env.VITE_REVIEWS_ENDPOINT || ''
+export const REVIEWS_ENDPOINT = import.meta.env.VITE_REVIEWS_ENDPOINT || '/api/reviews'
 
 // Aperçu explicite des avis d'exemple pour la boutique (Concept C) : uniquement en dev,
 // uniquement si VITE_REVIEWS_PREVIEW=sample. Par défaut, la boutique n'affiche rien.

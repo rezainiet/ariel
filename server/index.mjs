@@ -10,12 +10,17 @@
 // ─────────────────────────────────────────────────────────────
 import { createServer } from 'node:http'
 import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises'
+import { createReadStream } from 'node:fs'
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { join, extname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validateOrder } from '../src/lib/orderValidation.js'
 import { getOffer } from '../src/config/offers.js'
 import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redirectPayment.js'
+import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder } from './everflow.mjs'
+import { getFeaturedOffer } from './featured-offer.mjs'
+import { listReviews, addReview, deleteReview, saveReviewImage, reviewImageFile } from './reviews.mjs'
+import { loadStock, publicStock, stockSummary, checkAvailable, setStock, adjustStock, commitReservation, cancelReservation } from './stock.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const PORT = Number(process.env.PORT || 8787)
@@ -81,25 +86,64 @@ function send(res, status, body, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers })
   res.end(JSON.stringify(body))
 }
-async function readJson(req) {
+async function readJson(req, maxBytes = 20_000) {
   if (!(req.headers['content-type'] || '').includes('application/json')) throw new Error('type')
   let raw = ''
+  let size = 0
   for await (const chunk of req) {
+    size += chunk.length
+    if (size > maxBytes) throw new Error('size')
     raw += chunk
-    if (raw.length > 20_000) throw new Error('size')
   }
   return JSON.parse(raw || '{}')
 }
 const originOf = (req) => process.env.PUBLIC_ORIGIN || (req.headers.origin && /^https?:\/\//.test(req.headers.origin) ? req.headers.origin : '')
+const localCheckoutRequest = (req) => /^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(req.headers.host || '') &&
+  /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || '')
+
+// Vue stock de l'administration : réservations complétées par le nom du client (fiche commande).
+async function adminStock() {
+  const summary = stockSummary(await loadStock(DATA_DIR))
+  const reservations = await Promise.all(summary.reservations.map(async (r) => {
+    const order = await readPendingOrder(DATA_DIR, r.key)
+    const c = order?.order?.customer
+    return { ...r, orderId: r.orderId || order?.orderId || null, customer: c ? { name: `${c.prenom} ${c.nom}`.trim(), city: `${c.npa} ${c.ville}`.trim(), email: c.email } : null }
+  }))
+  return { ...summary, reservations }
+}
+const STOCK_ERRORS = { not_found: 404, already_closed: 409, insufficient_stock: 409, conflict: 409, untracked: 409, invalid: 422 }
 
 // ── Routes API ──
 async function api(req, res, path) {
   const method = req.method
 
+  if (path === '/api/reviews' && method === 'GET') return send(res, 200, await listReviews(DATA_DIR))
+
+  // Public : disponibilité par offre, sans quantité.
+  if (path === '/api/stock' && method === 'GET') return send(res, 200, publicStock(await loadStock(DATA_DIR)))
+
+  if (path === '/api/featured-offer' && method === 'GET') {
+    const featured = await getFeaturedOffer(DATA_DIR)
+    return send(res, 200, { ...featured, serverTime: new Date().toISOString() })
+  }
+
   // Public : état du paiement par redirection (le domaine sert à informer le client avant la redirection).
   if (path === '/api/payment/config' && method === 'GET') {
     const r = config.externalRedirect
-    return send(res, 200, { externalRedirect: { enabled: r.enabled, domain: r.enabled ? r.domain : '' } })
+    const everflow = everflowSettings(process.env, localCheckoutRequest(req))
+    return send(res, 200, { everflow: { enabled: everflow.enabled, preview: everflow.preview, domain: everflow.enabled ? 'www.molipy8trk.com' : '', attributionAvailable: Boolean(everflow.enabled && (everflow.metaPixel || everflow.snapPixel)) }, externalRedirect: { enabled: r.enabled, domain: r.enabled ? r.domain : '' } })
+  }
+
+  if (path === '/api/checkout/everflow' && method === 'POST') {
+    let body
+    try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
+    const result = await createPendingOrder(body, everflowSettings(process.env, localCheckoutRequest(req)), DATA_DIR)
+    if (result.status !== 200) {
+      if (result.error === 'out_of_stock') console.info('[commande] refusée — stock insuffisant pour', body?.offerId)
+      return send(res, result.status, { error: result.error, ...(result.errors ? { errors: result.errors } : {}) })
+    }
+    console.info('[commande] Everflow en attente — identifiant', result.orderId)
+    return send(res, 200, { orderId: result.orderId, status: 'pending', redirectUrl: result.redirectUrl })
   }
 
   // Public : commande → validation serveur → URL de paiement externe.
@@ -118,6 +162,8 @@ async function api(req, res, path) {
       return send(res, 422, { error: 'invalid', errors: result.errors })
     }
     const offer = getOffer(result.order.offerId)
+    // Sans fiche commande, ce chemin ne peut pas réserver : il refuse seulement une offre épuisée.
+    if (!(await checkAvailable(DATA_DIR, offer.id))) return send(res, 409, { error: 'out_of_stock' })
     const pkg = r.packages[offer.id]
     if (r.pathTemplate.includes('{code}') && !pkg?.code) return send(res, 409, { error: 'payment_unavailable' })
     const redirectUrl = buildRedirectUrl(config, offer, result.order.customer, { origin: originOf(req) })
@@ -158,6 +204,42 @@ async function api(req, res, path) {
 
   if (path.startsWith('/api/admin/')) {
     if (!isAdmin(req)) return send(res, 401, { error: 'unauthorized' })
+    if (path === '/api/admin/reviews' && method === 'GET') return send(res, 200, await listReviews(DATA_DIR))
+    if (path === '/api/admin/reviews' && method === 'POST') {
+      let body
+      try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
+      const result = await addReview(DATA_DIR, body)
+      return result.ok ? send(res, 201, result.review) : send(res, 422, { error: 'invalid', errors: result.errors })
+    }
+    if (path === '/api/admin/review-images' && method === 'POST') {
+      let body
+      try { body = await readJson(req, 3_000_000) } catch { return send(res, 400, { error: 'bad_request' }) }
+      const result = await saveReviewImage(DATA_DIR, body.dataUrl)
+      return result.ok ? send(res, 201, { url: result.url }) : send(res, 422, { error: result.error })
+    }
+    if (path.startsWith('/api/admin/reviews/') && method === 'DELETE') {
+      const removed = await deleteReview(DATA_DIR, path.slice('/api/admin/reviews/'.length))
+      return send(res, removed ? 200 : 404, { removed })
+    }
+    if (path === '/api/admin/stock' && method === 'GET') return send(res, 200, await adminStock())
+    if ((path === '/api/admin/stock' && method === 'PUT') || (path === '/api/admin/stock/adjust' && method === 'POST')) {
+      let body
+      try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
+      const result = method === 'PUT' ? await setStock(DATA_DIR, body) : await adjustStock(DATA_DIR, body)
+      if (!result.ok) return send(res, STOCK_ERRORS[result.error] || 422, { error: result.error, errors: result.errors, stock: result.error === 'conflict' ? await adminStock() : undefined })
+      console.info(`[admin] stock ${method === 'PUT' ? 'défini' : 'ajusté'} — ${result.stock.onHand ?? 'non suivi'}`)
+      return send(res, 200, await adminStock())
+    }
+    const action = /^\/api\/admin\/stock\/reservations\/([0-9a-f-]{36})\/(confirm|cancel)$/.exec(path)
+    if (action && method === 'POST') {
+      try { await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
+      const [, key, verb] = action
+      const result = verb === 'confirm' ? await commitReservation(DATA_DIR, key) : await cancelReservation(DATA_DIR, key)
+      if (!result.ok) return send(res, STOCK_ERRORS[result.error] || 422, { error: result.error })
+      await closePendingOrder(DATA_DIR, key, verb === 'confirm' ? 'confirmed' : 'cancelled')
+      console.info(`[admin] réservation ${verb === 'confirm' ? 'confirmée (paiement constaté)' : 'annulée'} — ${result.reservation.sachets} sachet(s)`)
+      return send(res, 200, await adminStock())
+    }
     if (path === '/api/admin/config' && method === 'GET') return send(res, 200, config)
     if (path === '/api/admin/config' && method === 'PUT') {
       let body
@@ -178,7 +260,7 @@ async function api(req, res, path) {
 }
 
 // ── Fichiers statiques (production) ──
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.avif': 'image/avif', '.jpg': 'image/jpeg', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain' }
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.avif': 'image/avif', '.jpg': 'image/jpeg', '.png': 'image/png', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.json': 'application/json', '.txt': 'text/plain' }
 async function serveStatic(req, res, path) {
   let file = resolve(join(DIST, decodeURIComponent(path)))
   if (!file.startsWith(DIST)) return send(res, 403, { error: 'forbidden' })
@@ -188,6 +270,41 @@ async function serveStatic(req, res, path) {
     file = join(DIST, 'index.html') // repli SPA
   }
   try {
+    if (extname(file) === '.mp4') {
+      const { size } = await stat(file)
+      const range = req.headers.range
+      const match = range && /^bytes=(\d*)-(\d*)$/.exec(range)
+      if (range && (!match || (!match[1] && !match[2]))) {
+        res.writeHead(416, { 'Content-Range': `bytes */${size}` })
+        return res.end()
+      }
+      let start = 0
+      let end = size - 1
+      if (match) {
+        if (!match[1]) {
+          const suffix = Number(match[2])
+          start = Math.max(0, size - suffix)
+        } else {
+          start = Number(match[1])
+          if (match[2]) end = Math.min(end, Number(match[2]))
+        }
+        if (start > end || start >= size) {
+          res.writeHead(416, { 'Content-Range': `bytes */${size}` })
+          return res.end()
+        }
+      }
+      res.writeHead(match ? 206 : 200, {
+        'Content-Type': 'video/mp4',
+        'Content-Length': end - start + 1,
+        'Accept-Ranges': 'bytes',
+        ...(match ? { 'Content-Range': `bytes ${start}-${end}/${size}` } : {}),
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+      })
+      if (req.method === 'HEAD') return res.end()
+      createReadStream(file, { start, end }).on('error', () => res.destroy()).pipe(res)
+      return
+    }
     const data = await readFile(file)
     const ext = extname(file)
     res.writeHead(200, {
@@ -207,6 +324,15 @@ createServer(async (req, res) => {
   const path = new URL(req.url, 'http://x').pathname
   try {
     if (path.startsWith('/api/')) return await api(req, res, path)
+    if (path.startsWith('/review-images/')) {
+      const image = reviewImageFile(DATA_DIR, path)
+      if (!image) return send(res, 404, { error: 'not_found' })
+      try {
+        const data = await readFile(image.file)
+        res.writeHead(200, { 'Content-Type': image.type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=86400' })
+        return res.end(data)
+      } catch { return send(res, 404, { error: 'not_found' }) }
+    }
     return await serveStatic(req, res, path)
   } catch (e) {
     console.error('[serveur] erreur', e?.message)

@@ -2,7 +2,9 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  ShoppingBag,
   LockKeyhole,
+  LockKeyholeOpen,
   Truck,
   RotateCcw,
   AlertCircle,
@@ -22,6 +24,9 @@ import { validateCustomer, clean } from '../lib/orderValidation.js'
 import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
+import UrgencyPanel from '../concepts/frais/Urgency.jsx'
+import { useStoreStatus } from '../lib/storeStatus.js'
+import { useStock, isSoldOut, refreshStock } from '../lib/stock.js'
 import { Chf } from '../concepts/frais/Icons.jsx'
 import { Swap, useMediaQuery } from '../lib/motion.js'
 
@@ -142,28 +147,47 @@ function Section({ n, title, children, aside, done = false, style }) {
   )
 }
 
-function Steps() {
+// Étapes : le trait vers « Paiement » se remplit à mesure que les informations obligatoires sont complètes.
+// « Paiement » devient « prêt » (contour vert), jamais « fait » : le paiement a lieu chez le prestataire.
+function Steps({ progress }) {
   const steps = ['Panier', 'Informations', 'Paiement']
+  const ready = progress >= 1
   return (
     <ol className="flex items-center gap-2 text-[0.76rem] font-semibold" aria-label="Étapes de la commande">
       {steps.map((s, k) => (
         <li key={s} className="flex items-center gap-2" aria-current={k === 1 ? 'step' : undefined}>
           <span
-            className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] ${
-              k === 0 ? 'bg-fr-green text-white' : k === 1 ? 'bg-fr-deep text-white ring-4 ring-fr-mint' : 'bg-fr-line text-fr-muted'
+            className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] transition-[background-color,color,box-shadow] duration-slow ease-out-soft ${
+              k === 0
+                ? 'bg-fr-green text-white'
+                : k === 1
+                  ? 'bg-fr-deep text-white ring-4 ring-fr-mint'
+                  : ready
+                    ? 'bg-white text-fr-green ring-2 ring-fr-green'
+                    : 'bg-fr-line text-fr-muted'
             }`}
           >
             {k === 0 ? <Check size={13} strokeWidth={3} /> : k + 1}
           </span>
-          <span className={k === 1 ? 'text-fr-ink' : 'text-fr-muted max-[379px]:sr-only'}>{s}</span>
-          {k < steps.length - 1 && <span className="h-px w-4 bg-fr-line min-[400px]:w-7" />}
+          <span className={k === 1 ? 'text-fr-ink' : 'text-fr-muted max-[379px]:sr-only'}>
+            {s}
+            {k === 1 && <span className="sr-only"> ({Math.round(progress * 100)} % complété)</span>}
+          </span>
+          {k < steps.length - 1 && (
+            <span className="relative h-0.5 w-4 overflow-hidden rounded-full bg-fr-line min-[400px]:w-7" aria-hidden="true">
+              <span
+                className="absolute inset-0 origin-left rounded-full bg-fr-green transition-transform duration-slow ease-out-soft"
+                style={{ transform: `scaleX(${k === 0 ? 1 : progress})` }}
+              />
+            </span>
+          )}
         </li>
       ))}
     </ol>
   )
 }
 
-function Summary({ offer, changeOffer }) {
+function Summary({ offer, changeOffer, stock }) {
   const save = savingsFor(offer)
   const group = useId()
   return (
@@ -192,6 +216,7 @@ function Summary({ offer, changeOffer }) {
         <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-2xl bg-fr-soft p-1.5">
           {OFFERS.map((o) => {
             const on = o.id === offer.id
+            const out = isSoldOut(stock, o.id)
             return (
               <label
                 key={o.id}
@@ -203,8 +228,8 @@ function Summary({ offer, changeOffer }) {
                 <span className="text-[0.8rem] font-bold text-fr-ink">
                   {o.packs} sachet{o.packs > 1 ? 's' : ''}
                 </span>
-                <span className={`text-[0.78rem] font-extrabold tabular-nums ${on ? 'text-fr-green' : 'text-fr-muted'}`}>
-                  <Chf v={o.price} format={formatCHF} />
+                <span className={`text-[0.78rem] font-extrabold tabular-nums transition-colors duration-base ${out ? 'text-fr-muted' : on ? 'text-fr-green' : 'text-fr-muted'}`}>
+                  {out ? 'Épuisé' : <Chf v={o.price} format={formatCHF} />}
                 </span>
               </label>
             )
@@ -270,6 +295,9 @@ function MethodPicker({ method, setMethod }) {
 
 export default function Checkout() {
   const { offer, hasItems, changeOffer } = useCart()
+  const storeStatus = useStoreStatus()
+  const stock = useStock()
+  const soldOut = Boolean(offer) && isSoldOut(stock, offer.id)
   const [params] = useSearchParams()
   const [values, setValues] = useState(readForm)
   const [errors, setErrors] = useState({})
@@ -288,7 +316,7 @@ export default function Checkout() {
   const [streets, setStreets] = useState([])
   const alertRef = useRef(null)
   // Moyen actif : redirection externe (réglée dans /admin) en priorité, sinon prestataire intégré.
-  const [redirect, setRedirect] = useState({ enabled: false, domain: '', checked: false })
+  const [redirect, setRedirect] = useState({ enabled: false, domain: '', provider: '', checked: false })
   useEffect(() => {
     let alive = true
     getRedirectPayment().then((r) => alive && setRedirect({ ...r, checked: true }))
@@ -297,6 +325,15 @@ export default function Checkout() {
     }
   }, [])
   const paymentReady = redirect.enabled || isPaymentConfigured()
+  const formComplete = useMemo(() =>
+    Object.keys(validateCustomer(values, { terms })).length === 0 &&
+    (redirect.provider !== 'everflow' || Boolean(clean(values).tel)),
+  [values, terms, redirect.provider])
+  const canContinue = formComplete && paymentReady && !soldOut && status !== 'loading'
+  // Offre épuisée : le récapitulatif (où l'on change d'offre) s'ouvre aussi sur mobile.
+  useEffect(() => {
+    if (soldOut) setShowSummary(true)
+  }, [soldOut])
 
   useEffect(() => {
     if (hasItems) trackStartCheckout({ currency: 'CHF', price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs })
@@ -359,12 +396,14 @@ export default function Checkout() {
   const onSubmit = async (e) => {
     e.preventDefault()
     const errs = validateCustomer(values, { terms })
+    if (redirect.provider === 'everflow' && !clean(values).tel) errs.tel = 'Veuillez indiquer votre numéro de téléphone.'
     setErrors(errs)
     setSubmitted(true)
     if (Object.keys(errs).length) {
       setStatus('idle')
       return focusAlert()
     }
+    if (soldOut) return focusAlert()
     if (!paymentReady) {
       setStatus('unavailable')
       return focusAlert()
@@ -372,10 +411,14 @@ export default function Checkout() {
     setStatus('loading')
     if (redirect.enabled) {
       // Le serveur revalide la commande puis renvoie l'URL de la page de paiement externe.
-      const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, customer: clean(values) })
+      const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, customer: clean(values) }, redirect.provider)
       if (res.status === 'redirecting') return
       if (res.status === 'invalid') {
         setErrors(res.errors)
+        setStatus('idle')
+      } else if (res.status === 'sold_out') {
+        // Le serveur a refusé : stock insuffisant au moment de la commande. Rien n'est réservé ni débité.
+        await refreshStock()
         setStatus('idle')
       } else setStatus(res.status === 'unavailable' ? 'unavailable' : 'error')
       return focusAlert()
@@ -395,7 +438,12 @@ export default function Checkout() {
   const errorList = [...ORDERED.filter((f) => shown[f.name]), ...(shown.terms ? [{ name: 'terms', label: 'Conditions générales' }] : [])]
   const isValid = (name) => (touched[name] || submitted) && !errors[name] && Boolean((values[name] || '').trim())
   const telRequired = redirect.provider === 'everflow'
-  const sectionDone = (fields) => fields.every((f) => !(f.required || (f.name === 'tel' && telRequired)) || isValid(f.name))
+  // Avancement en direct (sans attendre la sortie du champ) : pastilles de section et trait des étapes.
+  const liveErrors = useMemo(() => validateCustomer(values), [values])
+  const complete = (f) => !liveErrors[f.name] && Boolean((values[f.name] || '').trim())
+  const needed = ORDERED.filter((f) => f.required || (f.name === 'tel' && telRequired))
+  const sectionDone = (fields) => fields.every((f) => !needed.includes(f) || complete(f))
+  const progress = (needed.filter(complete).length + (terms ? 1 : 0)) / (needed.length + 1)
 
   if (!hasItems) {
     return (
@@ -428,7 +476,7 @@ export default function Checkout() {
           <Link to="/" className="inline-flex items-center gap-1.5 text-[0.86rem] font-semibold text-fr-muted hover:text-fr-green">
             <ArrowLeft size={16} /> Retour à la boutique
           </Link>
-          <Steps />
+          <Steps progress={progress} />
         </div>
         <h1 className="mt-5 animate-fade-up text-[1.85rem] font-extrabold leading-tight tracking-[-0.025em] lg:mt-6 lg:text-[2.5rem]">Finaliser ma commande</h1>
 
@@ -470,7 +518,7 @@ export default function Checkout() {
               {/* p-px : l'anneau du récapitulatif n'est pas rogné pendant le dépliage */}
               <div className="-m-px min-h-0 overflow-hidden p-px lg:m-0 lg:overflow-visible lg:p-0">
               <div className="pt-3 lg:pt-0">
-              <Summary offer={offer} changeOffer={changeOffer} />
+              <Summary offer={offer} changeOffer={changeOffer} stock={stock} />
               <ul className="mt-3 hidden space-y-2.5 rounded-[1.6rem] bg-white p-5 text-[0.84rem] ring-1 ring-fr-line lg:block">
                 <li className="flex items-center gap-2.5">
                   <ShieldCheck size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Aucune donnée de carte ne transite par notre boutique
@@ -491,7 +539,7 @@ export default function Checkout() {
             <Section n={1} title="Vos coordonnées" done={sectionDone(CONTACT)}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 {CONTACT.map((f) => (
-                  <Field key={f.name} {...fieldProps(f)} />
+                  <Field key={f.name} {...fieldProps(f.name === 'tel' && redirect.provider === 'everflow' ? { ...f, required: true } : f)} />
                 ))}
               </div>
             </Section>
@@ -568,10 +616,10 @@ export default function Checkout() {
                 </div>
               ) : (
                 <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] leading-relaxed text-fr-ink">
-                  <Info size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
+                  <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
                   <span>
-                    <strong className="font-bold">Le paiement en ligne n’est pas encore ouvert.</strong> Vous pouvez vérifier votre
-                    commande ; aucune commande ne peut être validée ni débitée pour le moment.
+                    <strong className="font-bold">Paiement sur une page sécurisée.</strong> Vos coordonnées de livraison sont
+                    transmises au prestataire pour finaliser la commande. Aucune donnée de carte n’est saisie sur ce site.
                   </span>
                 </p>
               )}
@@ -670,6 +718,17 @@ export default function Checkout() {
                   </ul>
                 </div>
               )}
+              {soldOut && (
+                <p role="alert" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-[0.88rem] text-amber-900">
+                  <AlertCircle size={18} className="mt-0.5 flex-none" />
+                  <span>
+                    <strong className="font-bold">
+                      {offer.packs} sachet{offer.packs > 1 ? 's' : ''} : épuisé pour le moment.
+                    </strong>{' '}
+                    Aucune commande n’a été enregistrée. Choisissez une autre offre dans le récapitulatif ; vos informations sont conservées.
+                  </span>
+                </p>
+              )}
               {status === 'unavailable' && !errorList.length && (
                 <p role="status" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
                   <Info size={18} className="mt-0.5 flex-none text-fr-green" />
@@ -691,18 +750,28 @@ export default function Checkout() {
               )}
             </div>
 
+            <UrgencyPanel status={storeStatus} offer={offer} />
+
             <button
               type="submit"
-              disabled={status === 'loading'}
-              className="flex h-[3.75rem] w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1.02rem] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-[transform,background-color,opacity,box-shadow] duration-base ease-out-soft hover:bg-[#0C6B3E] can-hover:hover:-translate-y-px active:translate-y-0 motion-safe:active:scale-[0.99] disabled:cursor-wait disabled:opacity-80"
+              disabled={!canContinue}
+              aria-disabled={!canContinue}
+              data-ready={canContinue}
+              className="flex h-[3.75rem] w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1.02rem] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-[transform,background-color,opacity,box-shadow] duration-base ease-out-soft enabled:hover:bg-[#0C6B3E] can-hover:enabled:hover:-translate-y-px enabled:active:translate-y-0 motion-safe:enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {status === 'loading' ? (
                 <>
                   <Loader2 size={19} className="animate-spin" /> Redirection vers le paiement…
                 </>
+              ) : soldOut ? (
+                'Offre épuisée'
               ) : (
                 <>
-                  <LockKeyhole size={18} strokeWidth={2.2} />
+                  <span className="relative inline-block h-[18px] w-[18px] shrink-0" aria-hidden="true">
+                    <LockKeyhole size={18} strokeWidth={2.2} className={`absolute inset-0 transition-[opacity,transform] duration-base ease-out-soft ${canContinue ? '-translate-y-1 -rotate-12 opacity-0' : 'translate-y-0 rotate-0 opacity-100'}`} />
+                    {canContinue && <LockKeyholeOpen size={18} strokeWidth={2.2} className="checkout-unlock absolute inset-0" />}
+                    {canContinue && <ShoppingBag size={18} strokeWidth={2} className="checkout-ready-bag absolute inset-0" />}
+                  </span>
                   <span>
                     Acheter — <Swap value={offer.id}><Chf v={offer.price} format={formatCHF} /></Swap>
                   </span>

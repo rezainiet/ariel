@@ -1,27 +1,37 @@
-import { useState } from 'react'
-import {
-  WashingMachine,
-  Hand,
-  ThermometerSnowflake,
-  Shirt,
-  Play,
-  ShieldCheck,
-  ChevronDown,
-  ArrowDown,
-  Check,
-  Snowflake,
-} from 'lucide-react'
-import { OFFERS, formatCHF, savingsFor, centsPerWash } from '../../config/store.js'
+import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { WashingMachine, Play, ArrowRight, Check } from 'lucide-react'
+import { useCart } from '../../context/CartContext.jsx'
+import { OFFERS, formatCHF, getOffer, savingsFor, centsPerWash } from '../../config/store.js'
 import { IMAGES } from '../../config/assets.js'
-import { IconTile, PodIcon, PouchIcon, Chf } from './Icons.jsx'
+import { isSoldOut } from '../../lib/stock.js'
+import { Swap } from '../../lib/motion.js'
+import { radioKeyHandler } from '../shared/hooks.js'
+import { IconTile, PodIcon, Chf } from './Icons.jsx'
 import { Rise, RevealFrame, useRevealed } from './motion.jsx'
 import { STORY } from './mediaF.js'
-import { COLD_HOTSPOTS, ROUTINE, PRODUCT_DETAILS } from './contentF.js'
+import { COLD_HOTSPOTS, GESTURE } from './contentF.js'
 import { Packs } from './HeroF.jsx'
-import { Swap } from '../../lib/motion.js'
+
+// ─────────────────────────────────────────────────────────────
+// Récit produit, de haut en bas : 1. le geste · 2. la quantité (reliée à l'offre choisie)
+// · 3. ce que promet l'emballage. Chaque section a sa propre entrée (cadre, côté, échelle),
+// toujours avec les mêmes durées ; rien ne bouge en continu.
+// ─────────────────────────────────────────────────────────────
 
 const W = 'mx-auto max-w-[1320px] px-4 lg:px-8'
 const cents = (o) => String(centsPerWash(o)).replace('.', ',')
+const sachets = (n) => `${n} sachet${n > 1 ? 's' : ''}`
+
+// Achat direct : l'offre est placée au panier (sans doublon) puis la commande s'ouvre.
+function useBuyNow() {
+  const { selectOffer } = useCart()
+  const navigate = useNavigate()
+  return (id) => {
+    selectOffer(id, { openDrawer: false, feedback: false })
+    navigate('/checkout')
+  }
+}
 
 function Pic({ p, alt, className, sizes = '(min-width:1024px) 50vw, 100vw' }) {
   return (
@@ -42,82 +52,76 @@ function Kicker({ n, children }) {
   )
 }
 
-function Title({ children, className = '' }) {
+function Title({ id, children, className = '' }) {
   return (
-    <h3 className={`mt-4 font-jakarta text-[1.85rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink min-[400px]:text-[2.05rem] lg:text-[2.9rem] xl:text-[3.2rem] ${className}`}>
+    <h2 id={id} className={`mt-4 font-jakarta text-[1.85rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink min-[400px]:text-[2.05rem] lg:text-[2.9rem] xl:text-[3.2rem] ${className}`}>
       {children}
-    </h3>
+    </h2>
   )
 }
 
-const CHAPTERS = [
-  ['f-format', PodIcon, 'Le format'],
-  ['f-quantite', PouchIcon, '60 capsules'],
-  ['f-froid', Snowflake, 'Lavage à froid'],
-  ['f-quotidien', Shirt, 'Au quotidien'],
-]
+// ── 1 · Le geste : la photo s'ouvre, puis les trois étapes se posent le long d'un fil qui se dessine ──
+const GESTURE_ICONS = { pod: PodIcon, load: WashingMachine, run: Play }
 
-// ── 1 · Le format ────────────────────────────────────────────
-function FeatureFormat() {
-  const points = [
-    [PodIcon, 'Dose pré-mesurée', 'Rien à verser, rien à mesurer.'],
-    [WashingMachine, 'Directement dans le tambour', 'Au fond du tambour vide, avant le linge.'],
-    [Hand, 'Mains sèches', 'Manipulez la capsule avec des mains sèches.'],
-  ]
+function Gesture() {
+  const [ref, shown] = useRevealed({ threshold: 0.2 })
   return (
-    <article id="f-format" className={`${W} scroll-mt-24 grid items-center gap-7 lg:grid-cols-[1.12fr_1fr] lg:gap-16`}>
+    <section id="pourquoi" aria-labelledby="geste-titre" className={`${W} scroll-mt-20 grid items-center gap-8 py-14 lg:grid-cols-[1.08fr_1fr] lg:gap-16 lg:py-24`}>
       <div className="relative">
-        <RevealFrame className="aspect-square bg-fr-mint lg:aspect-[5/6]">
-          <Pic p={STORY.podHand} alt="Une capsule Ariel tenue au-dessus du tambour d’un lave-linge" className="h-full w-full object-cover object-[50%_35%]" sizes="(min-width:1024px) 640px, 100vw" />
+        <RevealFrame className="aspect-[4/3.3] bg-fr-mint lg:aspect-[5/6]">
+          <Pic p={STORY.podHand} alt="Une capsule Ariel tenue au-dessus du tambour d’un lave-linge" className="h-full w-full object-cover object-[50%_38%]" sizes="(min-width:1024px) 640px, 100vw" />
         </RevealFrame>
-        <Rise delay={350} className="absolute -bottom-5 right-4 w-[34%] max-w-[13rem] lg:-bottom-8 lg:-right-6">
+        <Rise from="scale" delay={380} className="absolute -bottom-5 right-4 w-[30%] max-w-[12rem] lg:-bottom-8 lg:-right-6">
           <div className="overflow-hidden rounded-full border-[5px] border-white shadow-[0_18px_40px_rgba(11,61,42,0.22)] lg:border-[7px]">
             <img src={STORY.podWater.src} alt="La capsule en gros plan" loading="lazy" className="aspect-square w-full object-cover" />
           </div>
         </Rise>
-        <Rise delay={200} className="absolute left-4 top-4 lg:left-6 lg:top-6">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/90 py-1.5 pl-1.5 pr-3.5 font-jakarta text-[0.78rem] font-bold text-fr-ink shadow-md backdrop-blur">
+        <Rise delay={240} className="absolute left-4 top-4 lg:left-6 lg:top-6">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/95 py-1.5 pl-1.5 pr-3.5 font-jakarta text-[0.78rem] font-bold text-fr-ink shadow-md">
             <IconTile icon={PodIcon} size="sm" round /> 1 capsule = 1 dose
           </span>
         </Rise>
       </div>
 
-      <div className="pt-3 lg:pt-0">
+      <div className="pt-2 lg:pt-0">
         <Rise>
-          <Kicker n="1">Le format</Kicker>
-          <Title>
+          <Kicker n="1">Le geste</Kicker>
+          <Title id="geste-titre">
             Une capsule.
             <span className="block text-fr-green">Un geste simple.</span>
           </Title>
-          <p className="mt-4 max-w-md font-jakarta text-[0.98rem] leading-relaxed text-fr-muted lg:mt-5 lg:text-[1.08rem]">
-            Chaque capsule contient une dose de lessive prête à l’emploi. Posez-la au fond du tambour, ajoutez le linge, lancez
-            votre programme.
+          <p className="mt-4 max-w-md font-jakarta text-[0.98rem] leading-relaxed text-fr-muted lg:mt-5 lg:text-[1.05rem]">
+            Chaque capsule contient une dose de lessive prête à l’emploi : rien à verser, rien à mesurer.
           </p>
         </Rise>
-        <ul className="mt-6 grid grid-cols-3 gap-2 lg:mt-8 lg:grid-cols-1 lg:gap-0 lg:divide-y lg:divide-fr-line lg:border-y lg:border-fr-line">
-          {points.map(([Icon, t, b], k) => (
-            <Rise as="li" key={t} delay={120 + k * 90} className="group flex flex-col items-center gap-2 rounded-2xl bg-fr-soft p-3 text-center lg:flex-row lg:items-center lg:gap-4 lg:rounded-none lg:bg-transparent lg:px-0 lg:py-4 lg:text-left">
-              <IconTile icon={Icon} size="md" className="group-hover:bg-fr-green group-hover:text-white" />
-              <span className="font-jakarta">
-                <span className="block text-[0.74rem] font-bold leading-tight text-fr-ink lg:text-[0.98rem]">{t}</span>
-                <span className="mt-0.5 hidden text-[0.88rem] text-fr-muted lg:block">{b}</span>
+        <ol ref={ref} className={`relative mt-6 space-y-4 lg:mt-8 lg:space-y-5 ${shown ? 'is-in' : ''}`}>
+          <span className="reveal-line absolute bottom-5 left-[1.06rem] top-5 w-px bg-gradient-to-b from-fr-green/50 to-fr-line lg:left-[1.37rem]" aria-hidden="true" />
+          {GESTURE.map((g, k) => (
+            <Rise as="li" from="left" key={g.key} delay={160 + k * 110} className="relative flex items-start gap-3.5 font-jakarta">
+              <IconTile icon={GESTURE_ICONS[g.key]} size="sm" className="relative lg:!h-11 lg:!w-11 lg:!rounded-[14px]" />
+              <span className="pt-0.5">
+                <span className="block text-[0.95rem] font-bold leading-snug text-fr-ink lg:text-[1.02rem]">
+                  <span className="sr-only">Étape {k + 1} : </span>
+                  {g.title}
+                </span>
+                <span className="block text-[0.84rem] leading-snug text-fr-muted lg:text-[0.9rem]">{g.body}</span>
               </span>
             </Rise>
           ))}
-        </ul>
-        <p className="mt-4 font-jakarta text-[0.78rem] text-fr-muted">Jamais dans le bac à produits · d’après le mode d’emploi Ariel</p>
+        </ol>
+        <p className="mt-5 font-jakarta text-[0.78rem] text-fr-muted">Jamais dans le bac à produits · d’après le mode d’emploi Ariel</p>
       </div>
-    </article>
+    </section>
   )
 }
 
-// ── 2 · 60 capsules ─────────────────────────────────────────
+// ── 2 · La quantité : reliée à l'offre choisie dans le héros (même état, même prix) ──
 function CapsuleGrid({ packs, shown }) {
   return (
     <div className="flex items-end justify-center gap-3 lg:gap-5" aria-hidden="true">
       {Array.from({ length: packs }).map((_, g) => (
-        <div key={g} className="flex flex-col items-center gap-2">
-          <img src={IMAGES.packshotCutout} alt="" className="w-11 drop-shadow-[0_6px_8px_rgba(11,61,42,0.18)] lg:w-14" />
+        <div key={g} className="flex animate-swap-in flex-col items-center gap-2" style={{ animationDelay: `${g * 70}ms` }}>
+          <img src={IMAGES.packshotCutout} alt="" className="w-10 drop-shadow-[0_6px_8px_rgba(11,61,42,0.18)] lg:w-14" />
           <div className="grid grid-cols-6 gap-[3px] rounded-xl bg-fr-mint p-2 lg:gap-1 lg:p-2.5">
             {Array.from({ length: 60 }).map((_, k) => (
               <span
@@ -137,35 +141,35 @@ function CapsuleGrid({ packs, shown }) {
   )
 }
 
-function FeatureQuantity({ setSel }) {
-  const [n, setN] = useState(3)
-  const [ref, shown] = useRevealed({ threshold: 0.3 })
-  const offer = OFFERS[n - 1]
+function Quantity({ sel, setSel, stock, soldOut }) {
+  const buyNow = useBuyNow()
+  const [ref, shown] = useRevealed({ threshold: 0.25 })
+  const tiles = useRef([])
+  const offer = getOffer(sel)
+  const idx = OFFERS.findIndex((o) => o.id === sel)
   const save = savingsFor(offer)
-  const choose = () => {
-    setSel(offer.id)
-    document.getElementById('offres')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
   return (
-    <article id="f-quantite" className="scroll-mt-24 bg-gradient-to-b from-fr-mint/70 to-fr-mint/20 py-14 lg:py-24">
+    <section id="f-quantite" aria-labelledby="quantite-titre" className="scroll-mt-20 bg-gradient-to-b from-fr-mint/70 to-fr-mint/20 py-14 lg:py-24">
       <div className={`${W} grid items-center gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-16`}>
-        <div className="relative">
-          <Rise>
+        <div>
+          <Rise from="right">
             <Kicker n="2">La quantité</Kicker>
           </Rise>
-          <Rise delay={80} className="relative mt-2 flex items-end gap-4 lg:mt-0">
-            <span className="bg-gradient-to-br from-fr-leaf via-fr-green to-fr-deep bg-clip-text font-jakarta text-[7.5rem] font-extrabold leading-[0.85] tracking-[-0.05em] text-transparent lg:text-[13.5rem]">
+          <Rise from="right" delay={80} className="relative mt-2 flex items-end gap-4 lg:mt-0">
+            <span className="bg-gradient-to-br from-fr-leaf via-fr-green to-fr-deep bg-clip-text font-jakarta text-[6rem] font-extrabold leading-[0.85] tracking-[-0.05em] text-transparent lg:text-[13.5rem]">
               60
             </span>
             <img
               src={IMAGES.packshotCutout}
               alt="Le sachet Ariel All-in-1 PODS de 60 capsules"
               loading="lazy"
-              className="mb-1 w-[38%] max-w-[15rem] rotate-[5deg] drop-shadow-[0_24px_28px_rgba(11,61,42,0.25)] lg:mb-3"
+              className="mb-1 w-[30%] max-w-[15rem] rotate-[5deg] drop-shadow-[0_24px_28px_rgba(11,61,42,0.25)] lg:mb-3 lg:w-[38%]"
             />
           </Rise>
-          <Rise delay={140}>
-            <Title className="!mt-3">capsules dans un seul sachet.</Title>
+          <Rise from="right" delay={150}>
+            <Title id="quantite-titre" className="!mt-3">
+              capsules dans chaque sachet.
+            </Title>
             <p className="mt-4 max-w-md font-jakarta text-[0.98rem] leading-relaxed text-fr-muted lg:text-[1.05rem]">
               Un sachet refermable de 60 capsules, soit 60 lavages au dosage standard d’une capsule. Le nombre réel dépend de la
               taille de la charge, du degré de salissure et de la dureté de l’eau.
@@ -173,123 +177,120 @@ function FeatureQuantity({ setSel }) {
           </Rise>
         </div>
 
-        {/* Comparaison des quantités, reliée au sélecteur d'offre */}
-        <Rise delay={120}>
+        <Rise from="scale" delay={100}>
           <div ref={ref} className="rounded-[1.75rem] bg-white p-4 shadow-[0_24px_60px_rgba(11,61,42,0.10)] ring-1 ring-fr-line lg:p-7">
-            <div role="tablist" aria-label="Comparer les offres" className="grid grid-cols-3 gap-1 rounded-full bg-fr-soft p-1 font-jakarta">
-              {OFFERS.map((o) => (
-                <button
-                  key={o.id}
-                  role="tab"
-                  aria-selected={o.packs === n}
-                  onClick={() => setN(o.packs)}
-                  className={`h-10 rounded-full text-[0.82rem] font-bold transition-[background-color,color,box-shadow] duration-base ease-out-soft ${
-                    o.packs === n ? 'bg-fr-deep text-white shadow-md' : 'text-fr-muted hover:text-fr-ink'
-                  }`}
-                >
-                  {o.packs} sachet{o.packs > 1 ? 's' : ''}
-                </button>
-              ))}
+            {/* Même sélection que « Choisir mon offre » : la pastille glisse d'une offre à l'autre */}
+            <div role="radiogroup" aria-label="Nombre de sachets" className="relative grid grid-cols-3 rounded-full bg-fr-soft p-1 font-jakarta">
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-fr-deep shadow-md transition-transform duration-slow ease-out-soft"
+                style={{ transform: `translateX(${idx * 100}%)` }}
+              />
+              {OFFERS.map((o, k) => {
+                const on = o.id === sel
+                const out = isSoldOut(stock, o.id)
+                return (
+                  <button
+                    key={o.id}
+                    ref={(el) => (tiles.current[k] = el)}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    tabIndex={on ? 0 : -1}
+                    onClick={() => setSel(o.id)}
+                    onKeyDown={radioKeyHandler(k, OFFERS.length, (j) => setSel(OFFERS[j].id), tiles)}
+                    className={`relative z-10 flex h-12 flex-col items-center justify-center rounded-full leading-tight transition-colors duration-base ${
+                      on ? 'text-white' : 'text-fr-muted hover:text-fr-ink'
+                    }`}
+                  >
+                    <span className="text-[0.82rem] font-bold">{sachets(o.packs)}</span>
+                    <span className={`text-[0.68rem] font-semibold ${on ? 'text-fr-mint' : ''}`}>{out ? 'Épuisé' : formatCHF(o.price)}</span>
+                  </button>
+                )
+              })}
             </div>
-            <div className="mt-6 flex min-h-[10.5rem] items-end justify-center lg:min-h-[12.5rem]">
-              <CapsuleGrid key={n} packs={n} shown={shown} />
+            <div className="mt-6 flex min-h-[10rem] items-end justify-center lg:min-h-[12.5rem]">
+              <CapsuleGrid key={offer.packs} packs={offer.packs} shown={shown} />
             </div>
             <dl className="mt-6 grid grid-cols-3 divide-x divide-fr-line border-y border-fr-line py-3 text-center font-jakarta">
               <div>
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Capsules</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]"><Swap value={n}>{offer.washes}</Swap></dd>
+                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">
+                  <Swap value={offer.id}>{offer.washes}</Swap>
+                </dd>
               </div>
               <div>
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Prix total</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]"><Swap value={n}><Chf v={offer.price} format={formatCHF} /></Swap></dd>
+                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">
+                  <Swap value={offer.id}>
+                    <Chf v={offer.price} format={formatCHF} />
+                  </Swap>
+                </dd>
               </div>
               <div>
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Par lavage*</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-green lg:text-[1.6rem]"><Swap value={n}>{cents(offer)} ct</Swap></dd>
+                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-green lg:text-[1.6rem]">
+                  <Swap value={offer.id}>{cents(offer)} ct</Swap>
+                </dd>
               </div>
             </dl>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="font-jakarta text-[0.8rem] text-fr-muted">
+            <div className="mt-4 flex min-h-[2.75rem] flex-wrap items-center justify-between gap-3">
+              <Swap value={offer.id} as="p" className="font-jakarta text-[0.8rem] text-fr-muted">
                 {save > 0 ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-fr-mint px-2.5 py-1 font-bold text-fr-green">
-                    <Check size={13} strokeWidth={3} /> {formatCHF(save)} de moins que {n} × {formatCHF(OFFERS[0].price)}
+                    <Check size={13} strokeWidth={3} /> {formatCHF(save)} de moins que {offer.packs} × {formatCHF(OFFERS[0].price)}
                   </span>
                 ) : (
                   'Le format découverte'
                 )}
-              </p>
-              <button onClick={choose} className="inline-flex h-11 items-center gap-2 rounded-full bg-fr-green px-5 font-jakarta text-[0.88rem] font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.98]">
-                Choisir {n} sachet{n > 1 ? 's' : ''} <ArrowDown size={15} className="-rotate-90 lg:rotate-0" />
+              </Swap>
+              {/* Desktop : action directe ici. Mobile : la barre d'achat en bas d'écran suit déjà cette sélection. */}
+              <button
+                type="button"
+                onClick={() => buyNow(sel)}
+                disabled={soldOut}
+                className="hidden h-11 items-center gap-2 rounded-full bg-fr-green px-5 font-jakarta text-[0.88rem] font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-fr-muted lg:inline-flex"
+              >
+                {soldOut ? (
+                  'Offre épuisée'
+                ) : (
+                  <>
+                    Acheter {sachets(offer.packs)} · <Chf v={offer.price} format={formatCHF} /> <ArrowRight size={15} />
+                  </>
+                )}
               </button>
             </div>
+            {soldOut && (
+              <p role="status" className="mt-3 animate-reveal-down rounded-xl bg-fr-soft px-3 py-2 font-jakarta text-[0.8rem] font-semibold text-fr-ink lg:hidden">
+                {sachets(offer.packs)} : épuisé pour le moment. Choisissez une autre quantité.
+              </p>
+            )}
             <p className="mt-3 font-jakarta text-[0.7rem] text-fr-muted">* Au dosage standard d’une capsule par lavage.</p>
           </div>
         </Rise>
       </div>
-    </article>
+    </section>
   )
 }
 
-// ── 3 · Lavage à froid ──────────────────────────────────────
-// Cadran : l'arc se dessine jusqu'au froid quand la section apparaît.
-function ColdDial({ shown }) {
-  const R = 46
-  const C = 2 * Math.PI * R
-  return (
-    <div className="relative h-28 w-28 flex-none lg:h-32 lg:w-32" aria-hidden="true">
-      <span className={`absolute inset-3 rounded-full bg-fr-mint transition-transform duration-[800ms] ease-out-soft ${shown ? 'scale-100' : 'scale-90'}`} />
-      <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90">
-        <circle cx="60" cy="60" r={R} fill="none" stroke="#E4ECE7" strokeWidth="5" />
-        <circle
-          cx="60"
-          cy="60"
-          r={R}
-          fill="none"
-          stroke="url(#coldGrad)"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeDasharray={C}
-          strokeDashoffset={shown ? C * 0.3 : C}
-          style={{ transition: 'stroke-dashoffset 900ms var(--ease-out) 150ms' }}
-        />
-        <defs>
-          <linearGradient id="coldGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#19A463" />
-            <stop offset="100%" stopColor="#2F7FD8" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-fr-green">
-        <ThermometerSnowflake size={38} strokeWidth={1.5} />
-      </span>
-    </div>
-  )
-}
-
-function FeatureCold() {
+// ── 3 · Sur l'emballage : la photo se pose, puis les repères apparaissent un à un ──
+function OnPack() {
   const [active, setActiveRaw] = useState(null)
   const [explored, setExplored] = useState(false)
+  const [photoRef, photoShown] = useRevealed({ threshold: 0.3 })
   const setActive = (k) => {
     setActiveRaw(k)
     if (k !== null) setExplored(true)
   }
-  const [ref, shown] = useRevealed({ threshold: 0.25 })
   return (
-    <article id="f-froid" className={`${W} scroll-mt-24 grid items-center gap-7 py-14 lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:py-24`}>
-      <div ref={ref} className="order-2 lg:order-1">
-        <Rise className="flex items-start gap-5 lg:block">
-          <div className="hidden lg:mb-7 lg:block">
-            <ColdDial shown={shown} />
-          </div>
-          <div>
-            <Kicker n="3">La performance</Kicker>
-            <Title>
-              Pensé pour votre
-              <span className="block text-fr-green">routine de lavage.</span>
-            </Title>
-          </div>
-        </Rise>
-        <Rise delay={100}>
+    <section id="f-froid" aria-labelledby="froid-titre" className={`${W} scroll-mt-20 grid items-center gap-7 py-14 lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:py-24`}>
+      <div className="order-2 lg:order-1">
+        <Rise from="left">
+          <Kicker n="3">Sur l’emballage</Kicker>
+          <Title id="froid-titre">
+            Pensé pour votre
+            <span className="block text-fr-green">routine de lavage.</span>
+          </Title>
           <p className="mt-4 max-w-md font-jakarta text-[0.98rem] leading-relaxed text-fr-muted lg:mt-5 lg:text-[1.05rem]">
             Ce que promet l’emballage, traduit de l’allemand : une capsule qui se dissout rapidement et un détachage dès le premier
             lavage, même à l’eau froide.
@@ -299,16 +300,15 @@ function FeatureCold() {
           {COLD_HOTSPOTS.map((h, k) => (
             <Rise
               as="li"
+              from="left"
               key={h.de}
-              delay={150 + k * 80}
+              delay={120 + k * 90}
               onMouseEnter={() => setActive(k)}
-              className={`flex cursor-default items-start gap-3.5 rounded-2xl p-3 font-jakarta lg:p-3.5 ${
-                active === k ? 'bg-fr-mint' : 'bg-fr-soft lg:bg-transparent'
-              }`}
+              className={`flex cursor-default items-start gap-3.5 rounded-2xl p-3 font-jakarta lg:p-3.5 ${active === k ? 'bg-fr-mint' : 'bg-fr-soft lg:bg-transparent'}`}
             >
               <span
-                className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[0.7rem] font-extrabold transition-colors duration-base ${
-                  active === k ? 'bg-fr-deep text-white' : 'bg-fr-green text-white'
+                className={`mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[0.7rem] font-extrabold text-white transition-colors duration-base ${
+                  active === k ? 'bg-fr-deep' : 'bg-fr-green'
                 }`}
               >
                 {k + 1}
@@ -325,8 +325,9 @@ function FeatureCold() {
         <p className="mt-4 font-jakarta text-[0.72rem] text-fr-muted">Mentions de la face avant du sachet. Allégations du fabricant.</p>
       </div>
 
-      {/* Photo avec repères interactifs posés à côté des mentions imprimées */}
-      <div className="relative order-1 lg:order-2">
+      {/* Photo avec repères posés à côté des mentions imprimées */}
+      <div ref={photoRef} className={`relative order-1 lg:order-2 ${photoShown ? 'is-in' : ''}`}>
+        {/* Cadre au format exact de la photo (4:5) : les repères, en % de l'image, restent sur le texte imprimé. */}
         <RevealFrame className="aspect-[4/5]">
           <Pic p={STORY.cold} alt="Le sachet Ariel posé sur une tablette en bois, devant des serviettes blanches" className="h-full w-full object-cover" />
         </RevealFrame>
@@ -337,23 +338,28 @@ function FeatureCold() {
             onClick={() => setActive(active === k ? null : k)}
             onMouseEnter={() => setActive(k)}
             onFocus={() => setActive(k)}
+            onBlur={() => setActive(null)}
             aria-label={`Repère ${k + 1} : ${h.fr}`}
             aria-pressed={active === k}
-            className="group absolute z-10 -translate-x-1/2 -translate-y-1/2"
+            className="group absolute z-10 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
             style={{ left: `${h.x}%`, top: `${h.y}%` }}
           >
-            {!explored && <span className="absolute inset-0 animate-ping rounded-full bg-white/70 motion-reduce:hidden" style={{ animationDuration: '2.4s', animationIterationCount: 3 }} />}
-            <span
-              className={`relative flex h-7 w-7 items-center justify-center rounded-full font-jakarta text-[0.72rem] font-extrabold shadow-[0_6px_16px_rgba(10,30,20,0.35)] ring-2 ring-white transition-[transform,background-color] duration-base ease-out-soft lg:h-8 lg:w-8 ${
-                active === k ? 'scale-110 bg-fr-deep text-white' : 'bg-fr-green text-white can-hover:group-hover:scale-110'
-              }`}
-            >
-              {k + 1}
+            {!explored && photoShown && (
+              <span className="absolute inset-2 animate-ping rounded-full bg-white/70 motion-reduce:hidden" style={{ animationDuration: '2.4s', animationIterationCount: 2, animationDelay: `${900 + k * 160}ms` }} />
+            )}
+            <span className="seq-item" style={{ '--seq-delay': `${500 + k * 160}ms` }}>
+              <span
+                className={`relative flex h-7 w-7 items-center justify-center rounded-full font-jakarta text-[0.72rem] font-extrabold text-white shadow-[0_6px_16px_rgba(10,30,20,0.35)] ring-2 ring-white transition-[transform,background-color] duration-base ease-out-soft lg:h-8 lg:w-8 ${
+                  active === k ? 'scale-110 bg-fr-deep' : 'bg-fr-green can-hover:group-hover:scale-110'
+                }`}
+              >
+                {k + 1}
+              </span>
             </span>
           </button>
         ))}
         <div
-          className={`pointer-events-none absolute inset-x-3 top-3 z-20 rounded-2xl bg-white/95 p-3 font-jakarta shadow-[0_14px_34px_rgba(11,61,42,0.18)] backdrop-blur transition-[opacity,transform] duration-base ease-out-soft lg:inset-x-6 lg:top-6 lg:p-4 ${
+          className={`pointer-events-none absolute inset-x-3 top-3 z-20 rounded-2xl bg-white/95 p-3 font-jakarta shadow-[0_14px_34px_rgba(11,61,42,0.18)] transition-[opacity,transform] duration-base ease-out-soft lg:inset-x-6 lg:top-6 lg:p-4 ${
             active === null ? '-translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
           }`}
           aria-live="polite"
@@ -361,7 +367,9 @@ function FeatureCold() {
           {active !== null && (
             <>
               <p className="text-[0.92rem] font-bold text-fr-ink">{COLD_HOTSPOTS[active].fr}</p>
-              <p lang="de" className="text-[0.76rem] italic text-fr-muted">« {COLD_HOTSPOTS[active].de} »</p>
+              <p lang="de" className="text-[0.76rem] italic text-fr-muted">
+                « {COLD_HOTSPOTS[active].de} »
+              </p>
             </>
           )}
         </div>
@@ -369,148 +377,59 @@ function FeatureCold() {
           <span className="h-1.5 w-1.5 rounded-full bg-fr-green" /> Touchez les repères
         </span>
       </div>
-    </article>
-  )
-}
-
-// ── 4 · Au quotidien ────────────────────────────────────────
-const ROUTINE_ICONS = { sort: Shirt, pod: PodIcon, load: WashingMachine, run: Play }
-const DETAIL_ICONS = { 'pour-quel-linge': Shirt, dosage: PodIcon, securite: ShieldCheck, ouverture: PouchIcon }
-
-function Detail({ d }) {
-  const [open, setOpen] = useState(false)
-  const Icon = DETAIL_ICONS[d.id]
-  return (
-    <div className={`rounded-2xl bg-white ring-1 transition-colors duration-200 ${open ? 'ring-fr-green/40' : 'ring-fr-line hover:ring-fr-green/25'}`}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-controls={`detail-${d.id}`}
-        className="flex w-full items-center gap-3 p-3.5 text-left font-jakarta lg:p-4"
-      >
-        <IconTile icon={Icon} size="sm" />
-        <span className="flex-1 text-[0.92rem] font-bold text-fr-ink">{d.title}</span>
-        <span className={`flex h-7 w-7 items-center justify-center rounded-full bg-fr-soft text-fr-green transition-transform duration-slow ease-out-soft ${open ? 'rotate-180' : ''}`}>
-          <ChevronDown size={16} />
-        </span>
-      </button>
-      <div
-        id={`detail-${d.id}`}
-        inert={open ? undefined : ''}
-        className={`grid transition-[grid-template-rows,opacity] duration-slow ease-out-soft ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <ul className="space-y-1.5 px-4 pb-4 pl-[3.6rem] font-jakarta text-[0.86rem] leading-relaxed text-fr-muted">
-            {d.body.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function FeatureEveryday() {
-  return (
-    <article id="f-quotidien" className="scroll-mt-24 bg-fr-soft py-14 lg:py-24">
-      <div className={W}>
-        <div className="relative lg:grid lg:grid-cols-[1.3fr_1fr] lg:items-center">
-          <RevealFrame className="aspect-[4/5] sm:aspect-[4/3] lg:aspect-[4/3.4]">
-            <picture>
-              <source media="(min-width: 640px)" type="image/avif" srcSet={STORY.routineWide.avif} sizes="(min-width:1024px) 720px, 100vw" />
-              <source media="(min-width: 640px)" type="image/webp" srcSet={STORY.routineWide.webp} sizes="(min-width:1024px) 720px, 100vw" />
-              <source type="image/avif" srcSet={STORY.routineTall.avif} sizes="100vw" />
-              <source type="image/webp" srcSet={STORY.routineTall.webp} sizes="100vw" />
-              <img
-                src={STORY.routineTall.src}
-                alt="Trois sachets Ariel sur une tablette en bois, devant des serviettes blanches"
-                loading="lazy"
-                className="h-full w-full object-cover object-[35%_80%]"
-              />
-            </picture>
-          </RevealFrame>
-
-          <Rise className="relative mt-4 rounded-[1.6rem] bg-white p-5 shadow-[0_24px_60px_rgba(11,61,42,0.12)] ring-1 ring-fr-line lg:-ml-14 lg:mr-0 lg:mt-0 lg:p-9">
-            <Kicker n="4">Au quotidien</Kicker>
-            <Title className="!text-[1.7rem] lg:!text-[2.5rem]">
-              Le soin du linge
-              <span className="block text-fr-green">au quotidien.</span>
-            </Title>
-            <ol className="relative mt-5 space-y-3.5 lg:mt-7 lg:space-y-4">
-              <span className="absolute bottom-4 left-[1.06rem] top-4 w-px bg-gradient-to-b from-fr-green/40 to-fr-line lg:left-[1.37rem]" aria-hidden="true" />
-              {ROUTINE.map((r, k) => {
-                const Icon = ROUTINE_ICONS[r.key]
-                return (
-                  <Rise as="li" key={r.key} delay={100 + k * 90} className="relative flex items-start gap-3.5 font-jakarta">
-                    <IconTile icon={Icon} size="sm" className="relative lg:!h-11 lg:!w-11 lg:!rounded-[14px]" />
-                    <span className="pt-0.5">
-                      <span className="block text-[0.92rem] font-bold leading-snug text-fr-ink lg:text-[1rem]">{r.title}</span>
-                      <span className="block text-[0.8rem] leading-snug text-fr-muted lg:text-[0.88rem]">{r.body}</span>
-                    </span>
-                  </Rise>
-                )
-              })}
-            </ol>
-          </Rise>
-        </div>
-
-        <div className="mt-8 lg:mt-12">
-          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-muted">Détails du produit</p>
-          <div className="mt-3 grid gap-2.5 lg:grid-cols-2 lg:gap-3">
-            {PRODUCT_DETAILS.map((d) => (
-              <Detail key={d.id} d={d} />
-            ))}
-          </div>
-        </div>
-      </div>
-    </article>
-  )
-}
-
-// ── Section complète ────────────────────────────────────────
-export default function StoryF({ setSel }) {
-  return (
-    <section id="pourquoi" aria-labelledby="pourquoi-titre" className="scroll-mt-20 bg-white pt-14 lg:pt-24">
-      <div className={`${W} lg:flex lg:items-end lg:justify-between lg:gap-12`}>
-        <Rise className="max-w-2xl">
-          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">Pourquoi choisir Ariel All‑in‑1 PODS ?</p>
-          <h2 id="pourquoi-titre" className="mt-3 font-jakarta text-[2.1rem] font-extrabold leading-[1.02] tracking-[-0.025em] text-fr-ink lg:text-[3.6rem]">
-            Tout tient dans
-            <span className="block text-fr-green">une capsule.</span>
-          </h2>
-        </Rise>
-        {/* Sommaire : accès direct à chaque chapitre */}
-        <Rise delay={120} as="nav" aria-label="Chapitres" className="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:mt-0 lg:flex-wrap lg:justify-end lg:overflow-visible lg:px-0">
-          {CHAPTERS.map(([id, Icon, label]) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              className="flex flex-none items-center gap-2 rounded-full bg-fr-soft py-1.5 pl-1.5 pr-4 font-jakarta text-[0.8rem] font-bold text-fr-ink ring-1 ring-fr-line transition-[background-color,box-shadow] duration-fast hover:bg-fr-mint hover:ring-fr-green/30"
-            >
-              <IconTile icon={Icon} size="sm" round tone="white" className="!h-7 !w-7" /> {label}
-            </a>
-          ))}
-        </Rise>
-      </div>
-      <div className="mt-10 space-y-0 lg:mt-16">
-        <div className="pb-14 lg:pb-24">
-          <FeatureFormat />
-        </div>
-        <FeatureQuantity setSel={setSel} />
-        <FeatureCold />
-        <FeatureEveryday />
-      </div>
-      {/* Rappel discret, non répétitif : un lien vers les offres, pas une bannière */}
-      <div className={`${W} flex flex-col items-center gap-3 py-10 text-center lg:flex-row lg:justify-between lg:py-12 lg:text-left`}>
-        <p className="font-jakarta text-[1.05rem] font-bold text-fr-ink lg:text-[1.2rem]">
-          Dès {formatCHF(4)} le sachet de 60 capsules · livraison offerte en Suisse
-        </p>
-        <a href="#offres" className="inline-flex h-12 items-center gap-2 rounded-full bg-fr-deep px-6 font-jakarta text-[0.92rem] font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-green motion-safe:active:scale-[0.98]">
-          Choisir mon offre <ArrowDown size={16} />
-        </a>
-      </div>
     </section>
   )
 }
 
+// ── Récit complet ──
+export default function StoryF({ sel, setSel, stock, soldOut }) {
+  return (
+    <div className="bg-white">
+      <Gesture />
+      <Quantity sel={sel} setSel={setSel} stock={stock} soldOut={soldOut} />
+      <OnPack />
+    </div>
+  )
+}
+
+// ── Dernière étape (desktop) : rappel de l'offre choisie et une seule action.
+// Sur mobile, la barre d'achat en bas d'écran tient ce rôle : pas de second appel concurrent. ──
+export function FinalCta({ sel, soldOut }) {
+  const buyNow = useBuyNow()
+  const offer = getOffer(sel)
+  return (
+    <section aria-label="Commander" className="hidden bg-white pb-20 lg:block">
+      <div className={W}>
+        <Rise from="scale" className="flex items-center gap-8 rounded-[2rem] bg-gradient-to-br from-fr-deep to-[#0E5A3A] px-10 py-8 font-jakarta text-white">
+          <span className="flex h-24 w-32 flex-none items-end justify-center rounded-2xl bg-white/10 pb-2">
+            <Swap value={offer.id} anim="animate-swap-in" className="flex">
+              <Packs n={offer.packs} size="lg" />
+            </Swap>
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-leaf">Votre sélection</p>
+            <p className="mt-1 text-[1.6rem] font-extrabold tracking-[-0.02em]">
+              <Swap value={offer.id}>
+                {sachets(offer.packs)} · {offer.washes} capsules · <Chf v={offer.price} format={formatCHF} />
+              </Swap>
+            </p>
+            <p className="mt-1 text-[0.86rem] text-fr-mint/80">
+              Prix total, livraison offerte en Suisse ·{' '}
+              <a href="#offres" className="font-semibold text-white underline-offset-2 hover:underline">
+                modifier l’offre
+              </a>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => buyNow(sel)}
+            disabled={soldOut}
+            className="flex h-14 flex-none items-center gap-2.5 rounded-full bg-white px-7 text-[1rem] font-extrabold text-fr-deep shadow-[0_14px_28px_rgba(0,0,0,0.18)] transition-[transform,background-color] duration-base ease-out-soft hover:bg-fr-mint can-hover:hover:-translate-y-px motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {soldOut ? 'Offre épuisée' : 'Acheter maintenant'} {!soldOut && <ArrowRight size={18} />}
+          </button>
+        </Rise>
+      </div>
+    </section>
+  )
+}

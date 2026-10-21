@@ -23,10 +23,10 @@ export const COLD_HOTSPOTS = [
   { x: 50, y: 80.6, de: 'Fleck-weg-Power beim 1. Waschen · selbst in kaltem Wasser', fr: 'Détachage dès le 1er lavage, même à l’eau froide' },
 ]
 
-export const ROUTINE = [
-  { key: 'sort', title: 'Triez le linge', body: 'Blanc et clair avec Universal+. Pas de laine ni de délicat.' },
-  { key: 'pod', title: 'Une capsule au fond du tambour', body: 'Tambour vide, capsule à l’arrière, mains sèches.' },
-  { key: 'load', title: 'Ajoutez le linge', body: 'Par-dessus la capsule, sans surcharger.' },
+// Le geste (mode d'emploi Ariel) : format et routine réunis en trois étapes.
+export const GESTURE = [
+  { key: 'pod', title: 'Une capsule au fond du tambour', body: 'Tambour vide, capsule à l’arrière, avec des mains sèches.' },
+  { key: 'load', title: 'Le linge par-dessus', body: 'Blanc et clair avec Universal+, sans surcharger.' },
   { key: 'run', title: 'Votre programme habituel', body: 'La capsule se dissout pendant le lavage.' },
 ]
 
@@ -63,30 +63,20 @@ const DETAILS_RAW = [
   },
 ]
 
+// Questions fréquentes : seulement ce que la page ne dit pas déjà ailleurs
+// (prix final, frais de port et retours figurent dans l'offre et dans « Livraison & retours »).
 const FAQ_RAW = [
   {
     q: 'Qu’est-ce que j’achète exactement ?',
     a: 'Des sachets Ariel All-in-1 PODS (variante Universal+) de 60 capsules de lessive. Vous choisissez 1, 2 ou 3 sachets.',
   },
   {
-    q: 'Une capsule correspond-elle toujours à un lavage ?',
-    a: 'Au dosage standard, oui : 60 capsules = 60 lavages. Pour un tambour de plus de 6 kg, du linge très sale ou une eau dure, Ariel recommande parfois 2 capsules.',
-  },
-  {
     q: 'Pourquoi l’emballage est-il en allemand ?',
     a: 'La face avant de ce sachet est imprimée en allemand. Ses mentions, le mode d’emploi et les consignes de sécurité sont repris en français sur cette page.',
   },
   {
-    q: 'Le prix affiché est-il le prix final ?',
-    a: 'Oui. La livraison est offerte en Suisse sur les trois offres : le montant affiché est celui que vous payez.',
-  },
-  {
     q: 'Quand vais-je recevoir ma commande ?',
-    a: `${DELIVERY.estimateDays ? `La livraison est estimée à environ ${DELIVERY.estimateDays} jours ouvrables. ` : ''}Vous recevez une confirmation d’expédition par e-mail, avec un lien de suivi lorsqu’il est disponible.`,
-  },
-  {
-    q: 'Puis-je retourner ma commande ?',
-    a: `Oui, sous ${DELIVERY.returnWindowDays} jours après réception. C’est un engagement de notre boutique : la loi suisse ne prévoit pas de droit de rétractation pour les achats en ligne.`,
+    a: `${DELIVERY.estimateDays ? `La livraison est estimée à environ ${DELIVERY.estimateDays} jours ouvrables. ` : ''}Vous recevez une confirmation de commande par e-mail, puis un e-mail d’expédition avec un lien de suivi lorsqu’il est disponible.`,
   },
   {
     q: 'Est-ce le site officiel d’Ariel ?',
@@ -94,5 +84,13 @@ const FAQ_RAW = [
   },
 ]
 
+// Mention de sécurité toujours visible (mentions de danger du fabricant, OFSP, Tox Info Suisse).
+export const SAFETY_NOTE = nb('Provoque des lésions oculaires graves et une irritation cutanée. Tenir hors de portée des enfants. En cas d’ingestion : Tox Info Suisse, 145 (24 h/24).')
+
 export const PRODUCT_DETAILS = DETAILS_RAW.map((d) => ({ ...d, title: nb(d.title), body: d.body.map(nb) }))
 export const FAQ_F = FAQ_RAW.map((f) => ({ q: nb(f.q), a: nb(f.a) }))
+// « Bon à savoir » : informations produit puis questions, dans une seule liste dépliable.
+export const INFO_ITEMS = [
+  ...PRODUCT_DETAILS.map((d) => ({ id: d.id, q: d.title, a: d.body })),
+  ...FAQ_F.map((f, k) => ({ id: `faq-${k}`, q: f.q, a: [f.a] })),
+]

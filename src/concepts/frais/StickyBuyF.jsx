@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../context/CartContext.jsx'
+import { useConsentBannerOpen } from '../../components/ConsentBanner.jsx'
 import { formatCHF, getOffer } from '../../config/store.js'
 import { Packs } from './HeroF.jsx'
 import { Chf } from './Icons.jsx'
 import { Swap } from '../../lib/motion.js'
 
 // Barre d'achat mobile : visible seulement une fois le bouton principal dépassé (au-dessus de l'écran),
-// jamais pendant le panier ouvert. Respecte les zones sûres (encoche, barre d'accueil).
+// jamais pendant le panier ouvert ni pendant le choix des cookies. Respecte les zones sûres (encoche, barre d'accueil).
 export default function StickyBuyF({ ctaRef, sel, disabled }) {
   const { selectOffer, drawerOpen } = useCart()
   const navigate = useNavigate()
@@ -26,7 +27,8 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
     return () => io.disconnect()
   }, [ctaRef])
   const offer = getOffer(sel)
-  const shown = past && !drawerOpen && !disabled
+  const consentOpen = useConsentBannerOpen()
+  const shown = past && !drawerOpen && !disabled && !consentOpen
 
   return (
     <div
@@ -35,7 +37,7 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
         shown ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-full opacity-0'
       }`}
     >
-      <div className="border-t border-fr-line bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_rgba(11,61,42,0.10)] backdrop-blur-md">
+      <div className="border-t border-fr-line bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_rgba(11,61,42,0.10)]">
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <a href="#offres" tabIndex={shown ? 0 : -1} className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="Changer d’offre">
             <span className="flex h-10 w-11 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1 max-[359px]:hidden">

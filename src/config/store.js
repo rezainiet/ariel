@@ -71,9 +71,9 @@ export const POLICIES = {
 
 // Vidéo produit / client réelle (fichier hébergé par le marchand). Vide = section masquée.
 export const VIDEO = {
-  src: import.meta.env.VITE_PRODUCT_VIDEO_URL || '',
-  poster: import.meta.env.VITE_PRODUCT_VIDEO_POSTER || '',
-  caption: import.meta.env.VITE_PRODUCT_VIDEO_CAPTION || '',
+  src: import.meta.env.VITE_PRODUCT_VIDEO_URL || '/video/ariel-product.mp4',
+  poster: import.meta.env.VITE_PRODUCT_VIDEO_POSTER || '/video/ariel-video-poster.webp',
+  caption: import.meta.env.VITE_PRODUCT_VIDEO_CAPTION || 'Vidéo d’une autre variante Ariel All-in-1 PODS. L’emballage et la formule montrés diffèrent du sachet Universal+ proposé ici.',
 }
 
 // Moyens de paiement réellement activés chez le prestataire (liste séparée par des virgules).
