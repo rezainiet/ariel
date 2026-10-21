@@ -11,7 +11,7 @@ install -m 644 deploy/ariel.service /etc/systemd/system/ariel.service
 systemctl daemon-reload
 ```
 
-`/etc/ariel/ariel.env` is configured with `root:ariel` ownership and mode `640`. It contains the admin password and `PUBLIC_ORIGIN=https://destockage-suisse.store`. Keep `EVERFLOW_ENABLED=false` until the three public image URLs are approved; then set `EVERFLOW_IMAGES_APPROVED=true` and `EVERFLOW_ENABLED=true`. Both `destockage-suisse.store` and `www.destockage-suisse.store` resolve to this VPS, and a dedicated TLS certificate was issued for them. The Nginx site should proxy only to `127.0.0.1:8787`. Do not reuse or alter the existing `twpayment.space` site.
+`/etc/ariel/ariel.env` is configured with `root:ariel` ownership and mode `640`. It contains the admin password and `PUBLIC_ORIGIN=https://destockage-suisse.store`. Keep `EVERFLOW_ENABLED=false` until the three public image URLs are approved; then set `EVERFLOW_IMAGES_APPROVED=true` and `EVERFLOW_ENABLED=true`. Both `destockage-suisse.store` and `www.destockage-suisse.store` resolve to this VPS. Their Let's Encrypt certificate and the dedicated [Nginx site](ariel.nginx.conf) are installed; renewal passed a dry run. The site proxies only to `127.0.0.1:8787`. Do not reuse or alter the existing `twpayment.space` site.
 
 ## GitHub environment
 
