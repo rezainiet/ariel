@@ -1,8 +1,8 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ShoppingBag, ArrowRight, Truck, RotateCcw, LockKeyhole, ThermometerSnowflake, Expand, ChevronLeft, ChevronRight, Star, Crown, Shirt, Snowflake, Leaf, Package, Timer } from 'lucide-react'
+import { Check, ShoppingBag, ArrowRight, Truck, RotateCcw, LockKeyhole, ThermometerSnowflake, Expand, ChevronLeft, ChevronRight, Star, Crown, Shirt, Snowflake, Leaf, Package } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
-import { OFFERS, DELIVERY, formatCHF, getOffer, savingsFor, centsPerWash } from '../../config/store.js'
+import { OFFERS, DELIVERY, formatCHF, getOffer, savingsFor } from '../../config/store.js'
 import { IMAGES } from '../../config/assets.js'
 import { useFlash, radioKeyHandler, useSwipe } from '../shared/hooks.js'
 import Lightbox from '../shared/Lightbox.jsx'
@@ -12,8 +12,6 @@ import { GALLERY_F } from './mediaF.js'
 import { useStock, isSoldOut } from '../../lib/stock.js'
 import { Swap } from '../../lib/motion.js'
 import { summarize } from '../../data/reviews.js'
-
-const cents = (o) => String(centsPerWash(o)).replace('.', ',')
 
 // Petite pile de sachets réels (même visuel que le panier).
 export function Packs({ n, size = 'md' }) {
@@ -244,40 +242,32 @@ function Benefits() {
   )
 }
 
-// Rangée de réassurance sous les offres : livraison offerte · délai · offre limitée.
+// Deux repères utiles, dans le même vert que l'emballage.
 function PosterBadges() {
   return (
-    <ul className="mt-4 flex items-center justify-between gap-1 rounded-2xl bg-fr-soft px-2 py-2.5 min-[380px]:px-2.5 lg:px-4 lg:py-3">
+    <ul className="mt-3 grid grid-cols-2 gap-2">
       {[
         [Truck, 'Livraison', 'offerte'],
         [Package, 'Livraison', `en ${DELIVERY.estimateDays} jours`],
       ].map(([Icon, t, s]) => (
-        <li key={s} className="flex items-center gap-1 border-r border-fr-deep/15 pr-1.5 min-[380px]:gap-1.5 min-[380px]:pr-2 lg:gap-2.5 lg:pr-4">
-          <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-fr-green text-white min-[380px]:h-8 min-[380px]:w-8 lg:h-10 lg:w-10">
-            <Icon size={16} strokeWidth={2.1} />
+        <li key={s} className="flex min-w-0 items-center gap-2 rounded-xl border border-fr-green/10 bg-white/85 px-2.5 py-2.5 lg:gap-2.5 lg:px-3">
+          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-fr-mint text-fr-green lg:h-9 lg:w-9">
+            <Icon size={16} strokeWidth={2} />
           </span>
-          <span className="whitespace-nowrap text-[0.54rem] font-extrabold uppercase leading-[1.1] text-fr-deep min-[380px]:text-[0.64rem] lg:text-[0.74rem]">
+          <span className="text-[0.63rem] font-bold uppercase leading-[1.15] text-fr-deep min-[380px]:text-[0.7rem] lg:text-[0.75rem]">
             {t}
             <br />
-            <span className="text-fr-green">{s}</span>
+            <span className="font-extrabold text-fr-green">{s}</span>
           </span>
         </li>
       ))}
-      <li className="flex items-center gap-1">
-        <Timer size={22} strokeWidth={2.2} className="hidden flex-none text-fr-deep min-[380px]:block lg:h-7 lg:w-7" aria-hidden="true" />
-        <span className="-rotate-[3deg] whitespace-nowrap rounded-[0.3rem] px-1.5 py-1 text-[0.62rem] font-extrabold uppercase italic leading-none text-white shadow-[0_6px_12px_rgba(227,6,19,0.3)] min-[380px]:text-[0.68rem] lg:px-2.5 lg:text-[0.8rem]" style={{ background: RED }}>
-          Offre limitée
-        </span>
-      </li>
     </ul>
   )
 }
 
-// Carte d'offre reprise de l'affiche : bandeau vert « 1 PACK / 60 lavages », sachets,
-// prix barré (compareAt, voir offers.js) et prix en rouge sur pavé jaune. L'offre populaire
-// garde son cadre rouge et son onglet couronne ; l'offre choisie porte la coche.
+// Même ordre visuel que le sachet : vert Ariel, filet jaune, packshot, puis prix rouge sur jaune.
+// Seule l'offre sélectionnée porte le contour et la coche ; le badge populaire reste distinct.
 function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
-  const ring = o.featured ? RED : '#0E7A47'
   return (
     <button
       ref={tabRef}
@@ -287,68 +277,65 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
       tabIndex={active ? 0 : -1}
       onClick={onSelect}
       onKeyDown={onKeyDown}
-      className={`group relative flex flex-col rounded-[0.7rem] bg-white text-center font-jakarta transition-[box-shadow,transform,opacity] duration-base ease-out-soft motion-safe:active:scale-[0.985] lg:rounded-[0.9rem] ${
-        active ? '-translate-y-0.5' : 'can-hover:hover:-translate-y-0.5'
+      className={`group relative flex min-w-0 flex-col rounded-[1rem] border-2 bg-white text-center font-jakarta transition-[border-color,box-shadow,transform,opacity] duration-base ease-out-soft motion-safe:active:scale-[0.985] ${
+        active
+          ? '-translate-y-0.5 border-fr-green shadow-[0_12px_26px_rgba(11,61,42,0.16)]'
+          : 'border-fr-line shadow-[0_3px_12px_rgba(11,61,42,0.06)] can-hover:hover:-translate-y-0.5 can-hover:hover:border-fr-green/50 can-hover:hover:shadow-[0_9px_22px_rgba(11,61,42,0.12)]'
       } ${soldOut ? 'opacity-60' : ''} ${glow ? 'glow-once' : ''}`}
-      style={{
-        boxShadow: [
-          active || o.featured ? `0 0 0 ${active ? 3 : 2}px ${ring}` : '0 0 0 1px #E4ECE7',
-          active ? '0 16px 30px rgba(11,61,42,0.22)' : '0 6px 16px rgba(11,61,42,0.12)',
-        ].join(', '),
-      }}
     >
       {o.featured && (
         <span
-          className="absolute -top-[1.05rem] left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-t-md px-2 py-[3px] text-[0.54rem] font-extrabold uppercase text-white min-[380px]:text-[0.58rem] lg:-top-[1.35rem] lg:px-3 lg:py-1 lg:text-[0.72rem]"
+          className="absolute -top-3 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.55rem] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_4px_10px_rgba(227,6,19,0.18)] min-[380px]:text-[0.6rem] lg:px-3 lg:text-[0.65rem]"
           style={{ background: RED }}
         >
-          <Crown size={12} strokeWidth={2.4} className="fill-[#FFE600] text-[#FFE600]" aria-hidden="true" />
+          <Crown size={11} strokeWidth={2.4} className="fill-[#FFE600] text-[#FFE600]" aria-hidden="true" />
           <span className="min-[360px]:hidden">Populaire</span>
           <span className="hidden min-[360px]:inline">Le plus populaire</span>
         </span>
       )}
 
-      {/* Bandeau quantité */}
-      <span className="relative rounded-t-[0.6rem] bg-gradient-to-b from-[#1E9A4B] to-[#137A3A] px-1 pb-1.5 pt-2 text-white lg:rounded-t-[0.8rem] lg:pb-2 lg:pt-2.5">
-        <span className="block text-[1.05rem] font-extrabold uppercase leading-none tracking-[-0.01em] min-[380px]:text-[1.15rem] lg:text-[1.5rem]">
-          {o.packs} pack{o.packs > 1 ? 's' : ''}
+      <span className="relative block rounded-t-[0.85rem] bg-[#137D3F] px-1 pb-2 pt-3 text-white lg:pb-2.5 lg:pt-3.5">
+        <span className="block text-[0.85rem] font-extrabold uppercase leading-none tracking-[-0.02em] min-[380px]:text-[1.08rem] lg:text-[1.28rem]">
+          <span className="min-[380px]:hidden">{o.packs} pack{o.packs > 1 ? 's' : ''}</span>
+          <span className="hidden min-[380px]:block">{o.packs} sachet{o.packs > 1 ? 's' : ''}</span>
         </span>
-        <span className="mt-0.5 block text-[0.68rem] font-semibold leading-tight text-white/90 lg:text-[0.85rem]">{o.washes} lavages</span>
+        <span className="mt-1 block text-[0.62rem] font-bold uppercase tracking-[0.04em] text-white/90 min-[380px]:text-[0.68rem] lg:text-[0.76rem]">
+          <span className="min-[380px]:hidden">{o.washes} pods</span>
+          <span className="hidden min-[380px]:block">{o.washes} capsules</span>
+        </span>
         <span
-          className={`absolute -bottom-2.5 right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full text-white ring-2 ring-white transition-[transform,opacity] duration-base ease-out-soft lg:h-6 lg:w-6 ${active ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
-          style={{ background: ring }}
+          className={`absolute -bottom-3 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#E30613] text-white ring-[3px] ring-white transition-[transform,opacity] duration-base ease-out-soft lg:h-7 lg:w-7 ${active ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
           aria-hidden="true"
         >
-          <Check size={12} strokeWidth={3} />
+          <Check size={14} strokeWidth={3} />
         </span>
       </span>
+      <span className="block h-1.5 w-full bg-[#FFE600]" aria-hidden="true" />
 
-      {/* Sachets réels */}
-      <span className="flex h-[5.5rem] items-center justify-center px-1 pt-2 lg:h-[7rem]">
+      <span className="flex h-[6rem] w-full items-center justify-center bg-[linear-gradient(180deg,#F4FBF5_0%,#FFFFFF_100%)] px-1 pt-2 lg:h-[7.25rem]">
         <span className={`transition-transform duration-slow ease-out-soft ${active ? 'scale-[1.05]' : ''}`}>
           <Packs n={o.packs} size="offer" />
         </span>
       </span>
 
-      {/* Prix */}
-      <span className="flex flex-1 flex-col items-center justify-end px-1.5 pb-1.5 lg:px-2.5 lg:pb-2.5">
+      <span className="flex w-full flex-1 flex-col items-center justify-end px-1.5 pb-1.5 lg:px-2 lg:pb-2">
         {o.compareAt ? (
-          <s className="text-[0.82rem] font-bold text-fr-ink/55 decoration-[#E30613] decoration-2 min-[380px]:text-[0.9rem] lg:text-[1.05rem]">{posterPrice(o.compareAt)}</s>
+          <s className="py-1 text-[0.7rem] font-bold text-fr-muted decoration-[#E30613] decoration-[1.5px] min-[380px]:text-[0.78rem] lg:text-[0.9rem]">{posterPrice(o.compareAt)}</s>
         ) : (
           <span className="text-[0.82rem]">&nbsp;</span>
         )}
         <span
-          className="mt-1 flex w-full items-baseline justify-center gap-1 rounded-[0.35rem] py-1 leading-none shadow-[inset_0_-3px_0_rgba(0,0,0,0.08)] lg:rounded-md lg:py-2"
+          className="flex w-full items-baseline justify-center gap-1 rounded-[0.65rem] py-1.5 leading-none lg:py-2"
           style={{ background: YELLOW, color: RED }}
         >
           {soldOut ? (
             <span className="py-1.5 text-[0.9rem] font-extrabold uppercase text-fr-ink">Épuisé</span>
           ) : (
             <>
-              <span className="text-[2rem] font-extrabold tracking-[-0.05em] min-[380px]:text-[2.25rem] lg:text-[3rem]">
+              <span className="text-[1.9rem] font-extrabold tracking-[-0.055em] min-[380px]:text-[2.15rem] lg:text-[2.65rem]">
                 {Number.isInteger(o.price) ? o.price : o.price.toFixed(2).replace('.', ',')}
               </span>
-              <span className="text-[1.15rem] font-extrabold tracking-[-0.03em] min-[380px]:text-[1.3rem] lg:text-[1.7rem]">CHF</span>
+              <span className="text-[1rem] font-extrabold tracking-[-0.03em] min-[380px]:text-[1.2rem] lg:text-[1.5rem]">CHF</span>
             </>
           )}
         </span>
@@ -406,35 +393,32 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
         <span className="pb-1.5 text-[0.78rem] text-fr-muted">≈ CHF 0.07 / capsule</span>
       </div>
 
-      <div className="mt-4 flex items-baseline justify-between gap-3 lg:mt-7">
-        <h2 id="offres" className="scroll-mt-28 text-[1rem] font-bold text-fr-ink lg:text-[1.05rem]">
-          Choisir mon offre
-        </h2>
-        <span className="text-[0.72rem] text-fr-muted lg:text-[0.8rem]">Prix total, livraison incluse</span>
+      <div className="mt-5 rounded-[1.5rem] border border-fr-green/10 bg-[linear-gradient(180deg,#F4FAF5_0%,#FFFFFF_100%)] p-3 shadow-[0_10px_30px_rgba(11,61,42,0.05)] lg:mt-7 lg:p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 id="offres" className="scroll-mt-28 text-[1rem] font-extrabold text-fr-deep lg:text-[1.08rem]">Choisir mon offre</h2>
+          <span className="text-[0.68rem] font-semibold text-fr-muted lg:text-[0.75rem]">Livraison incluse</span>
+        </div>
+        <div role="radiogroup" aria-labelledby="offres" className="mt-6 grid grid-cols-3 gap-1.5 min-[380px]:gap-2 lg:mt-7 lg:gap-2.5">
+          {OFFERS.map((o, k) => (
+            <OfferCard
+              key={o.id}
+              o={o}
+              active={o.id === sel}
+              glow={o.id === sel && changed.current}
+              onSelect={() => setSel(o.id)}
+              soldOut={isSoldOut(stock, o.id)}
+              tabRef={(el) => (tiles.current[k] = el)}
+              onKeyDown={radioKeyHandler(k, OFFERS.length, (j) => setSel(OFFERS[j].id), tiles)}
+            />
+          ))}
+        </div>
+        <PosterBadges />
       </div>
-      <div role="radiogroup" aria-labelledby="offres" className="mt-7 grid grid-cols-3 gap-2 lg:mt-8 lg:gap-3">
-        {OFFERS.map((o, k) => (
-          <OfferCard
-            key={o.id}
-            o={o}
-            active={o.id === sel}
-            glow={o.id === sel && changed.current}
-            onSelect={() => setSel(o.id)}
-            soldOut={isSoldOut(stock, o.id)}
-            tabRef={(el) => (tiles.current[k] = el)}
-            onKeyDown={radioKeyHandler(k, OFFERS.length, (j) => setSel(OFFERS[j].id), tiles)}
-          />
-        ))}
-      </div>
-      <PosterBadges />
-      <p className="mt-2.5 text-center text-[0.76rem] text-fr-muted lg:text-left lg:text-[0.8rem]" aria-live="polite">
-        <Swap value={offer.id}>
-          {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · ≈ {cents(offer)} ct par lavage
+      <p className="mt-3 rounded-xl bg-fr-mint/65 px-3 py-2.5 text-[0.75rem] text-fr-deep lg:text-[0.8rem]" aria-live="polite">
+        <Swap value={offer.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+          <span><strong className="font-bold">Votre choix :</strong> {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules</span>
           {save > 0 && (
-            <span className="hidden font-semibold text-fr-green lg:inline">
-              {' '}
-              · {formatCHF(save)} de moins que {offer.packs} × {formatCHF(OFFERS[0].price)}
-            </span>
+            <span className="font-extrabold text-fr-green">{formatCHF(save)} de moins qu’à l’unité</span>
           )}
         </Swap>
       </p>

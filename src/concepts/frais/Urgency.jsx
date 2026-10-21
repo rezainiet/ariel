@@ -1,6 +1,6 @@
 import { Hourglass, PackageCheck, Timer } from 'lucide-react'
 import { useCountdown } from '../../lib/storeStatus.js'
-import { formatCHF, savingsFor } from '../../config/offers.js'
+import { formatCHF } from '../../config/offers.js'
 import { getOffer } from '../../config/offers.js'
 import { useFeaturedOffer } from '../../lib/featuredOffer.js'
 import { useStock, isSoldOut } from '../../lib/stock.js'
@@ -82,22 +82,19 @@ export default function UrgencyPanel({ status, offer }) {
   if (campaign && !hasCountdown) return null
   if (!limited && !hasCountdown && !hasStock) {
     if (!offer) return null
-    const saving = savingsFor(offer)
     return (
-      <div className="mt-4 rounded-2xl border border-fr-green/20 bg-fr-mint/60 px-4 py-3 text-[0.82rem] leading-relaxed text-fr-ink">
-        <p className="flex items-center gap-2 font-bold text-fr-deep">
-          <Hourglass size={17} strokeWidth={1.75} aria-hidden="true" /> Offre de déstockage en cours
-        </p>
-        <p className="mt-1">
-          {offer.packs} sachet{offer.packs > 1 ? 's' : ''} pour <strong>{formatCHF(offer.price)}</strong>
-          {saving > 0 ? ` · ${formatCHF(saving)} d’économie par rapport aux sachets achetés séparément` : ''}.
-          {' '}Livraison offerte en Suisse.
-        </p>
+      <div className="mt-4 overflow-hidden rounded-2xl border border-fr-green/15 bg-[linear-gradient(110deg,#F0F8F2_0%,#FFFFFF_100%)] text-fr-ink">
+        <div className="flex items-center gap-3 px-3.5 py-2.5 lg:px-4">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-fr-green text-white" aria-hidden="true">
+            <Hourglass size={17} strokeWidth={1.9} />
+          </span>
+          <p className="text-[0.74rem] font-extrabold uppercase tracking-[0.07em] text-fr-deep">Déstockage en cours</p>
+        </div>
         {featuredOffer && featuredTime && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-fr-green/15 pt-2 font-semibold text-fr-deep">
-            <Timer size={16} strokeWidth={1.75} aria-hidden="true" />
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-fr-green/10 bg-[#FFF9CF]/55 px-3.5 py-2 text-[0.71rem] font-semibold text-fr-deep lg:px-4">
+            <Timer size={14} strokeWidth={1.9} className="flex-none text-fr-green" aria-hidden="true" />
             <span>À la une : {featuredOffer.packs} sachet{featuredOffer.packs > 1 ? 's' : ''} à {formatCHF(featuredOffer.price)}</span>
-            <span className="rounded-full bg-white px-2 py-0.5 text-[0.72rem] tabular-nums ring-1 ring-fr-green/15">
+            <span className="ml-auto tabular-nums text-fr-green">
               Prochaine sélection dans {two(featuredTime.hours + featuredTime.days * 24)}:{two(featuredTime.minutes)}:{two(featuredTime.seconds)}
             </span>
           </div>
