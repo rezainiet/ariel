@@ -97,7 +97,7 @@ Captures et notes : `design-review/frais-finition/`.
 | --------- | ------- | -------- | -------- |
 | 1 sachet  | 1       | 60       | CHF 4.–  |
 | 2 sachets | 2       | 120      | CHF 7.–  |
-| 3 sachets | 3       | 180      | CHF 10.– |
+| 3 sachets | 3       | 180      | CHF 9.–  |
 
 Livraison offerte en Suisse. Le serveur recalcule toujours le montant à partir de l'offre.
 

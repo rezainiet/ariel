@@ -3,6 +3,8 @@
 // importé par l'interface ET par le serveur de commande (server/validate-order.mjs),
 // qui recalcule toujours le prix à partir de l'identifiant d'offre.
 // Les prix des bundles ne sont PAS un prix unitaire multiplié.
+// compareAt : prix barré affiché sur les cartes d'offre (choix du marchand, à justifier :
+// PBV art. 16 — prix pratiqué auparavant ou par la concurrence). Retirer la clé = plus de prix barré.
 // ─────────────────────────────────────────────────────────────
 
 export const PRODUCT = {
@@ -18,6 +20,7 @@ export const OFFERS = [
     packs: 1,
     washes: 60,
     price: 4,
+    compareAt: 24.95,
     label: '1 SACHET',
     badge: null,
     featured: false,
@@ -28,6 +31,7 @@ export const OFFERS = [
     packs: 2,
     washes: 120,
     price: 7,
+    compareAt: 49.9,
     label: '2 SACHETS',
     badge: 'LE PLUS POPULAIRE',
     featured: true,
@@ -37,7 +41,8 @@ export const OFFERS = [
     id: 'pack-3',
     packs: 3,
     washes: 180,
-    price: 10,
+    price: 9,
+    compareAt: 74.85,
     label: '3 SACHETS',
     badge: 'MEILLEURE OFFRE',
     featured: false,

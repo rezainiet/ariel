@@ -36,10 +36,12 @@ if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}` || proce
     ['NPA commençant par 0', { ...ok, customer: { ...ok.customer, npa: '0123' } }, (r) => !r.ok && r.errors.npa],
     ['e-mail invalide', { ...ok, customer: { ...ok.customer, email: 'lea@' } }, (r) => !r.ok && r.errors.email],
     ['téléphone invalide', { ...ok, customer: { ...ok.customer, tel: '12' } }, (r) => !r.ok && r.errors.tel],
-    ['téléphone facultatif vide', { ...ok, customer: { ...ok.customer, tel: '' } }, (r) => r.ok],
+    ['téléphone obligatoire', { ...ok, customer: { ...ok.customer, tel: '' } }, (r) => !r.ok && r.errors.tel],
+    ['téléphone étranger refusé', { ...ok, customer: { ...ok.customer, tel: '+33 6 12 34 56 78' } }, (r) => !r.ok && r.errors.tel],
+    ['téléphone +41 accepté', { ...ok, customer: { ...ok.customer, tel: '+41 79 123 45 67' } }, (r) => r.ok],
     ['CGV non acceptées', { ...ok, termsAccepted: false }, (r) => !r.ok && r.errors.terms],
     ['moyen non activé', ok, (r) => !r.ok && r.errors.method, ['card']],
-    ['champs vides', { offerId: 'pack-1', termsAccepted: true, customer: {} }, (r) => !r.ok && ['prenom', 'nom', 'email', 'adresse', 'npa', 'ville'].every((k) => r.errors[k])],
+    ['champs vides', { offerId: 'pack-1', termsAccepted: true, customer: {} }, (r) => !r.ok && ['prenom', 'nom', 'email', 'tel', 'adresse', 'npa', 'ville'].every((k) => r.errors[k])],
   ]
   let failed = 0
   for (const [name, body, check, methods = ['twint', 'card']] of cases) {

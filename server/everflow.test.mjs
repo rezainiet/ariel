@@ -13,7 +13,7 @@ const images = {
 const config = { enabled: true, images, metaPixel: '123456789', snapPixel: '987654321' }
 const customer = {
   prenom: 'Ana María', nom: "D’Été", email: 'Ana.Maria@Example.ch',
-  tel: '+33 (6) 12-34-56-78', adresse: "Rue de l'Église, 4/B", complement: 'Bât. A, étage 2',
+  tel: '+41 (79) 123-45-67', adresse: "Rue de l'Église, 4/B", complement: 'Bât. A, étage 2',
   npa: '1201', ville: 'Genève',
 }
 const request = (offerId, consent = false) => ({
@@ -35,7 +35,7 @@ test('three offers preserve destination, query, prefill, images and consent', as
         for (const [key, value] of original.searchParams) assert.equal(url.searchParams.get(key), value)
         assert.deepEqual(Object.fromEntries(['sub10', 'adv3', 'sub3', 'sub4', 'sub6', 'sub7', 'sub8'].map((k) => [k, url.searchParams.get(k)])), {
           sub10: 'Ana María', adv3: 'D’Été', sub3: '1201', sub4: 'ana.maria@example.ch',
-          sub6: 'Genève', sub7: "Rue de l'Église, 4/B, Bât. A, étage 2", sub8: '+33612345678',
+          sub6: 'Genève', sub7: "Rue de l'Église, 4/B, Bât. A, étage 2", sub8: '+41791234567',
         })
         assert.equal(url.searchParams.get('adv2'), images[offerId])
         assert.match(url.searchParams.get('adv1'), new RegExp(`${{ 'pack-1': 1, 'pack-2': 2, 'pack-3': 3 }[offerId]} sachet`))

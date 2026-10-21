@@ -17,10 +17,11 @@ export const STORE = {
 
 // Informations logistiques — configurables, à confirmer avant mise en ligne.
 // Seules la gratuité en Suisse et le délai de retour de 15 jours sont confirmés.
-// Délai de livraison et lieu d'expédition : affichés UNIQUEMENT s'ils sont configurés.
+// Délai de livraison : 3 jours par défaut (bandeau « Livraison en 3 jours »), remplaçable par l'env.
+// Lieu d'expédition : affiché UNIQUEMENT s'il est configuré.
 export const DELIVERY = {
   dispatchLocation: import.meta.env.VITE_DISPATCH_LOCATION || '',
-  estimateDays: Number(import.meta.env.VITE_DELIVERY_ESTIMATE_DAYS) > 0 ? Number(import.meta.env.VITE_DELIVERY_ESTIMATE_DAYS) : null,
+  estimateDays: Number(import.meta.env.VITE_DELIVERY_ESTIMATE_DAYS) > 0 ? Number(import.meta.env.VITE_DELIVERY_ESTIMATE_DAYS) : 3,
   free: true,
   returnWindowDays: 15,
 }

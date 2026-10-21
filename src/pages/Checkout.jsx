@@ -20,7 +20,7 @@ import { useCart } from '../context/CartContext.jsx'
 import { OFFERS, PRODUCT, DELIVERY, MERCHANT, POLICIES, STORE, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
 import { trackStartCheckout } from '../lib/pixel.js'
 import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
-import { validateCustomer, clean } from '../lib/orderValidation.js'
+import { validateCustomer, clean, swissNational } from '../lib/orderValidation.js'
 import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
@@ -49,7 +49,8 @@ const CONTACT = [
   { name: 'prenom', label: 'Prénom', autoComplete: 'given-name', half: true, required: true },
   { name: 'nom', label: 'Nom', autoComplete: 'family-name', half: true, required: true },
   { name: 'email', label: 'Adresse e-mail', type: 'email', autoComplete: 'email', inputMode: 'email', required: true, hint: 'Pour la confirmation et le suivi de votre commande.' },
-  { name: 'tel', label: 'Téléphone', type: 'tel', autoComplete: 'tel', inputMode: 'tel', hint: 'Utile au transporteur en cas de besoin.' },
+  // Indicatif +41 fixe (livraison en Suisse uniquement) : la valeur enregistrée est « +41 79 123 45 67 ».
+  { name: 'tel', label: 'Téléphone', type: 'tel', autoComplete: 'tel', inputMode: 'tel', required: true, placeholder: '79 123 45 67', prefix: '+41', hint: 'Numéro suisse, utile au transporteur en cas de besoin.' },
 ]
 const ADDRESS = [
   { name: 'adresse', label: 'Adresse', autoComplete: 'address-line1', required: true, placeholder: 'Rue et numéro' },
@@ -60,6 +61,12 @@ const ADDRESS = [
 const ORDERED = [...CONTACT, ...ADDRESS]
 
 const METHOD_ICONS = { card: CreditCard, visa: CreditCard, mastercard: CreditCard, amex: CreditCard }
+
+// « 79 123 45 67 » à l'écran, « +41 79 123 45 67 » dans les valeurs du formulaire.
+const withPrefix = (f, input) => {
+  const n = swissNational(input)
+  return n ? `${f.prefix} ${n}` : ''
+}
 
 function Field({ f, value, error, valid, onChange, onBlur, list }) {
   const id = `f-${f.name}`
@@ -78,6 +85,15 @@ function Field({ f, value, error, valid, onChange, onBlur, list }) {
         )}
       </label>
       <div className="relative mt-1.5">
+        {f.prefix && (
+          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center gap-1.5 border-r border-fr-line pl-4 pr-3 text-[1rem] font-semibold text-fr-ink" aria-hidden="true">
+            <svg viewBox="0 0 32 32" className="h-[1.1rem] w-[1.1rem] rounded-[3px]">
+              <rect width="32" height="32" fill="#E30613" />
+              <path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7z" fill="#fff" />
+            </svg>
+            {f.prefix}
+          </span>
+        )}
         <input
           id={id}
           name={f.name}
@@ -89,12 +105,13 @@ function Field({ f, value, error, valid, onChange, onBlur, list }) {
           placeholder={f.placeholder}
           required={f.required}
           list={list}
-          value={value || ''}
+          value={(f.prefix ? swissNational(value) : value) || ''}
+          aria-label={f.prefix ? `${f.label}, indicatif ${f.prefix}` : undefined}
           aria-invalid={Boolean(error)}
           aria-describedby={described}
-          onChange={(e) => onChange(f.name, f.zip ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value)}
+          onChange={(e) => onChange(f.name, f.zip ? e.target.value.replace(/\D/g, '').slice(0, 4) : f.prefix ? withPrefix(f, e.target.value) : e.target.value)}
           onBlur={() => onBlur(f.name)}
-          className={`h-[3.25rem] w-full rounded-2xl border bg-white px-4 pr-11 text-[1rem] text-fr-ink outline-none transition-[border-color,box-shadow,background-color] duration-base ease-out-soft placeholder:text-fr-muted/60 focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${
+          className={`h-[3.25rem] w-full rounded-2xl border bg-white px-4 pr-11 ${f.prefix ? 'pl-[5.6rem]' : ''} text-[1rem] text-fr-ink outline-none transition-[border-color,box-shadow,background-color] duration-base ease-out-soft placeholder:text-fr-muted/60 focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${
             error ? 'border-red-400 bg-red-50/40' : 'border-fr-line hover:border-fr-green/40'
           }`}
         />
@@ -339,9 +356,8 @@ export default function Checkout() {
   }, [])
   const paymentReady = redirect.enabled || isPaymentConfigured()
   const formComplete = useMemo(() =>
-    Object.keys(validateCustomer(values, { terms })).length === 0 &&
-    (redirect.provider !== 'everflow' || Boolean(clean(values).tel)),
-  [values, terms, redirect.provider])
+    Object.keys(validateCustomer(values, { terms })).length === 0,
+  [values, terms])
   const canContinue = formComplete && paymentReady && !soldOut && status !== 'loading'
   // Offre épuisée : le récapitulatif (où l'on change d'offre) s'ouvre aussi sur mobile.
   useEffect(() => {
@@ -409,7 +425,6 @@ export default function Checkout() {
   const onSubmit = async (e) => {
     e.preventDefault()
     const errs = validateCustomer(values, { terms })
-    if (redirect.provider === 'everflow' && !clean(values).tel) errs.tel = 'Veuillez indiquer votre numéro de téléphone.'
     setErrors(errs)
     setSubmitted(true)
     if (Object.keys(errs).length) {
@@ -450,11 +465,10 @@ export default function Checkout() {
   )
   const errorList = [...ORDERED.filter((f) => shown[f.name]), ...(shown.terms ? [{ name: 'terms', label: 'Conditions générales' }] : [])]
   const isValid = (name) => (touched[name] || submitted) && !errors[name] && Boolean((values[name] || '').trim())
-  const telRequired = redirect.provider === 'everflow'
   // Avancement en direct (sans attendre la sortie du champ) : pastilles de section et trait des étapes.
   const liveErrors = useMemo(() => validateCustomer(values), [values])
   const complete = (f) => !liveErrors[f.name] && Boolean((values[f.name] || '').trim())
-  const needed = ORDERED.filter((f) => f.required || (f.name === 'tel' && telRequired))
+  const needed = ORDERED.filter((f) => f.required)
   const sectionDone = (fields) => fields.every((f) => !needed.includes(f) || complete(f))
   const progress = (needed.filter(complete).length + (terms ? 1 : 0)) / (needed.length + 1)
 
@@ -552,7 +566,7 @@ export default function Checkout() {
             <Section n={1} title="Vos coordonnées" done={sectionDone(CONTACT)}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 {CONTACT.map((f) => (
-                  <Field key={f.name} {...fieldProps(f.name === 'tel' && redirect.provider === 'everflow' ? { ...f, required: true } : f)} />
+                  <Field key={f.name} {...fieldProps(f)} />
                 ))}
               </div>
             </Section>
