@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       launch_mode:
-        description: Preview without merchant disclosures or live checkout, or configured production build
+        description: Preview, incomplete build with visible missing details, or configured production build
         type: choice
         required: true
         default: preview
         options:
           - preview
+          - incomplete
           - configured
 
 permissions:
@@ -51,7 +52,7 @@ jobs:
             test -n "$BUILD_ENV"
             printf '%s\n' "$BUILD_ENV" > .env.production.local
             node scripts/check-deploy-env.mjs .env.production.local
-          elif [[ "$LAUNCH_MODE" != preview ]]; then
+          elif [[ "$LAUNCH_MODE" != preview && "$LAUNCH_MODE" != incomplete ]]; then
             echo 'Invalid launch mode' >&2
             exit 1
           fi
@@ -76,4 +77,4 @@ jobs:
           set -euo pipefail
           ssh_opts=(-i "$HOME/.ssh/ariel_deploy" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
           scp "${ssh_opts[@]}" "/tmp/ariel-${GITHUB_SHA}.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:/opt/ariel/incoming/${GITHUB_SHA}.tar.gz"
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$GITHUB_SHA'" < deploy/deploy-vps.sh
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$GITHUB_SHA' '$LAUNCH_MODE'" < deploy/deploy-vps.sh

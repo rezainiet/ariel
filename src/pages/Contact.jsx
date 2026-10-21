@@ -1,21 +1,23 @@
 import { Mail, Phone, MapPin, PackageSearch } from 'lucide-react'
 import { PageHeader, Prose } from '../components/ui/Prose.jsx'
+import MissingInfo from '../components/ui/MissingInfo.jsx'
 import { STORE, MERCHANT, DELIVERY } from '../config/store.js'
 import { IconTile } from '../concepts/frais/Icons.jsx'
 
 // Contact : uniquement les canaux réellement configurés.
 export default function Contact() {
-  const address = [MERCHANT.legalName, MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  const address = [MERCHANT.legalName, MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
+    ? `${MERCHANT.legalName}, ${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}` : null
   const cards = [
-    STORE.supportEmail && [
+    [
       Mail,
       'E-mail',
-      <a key="e" href={`mailto:${STORE.supportEmail}`} className="font-semibold text-fr-green underline">
-        {STORE.supportEmail}
-      </a>,
+      STORE.supportEmail
+        ? <a key="e" href={`mailto:${STORE.supportEmail}`} className="font-semibold text-fr-green underline">{STORE.supportEmail}</a>
+        : <MissingInfo key="missing-email" />,
     ],
     STORE.supportPhone && [Phone, 'Téléphone', STORE.supportPhone],
-    address && [MapPin, 'Adresse postale', address],
+    [MapPin, 'Adresse postale', address || <MissingInfo key="missing-address" />],
   ].filter(Boolean)
   return (
     <>

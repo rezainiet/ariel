@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ShoppingBag, Truck, RotateCcw, Tag } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
 import { MERCHANT, STORE, DELIVERY, storeRef } from '../../config/store.js'
+import MissingInfo from '../../components/ui/MissingInfo.jsx'
 import { ANNOUNCEMENTS } from './contentF.js'
 import { Swap } from '../../lib/motion.js'
 
@@ -141,8 +142,14 @@ export function HeaderF() {
 }
 
 export function FooterF({ stickyPad = false }) {
-  const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
-  const merchantLines = [MERCHANT.legalName, address, MERCHANT.uid && `IDE ${MERCHANT.uid}`, STORE.supportEmail].filter(Boolean)
+  const address = [MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
+    ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}` : null
+  const merchantLines = [
+    ['legal', MERCHANT.legalName || <MissingInfo>Raison sociale à renseigner</MissingInfo>],
+    ['address', address || <MissingInfo>Adresse postale à renseigner</MissingInfo>],
+    ['uid', MERCHANT.uid ? `IDE ${MERCHANT.uid}` : <MissingInfo>N° IDE à renseigner</MissingInfo>],
+    ['email', STORE.supportEmail || <MissingInfo>E-mail à renseigner</MissingInfo>],
+  ]
   return (
     <footer className={`bg-fr-deep font-jakarta text-fr-mint/80 ${stickyPad ? 'pb-28 lg:pb-0' : ''}`}>
       <div className="mx-auto grid max-w-[1320px] gap-10 px-4 py-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
@@ -150,14 +157,11 @@ export function FooterF({ stickyPad = false }) {
           <div className="[&_a]:text-white [&_a>span:last-child]:text-white">
             <Logo light />
           </div>
-          {/* Identité du marchand (LCD art. 3 let. s) : uniquement les données configurées */}
-          {merchantLines.length > 0 && (
-            <address className="mt-5 space-y-1 text-sm not-italic leading-relaxed">
-              {merchantLines.map((l) => (
-                <span key={l} className="block">{l}</span>
-              ))}
-            </address>
-          )}
+          <address className="mt-5 space-y-1 text-sm not-italic leading-relaxed">
+            {merchantLines.map(([key, value]) => (
+              <span key={key} className="block">{value}</span>
+            ))}
+          </address>
         </div>
         {[
           ['La boutique', [['Offres', '/#offres'], ['Pourquoi Ariel', '/#pourquoi'], ['Livraison', '/#livraison'], ['FAQ', '/#faq']]],

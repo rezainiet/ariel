@@ -2,7 +2,9 @@
 set -euo pipefail
 
 release_id="${1:?release SHA required}"
+launch_mode="${2:?launch mode required}"
 [[ "$release_id" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid release SHA' >&2; exit 1; }
+[[ "$launch_mode" == preview || "$launch_mode" == incomplete || "$launch_mode" == configured ]] || { echo 'Invalid launch mode' >&2; exit 1; }
 
 base=/opt/ariel
 archive="$base/incoming/$release_id.tar.gz"
@@ -10,6 +12,10 @@ release="$base/releases/$release_id"
 test -f "$archive"
 test -f /etc/systemd/system/ariel.service
 test -s /etc/ariel/ariel.env
+if [[ "$launch_mode" == preview ]] && grep -Eq '^EVERFLOW_ENABLED=true$' /etc/ariel/ariel.env; then
+  echo 'Preview deployment refused while Everflow checkout is enabled' >&2
+  exit 1
+fi
 
 if [[ ! -d "$release" ]]; then
   staging="$(mktemp -d "$base/releases/.${release_id}.XXXXXX")"

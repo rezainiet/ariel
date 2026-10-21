@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
+import MissingInfo from '../components/ui/MissingInfo.jsx'
 import { DELIVERY, MERCHANT, POLICIES, OFFERS, formatCHF } from '../config/store.js'
 
 // Conditions générales : uniquement des engagements confirmés ; les clauses propres au vendeur
@@ -13,18 +14,14 @@ export default function Terms() {
         intro="Les présentes conditions encadrent la vente des produits proposés sur la boutique."
       />
       <Prose>
-        {MERCHANT.legalName && (
-          <Block title="Vendeur">
-            <p>
-              {MERCHANT.legalName}
-              {MERCHANT.uid ? `, IDE ${MERCHANT.uid}` : ''}. Coordonnées complètes dans les{' '}
-              <Link to="/mentions-legales" className="font-semibold text-fr-green underline">
-                mentions légales
-              </Link>
-              .
-            </p>
-          </Block>
-        )}
+        <Block title="Vendeur">
+          <p>
+            {MERCHANT.legalName || <MissingInfo />} · IDE {MERCHANT.uid || <MissingInfo />}. Coordonnées complètes dans les{' '}
+            <Link to="/mentions-legales" className="font-semibold text-fr-green underline">
+              mentions légales
+            </Link>.
+          </p>
+        </Block>
         <Block title="Produits et prix">
           <p>
             Ariel All-in-1 PODS, sachets de 60 capsules, proposés dans la limite des stocks disponibles. Prix en francs suisses
@@ -63,7 +60,7 @@ export default function Terms() {
           </p>
         </Block>
         <Block title="Droit applicable">
-          <p>Les présentes conditions sont soumises au droit suisse.{POLICIES.jurisdiction ? ` For juridique : ${POLICIES.jurisdiction}.` : ''}</p>
+          <p>Les présentes conditions sont soumises au droit suisse. For juridique : {POLICIES.jurisdiction || <MissingInfo />}</p>
         </Block>
       </Prose>
     </>

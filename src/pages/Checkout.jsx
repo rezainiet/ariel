@@ -17,7 +17,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { OFFERS, PRODUCT, DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
+import { OFFERS, PRODUCT, DELIVERY, MERCHANT, POLICIES, STORE, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
 import { trackStartCheckout } from '../lib/pixel.js'
 import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
 import { validateCustomer, clean } from '../lib/orderValidation.js'
@@ -292,6 +292,19 @@ function MethodPicker({ method, setMethod }) {
     </div>
   )
 }
+
+const missingCheckoutDetails = [
+  !STORE.name && 'nom de la boutique',
+  !MERCHANT.legalName && 'raison sociale',
+  (![MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)) && 'adresse du vendeur',
+  !MERCHANT.uid && 'numéro IDE',
+  !STORE.supportEmail && 'e-mail du service client',
+  !POLICIES.returnAddress && 'adresse de retour',
+  !POLICIES.returnCondition && 'état des produits repris',
+  !POLICIES.returnCosts && 'frais de retour',
+  !POLICIES.refundTerms && 'modalités de remboursement',
+  !POLICIES.jurisdiction && 'for juridique',
+].filter(Boolean)
 
 export default function Checkout() {
   const { offer, hasItems, changeOffer } = useCart()
@@ -624,6 +637,19 @@ export default function Checkout() {
                 </p>
               )}
             </Section>
+
+            {missingCheckoutDetails.length > 0 && (
+              <div role="note" className="rounded-2xl border border-red-300 bg-red-50 p-4 text-[0.86rem] leading-relaxed text-red-800">
+                <p className="font-extrabold">Informations de la boutique à renseigner</p>
+                <p className="mt-1">{missingCheckoutDetails.join(' · ')}</p>
+                <p className="mt-2">
+                  Consultez les{' '}
+                  <Link to="/mentions-legales" target="_blank" rel="noopener" className="font-bold underline">mentions légales</Link>
+                  {' '}et les{' '}
+                  <Link to="/retours-remboursements" target="_blank" rel="noopener" className="font-bold underline">conditions de retour</Link>.
+                </p>
+              </div>
+            )}
 
             {/* Réassurance confirmée, à côté de l'action finale */}
             <div className="animate-fade-up rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line [animation-delay:150ms] lg:p-6">

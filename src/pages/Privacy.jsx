@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
+import MissingInfo from '../components/ui/MissingInfo.jsx'
 import { STORE, MERCHANT } from '../config/store.js'
 import { isPixelEnabled } from '../lib/pixel.js'
 import { getRedirectPayment } from '../lib/payment.js'
@@ -14,7 +15,6 @@ export default function Privacy() {
       setEverflowAttribution(data?.everflow?.attributionAvailable === true)
     }).catch(() => {})
   }, [])
-  const address = [MERCHANT.street, [MERCHANT.zip, MERCHANT.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return (
     <>
       <PageHeader
@@ -23,15 +23,12 @@ export default function Privacy() {
         intro="Comment nous traitons vos données personnelles, conformément à la loi suisse sur la protection des données (nLPD)."
       />
       <Prose>
-        {MERCHANT.legalName && (
-          <Block title="Responsable du traitement">
-            <p>
-              {MERCHANT.legalName}
-              {address ? `, ${address}` : ''}
-              {STORE.supportEmail ? ` · ${STORE.supportEmail}` : ''}
-            </p>
-          </Block>
-        )}
+        <Block title="Responsable du traitement">
+          <p>Raison sociale : {MERCHANT.legalName || <MissingInfo />}</p>
+          <p>Adresse : {[MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
+            ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}` : <MissingInfo />}</p>
+          <p>E-mail : {STORE.supportEmail || <MissingInfo />}</p>
+        </Block>
         <Block title="Données collectées">
           <p>
             Pour traiter une commande, nous collectons votre prénom, votre nom, votre adresse de livraison, votre adresse e-mail

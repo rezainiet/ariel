@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
+import MissingInfo from '../components/ui/MissingInfo.jsx'
 import { DELIVERY, STORE, MERCHANT, POLICIES } from '../config/store.js'
 
 // Politique de retour : uniquement les engagements confirmés + les rubriques renseignées par le marchand.
@@ -27,7 +28,7 @@ export default function Returns() {
             s’agit d’un engagement volontaire de notre boutique : en Suisse, la loi ne prévoit pas de droit de rétractation pour
             les achats en ligne.
           </p>
-          {POLICIES.returnCondition && <p>{POLICIES.returnCondition}</p>}
+          <p>État des produits acceptés : {POLICIES.returnCondition || <MissingInfo />}</p>
         </Block>
 
         <Block title="Comment faire">
@@ -38,24 +39,16 @@ export default function Returns() {
             <li>Nous vous transmettons les instructions de retour.</li>
             <li>Dès réception et contrôle du colis, nous procédons au remboursement.</li>
           </ol>
-          {POLICIES.returnAddress && (
-            <p>
-              Adresse de retour : <span className="text-fr-ink">{POLICIES.returnAddress}</span>
-            </p>
-          )}
+          <p>Adresse de retour : <span className="text-fr-ink">{POLICIES.returnAddress || <MissingInfo />}</span></p>
         </Block>
 
-        {POLICIES.returnCosts && (
-          <Block title="Frais de retour">
-            <p>{POLICIES.returnCosts}</p>
-          </Block>
-        )}
+        <Block title="Frais de retour">
+          <p>{POLICIES.returnCosts || <MissingInfo />}</p>
+        </Block>
 
-        {POLICIES.refundTerms && (
-          <Block title="Remboursement">
-            <p>{POLICIES.refundTerms}</p>
-          </Block>
-        )}
+        <Block title="Remboursement">
+          <p>{POLICIES.refundTerms || <MissingInfo />}</p>
+        </Block>
 
         <Block title="Produit endommagé, défectueux ou erroné">
           <p>
