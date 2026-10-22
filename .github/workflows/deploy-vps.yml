@@ -29,6 +29,7 @@ jobs:
     env:
       DEPLOY_HOST: ${{ vars.VPS_HOST }}
       DEPLOY_USER: ${{ vars.VPS_USER }}
+      DEPLOY_PORT: ${{ vars.VPS_PORT || '22' }}
       BUILD_ENV: ${{ secrets.VITE_ENV_FILE }}
       DEPLOY_KEY: ${{ secrets.VPS_SSH_KEY }}
       KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
@@ -46,6 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$DEPLOY_HOST" =~ ^[0-9.]+$ && "$DEPLOY_USER" =~ ^[a-z][a-z0-9_-]*$ ]]
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]] && (( DEPLOY_PORT >= 1 && DEPLOY_PORT <= 65535 ))
           test -n "$DEPLOY_KEY"
           test -n "$KNOWN_HOSTS"
           if [[ "$LAUNCH_MODE" == configured ]]; then
@@ -75,9 +77,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ssh_opts=(-i "$HOME/.ssh/ariel_deploy" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
-          scp "${ssh_opts[@]}" "/tmp/ariel-${GITHUB_SHA}.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:/opt/ariel/incoming/${GITHUB_SHA}.tar.gz"
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$GITHUB_SHA' '$LAUNCH_MODE'" < deploy/deploy-vps.sh
+          ssh_opts=(-i "$HOME/.ssh/ariel_deploy" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o ConnectTimeout=15)
+          scp "${ssh_opts[@]}" -P "$DEPLOY_PORT" "/tmp/ariel-${GITHUB_SHA}.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:/opt/ariel/incoming/${GITHUB_SHA}.tar.gz"
+          ssh "${ssh_opts[@]}" -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$GITHUB_SHA' '$LAUNCH_MODE'" < deploy/deploy-vps.sh
       - name: Verify public storefront and analytics access
         shell: bash
         run: |
