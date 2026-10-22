@@ -41,7 +41,7 @@ export const OFFERS = [
     id: 'pack-3',
     packs: 3,
     washes: 180,
-    price: 9,
+    price: 10,
     compareAt: 74.85,
     label: '3 SACHETS',
     badge: 'MEILLEURE OFFRE',

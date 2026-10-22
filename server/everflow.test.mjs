@@ -4,6 +4,15 @@ import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { TRACKING_LINKS, IMAGE_PATHS, settings, createPendingOrder, prepareCheckout } from './everflow.mjs'
+import { getOffer } from '../src/config/offers.js'
+
+test('offer prices and approved checkout destinations match the three campaigns', () => {
+  assert.deepEqual(Object.fromEntries(Object.keys(TRACKING_LINKS).map((id) => [id, { price: getOffer(id).price, url: TRACKING_LINKS[id] }])), {
+    'pack-1': { price: 4, url: 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/' },
+    'pack-2': { price: 7, url: 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/' },
+    'pack-3': { price: 10, url: 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/' },
+  })
+})
 
 const images = {
   'pack-1': 'https://assets.example.ch/ariel/one.webp',

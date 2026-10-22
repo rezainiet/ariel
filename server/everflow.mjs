@@ -11,9 +11,9 @@ import { sanitizeSource } from '../src/lib/trafficSource.js'
 // These are the three offer links supplied for this shop. No admin setting or request
 // value may replace their origin, path, or existing tracking query parameters.
 export const TRACKING_LINKS = Object.freeze({
-  'pack-1': 'https://www.molipy8trk.com/2J23GL9/TRM28ZM/',
-  'pack-2': 'https://www.molipy8trk.com/2J23GL9/TRNF5P8/',
-  'pack-3': 'https://www.molipy8trk.com/2J23GL9/TRPS2FT/',
+  'pack-1': 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/',
+  'pack-2': 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/',
+  'pack-3': 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/',
 })
 
 export const IMAGE_PATHS = Object.freeze({
