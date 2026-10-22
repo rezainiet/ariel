@@ -19,7 +19,7 @@ import { getOffer } from '../src/config/offers.js'
 import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redirectPayment.js'
 import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder } from './everflow.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
-import { recordOrder, listOrders } from './orders.mjs'
+import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder } from './orders.mjs'
 import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
 import { listReviews, addReview, deleteReview, saveReviewImage, reviewImageFile } from './reviews.mjs'
 import { loadStock, publicStock, stockSummary, checkAvailable, setStock, adjustStock, commitReservation, cancelReservation } from './stock.mjs'
@@ -147,6 +147,12 @@ async function api(req, res, path) {
     return send(res, 200, { everflow: { enabled: everflow.enabled, preview: everflow.preview, domain: everflow.enabled ? 'www.molipy8trk.com' : '', attributionAvailable: Boolean(everflow.enabled && (everflow.metaPixel || everflow.snapPixel)) }, externalRedirect: { enabled: r.enabled, domain: r.enabled ? r.domain : '' } })
   }
 
+  const publicOrderMatch = /^\/api\/orders\/([0-9a-f-]{36})\/status$/i.exec(path)
+  if (publicOrderMatch && method === 'GET') {
+    const order = await publicOrderStatus(DATA_DIR, publicOrderMatch[1])
+    return order ? send(res, 200, order) : send(res, 404, { error: 'not_found' })
+  }
+
   if (path === '/api/checkout/everflow' && method === 'POST') {
     let body
     try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
@@ -238,6 +244,13 @@ async function api(req, res, path) {
     }
     if (path === '/api/admin/stock' && method === 'GET') return send(res, 200, await adminStock())
     if (path === '/api/admin/orders' && method === 'GET') return send(res, 200, await listOrders(DATA_DIR))
+    const externalAction = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/(confirm|cancel)$/i.exec(path)
+    if (externalAction && method === 'POST') {
+      try { await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
+      const [, orderId, verb] = externalAction
+      const closed = await closeExternalOrder(DATA_DIR, orderId, verb === 'confirm' ? 'confirmed' : 'cancelled')
+      return closed ? send(res, 200, { ok: true }) : send(res, 409, { error: 'order_not_pending' })
+    }
     if (path === '/api/admin/analytics' && method === 'GET') {
       const hours = Number(new URL(req.url, 'http://x').searchParams.get('hours'))
       return send(res, 200, await analyticsReport(DATA_DIR, hours))

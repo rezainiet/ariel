@@ -7,6 +7,7 @@ import AddedToast from './components/AddedToast.jsx'
 import ConsentBanner from './components/ConsentBanner.jsx'
 import Checkout from './pages/Checkout.jsx'
 import OrderConfirmation from './pages/OrderConfirmation.jsx'
+import OrderStatus from './pages/OrderStatus.jsx'
 import Returns from './pages/Returns.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Terms from './pages/Terms.jsx'
@@ -88,6 +89,7 @@ export default function App() {
           {/* Tunnel de commande : gabarit épuré (sans navigation) */}
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/checkout/confirmation" element={<OrderConfirmation />} />
+          <Route path="/commande/suivi/:orderId" element={<OrderStatus />} />
           {/* Anciennes adresses : redirigées (liens déjà partagés, retours prestataire) */}
           <Route path="/commande" element={<Navigate to="/checkout" replace />} />
           <Route path="/commande/confirmation" element={<OrderConfirmation />} />

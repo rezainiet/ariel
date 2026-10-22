@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ShoppingBag,
@@ -316,6 +316,7 @@ export default function Checkout() {
   const stock = useStock()
   const soldOut = Boolean(offer) && isSoldOut(stock, offer.id)
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const [values, setValues] = useState(readForm)
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
@@ -345,7 +346,7 @@ export default function Checkout() {
   const formComplete = useMemo(() =>
     Object.keys(validateCustomer(values, { terms })).length === 0,
   [values, terms])
-  const canContinue = formComplete && redirect.checked && !soldOut && status !== 'loading'
+  const canContinue = formComplete && redirect.checked && paymentReady && !soldOut && status !== 'loading'
   // Offre épuisée : le récapitulatif (où l'on change d'offre) s'ouvre aussi sur mobile.
   useEffect(() => {
     if (soldOut) setShowSummary(true)
@@ -421,17 +422,34 @@ export default function Checkout() {
     }
     if (soldOut) return focusAlert()
     if (!redirect.checked || status === 'loading') return
-    trackAnalyticsEvent('buyClick')
-    trackMetaPurchaseClick(offer.id, crypto.randomUUID())
     if (!paymentReady) {
       setStatus('unavailable')
       return focusAlert()
     }
+    trackAnalyticsEvent('buyClick')
+    trackMetaPurchaseClick(offer.id, crypto.randomUUID())
     setStatus('loading')
     if (redirect.enabled) {
+      // Open during the user gesture so browsers do not block the new checkout tab.
+      const paymentTab = window.open('', '_blank')
+      if (paymentTab) paymentTab.opener = null
       // Le serveur revalide la commande puis renvoie l'URL de la page de paiement externe.
       const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, customer: clean(values) }, redirect.provider)
-      if (res.status === 'redirecting') return
+      if (res.status === 'ready') {
+        try {
+          sessionStorage.setItem(`checkout-payment-v1:${res.orderId}`, res.redirectUrl)
+        } catch {
+          // The order status page remains usable without session storage.
+        }
+        try {
+          if (paymentTab && !paymentTab.closed) paymentTab.location.replace(res.redirectUrl)
+        } catch {
+          // The status page also offers an explicit link if the browser blocks the tab.
+        }
+        navigate(`/commande/suivi/${res.orderId}`, { replace: true })
+        return
+      }
+      if (paymentTab && !paymentTab.closed) paymentTab.close()
       trackAnalyticsEvent('checkoutError')
       if (res.status === 'invalid') {
         setErrors(res.errors)
@@ -700,13 +718,6 @@ export default function Checkout() {
                   </span>
                 </p>
               )}
-              {status === 'unavailable' && !errorList.length && (
-                <p role="status" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
-                  <Info size={18} className="mt-0.5 flex-none text-fr-green" />
-                  Vos informations sont complètes, mais le paiement en ligne n’est pas encore ouvert : aucune commande n’a été
-                  enregistrée et aucun montant n’a été débité.
-                </p>
-              )}
               {status === 'cancelled' && (
                 <p role="status" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
                   <Info size={18} className="mt-0.5 flex-none text-fr-green" />
@@ -736,6 +747,8 @@ export default function Checkout() {
                 </>
               ) : soldOut ? (
                 'Offre épuisée'
+              ) : redirect.checked && !paymentReady ? (
+                'Paiement indisponible'
               ) : (
                 <>
                   <span className="relative inline-block h-[18px] w-[18px] shrink-0" aria-hidden="true">
@@ -750,9 +763,7 @@ export default function Checkout() {
               )}
             </button>
             <p className="text-center text-[0.76rem] leading-relaxed text-fr-muted">
-              {paymentReady
-                ? <>En cliquant sur « Acheter », vous passez une commande avec obligation de paiement auprès de {storeRef()}. Une confirmation vous est envoyée par e-mail.</>
-                : <>Le paiement en ligne n’est pas encore ouvert. Un clic sur « Acheter » ne crée pas de commande et ne débite aucun montant.</>}
+              {paymentReady && <>En cliquant sur « Acheter », vous passez une commande avec obligation de paiement auprès de {storeRef()}. Terminez le paiement dans le nouvel onglet.</>}
             </p>
           </form>
         </div>

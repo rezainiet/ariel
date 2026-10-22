@@ -85,7 +85,7 @@ export async function getRedirectPayment() {
   }
 }
 
-// order = { offerId, termsAccepted, customer } → { status: 'redirecting' | 'invalid' | 'sold_out' | 'unavailable' | 'error', errors? }
+// order = { offerId, termsAccepted, customer } → { status: 'ready', orderId, redirectUrl } or an error.
 export async function startRedirectPayment(order, provider = 'external') {
   try {
     // Chaque clic sur « Acheter » enregistre une commande côté serveur. Même clé pour un nouvel essai
@@ -105,11 +105,10 @@ export async function startRedirectPayment(order, provider = 'external') {
     if (res.status === 422) return { status: 'invalid', errors: data.errors || {} }
     if (res.status === 409 && data.error === 'out_of_stock') return { status: 'sold_out' }
     if (res.status === 409) return { status: 'unavailable' }
-    if (res.ok && /^https:\/\//.test(data.redirectUrl || '')) {
+    if (res.ok && /^[0-9a-f-]{36}$/i.test(data.orderId || '') && /^https:\/\//.test(data.redirectUrl || '')) {
       if (data.orderId) trackCheckoutRedirect(data.orderId, order.offerId)
       trackAnalyticsEvent('paymentRedirect')
-      window.location.assign(data.redirectUrl)
-      return { status: 'redirecting' }
+      return { status: 'ready', orderId: data.orderId, redirectUrl: data.redirectUrl }
     }
     return { status: 'error' }
   } catch {

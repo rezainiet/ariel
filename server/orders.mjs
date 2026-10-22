@@ -166,3 +166,49 @@ export async function listOrders(dataDir) {
   const byChannel = Object.fromEntries(CHANNELS.map((c) => [c, orders.filter((o) => o.channel === c).length]))
   return { total: orders.length, byChannel, orders }
 }
+
+export async function closeExternalOrder(dataDir, orderId, status) {
+  if (!isOrderKey(orderId) || !['confirmed', 'cancelled'].includes(status)) return false
+  let names
+  try {
+    names = (await readdir(join(dataDir, ORDERS_DIR))).filter((name) => /^[0-9a-f-]{36}\.json$/.test(name))
+  } catch (error) {
+    if (error.code === 'ENOENT') return false
+    throw error
+  }
+  for (const name of names) {
+    const path = join(dataDir, ORDERS_DIR, name)
+    const record = await readJsonFile(path)
+    if (record?.orderId?.toLowerCase() !== orderId.toLowerCase()) continue
+    if (record.provider !== 'external' || record.status !== 'pending') return false
+    await writeAtomic(path, JSON.stringify({ ...record, status, closedAt: new Date().toISOString(), closedBy: 'admin' }))
+    return true
+  }
+  return false
+}
+
+// Limited public lookup by the random customer-facing order ID. Never expose the
+// stored contact details, attribution, or provider URL through this endpoint.
+export async function publicOrderStatus(dataDir, orderId) {
+  if (!isOrderKey(orderId)) return null
+  let names
+  try {
+    names = (await readdir(join(dataDir, ORDERS_DIR))).filter((name) => /^[0-9a-f-]{36}\.json$/.test(name))
+  } catch (error) {
+    if (error.code === 'ENOENT') return null
+    throw error
+  }
+  for (const name of names) {
+    const record = await readJsonFile(join(dataDir, ORDERS_DIR, name))
+    if (record?.orderId?.toLowerCase() !== orderId.toLowerCase()) continue
+    return {
+      orderId: record.orderId,
+      status: record.status === 'confirmed' ? 'confirmed' : record.status === 'cancelled' ? 'cancelled' : 'processing',
+      offerId: record.order.offerId,
+      packs: record.order.packs,
+      total: record.order.total,
+      createdAt: record.createdAt,
+    }
+  }
+  return null
+}

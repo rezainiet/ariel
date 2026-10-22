@@ -4,7 +4,7 @@ import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createPendingOrder, closePendingOrder } from './everflow.mjs'
-import { recordOrder, listOrders } from './orders.mjs'
+import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder } from './orders.mjs'
 import { loadStock, setStock, stockSummary } from './stock.mjs'
 import { classify, sanitizeSource } from '../src/lib/trafficSource.js'
 
@@ -79,6 +79,27 @@ test('external redirect clicks are recorded and deduplicated too', () => withDir
   assert.equal(list.total, 1)
   assert.equal(list.orders[0].provider, 'external')
   assert.equal(list.byChannel.google, 1)
+}))
+
+test('public order status exposes processing and confirmation without customer data', () => withDir(async (dir) => {
+  const body = click('pack-1')
+  const created = await createPendingOrder(body, config, dir)
+  const pending = await publicOrderStatus(dir, created.orderId)
+  assert.deepEqual(Object.keys(pending).sort(), ['createdAt', 'offerId', 'orderId', 'packs', 'status', 'total'])
+  assert.equal(pending.status, 'processing')
+  assert.equal(pending.total, 4)
+  assert.equal(await publicOrderStatus(dir, crypto.randomUUID()), null)
+  await closePendingOrder(dir, body.idempotencyKey, 'confirmed')
+  assert.equal((await publicOrderStatus(dir, created.orderId)).status, 'confirmed')
+}))
+
+test('external order status changes only after an explicit admin action', () => withDir(async (dir) => {
+  const order = { offerId: 'pack-2', packs: 2, total: 7, currency: 'CHF', customer }
+  const created = await recordOrder(dir, { key: crypto.randomUUID(), provider: 'external', order, source: touch('direct') })
+  assert.equal((await publicOrderStatus(dir, created.orderId)).status, 'processing')
+  assert.equal(await closeExternalOrder(dir, created.orderId, 'confirmed'), true)
+  assert.equal((await publicOrderStatus(dir, created.orderId)).status, 'confirmed')
+  assert.equal(await closeExternalOrder(dir, created.orderId, 'cancelled'), false)
 }))
 
 test('orders are counted per channel and in total', () => withDir(async (dir) => {

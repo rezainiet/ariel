@@ -186,6 +186,17 @@ function exportCsv(orders, channel) {
 
 function OrdersPanel({ data, error, onReload }) {
   const [channel, setChannel] = useState('all')
+  const [closing, setClosing] = useState('')
+  const [actionError, setActionError] = useState('')
+  const closeOrder = async (orderId, action) => {
+    if (!window.confirm(action === 'confirm' ? 'Confirmer ce paiement uniquement après l’avoir vérifié chez le prestataire ?' : 'Annuler cette commande en attente ?')) return
+    setClosing(orderId)
+    setActionError('')
+    const result = await call(`/api/admin/orders/${orderId}/${action}`, { method: 'POST', body: '{}' })
+    setClosing('')
+    if (result.status === 200) return onReload()
+    setActionError('Impossible de modifier cette commande. Actualisez la liste et réessayez.')
+  }
   const orders = useMemo(() => (data?.orders || []).filter((o) => channel === 'all' || o.channel === channel), [data, channel])
   const filters = [['all', 'Toutes', data?.total], ...CHANNELS.map((c) => [c, CHANNEL_LABELS[c], data?.byChannel?.[c]])]
   return (
@@ -201,6 +212,7 @@ function OrdersPanel({ data, error, onReload }) {
       }
     >
       {error && <Notice tone="error">{error}</Notice>}
+      {actionError && <Notice tone="error">{actionError}</Notice>}
       <div role="group" aria-label="Filtrer par provenance" className="flex flex-wrap gap-1.5">
         {filters.map(([id, name, n]) => (
           <button
@@ -246,6 +258,12 @@ function OrdersPanel({ data, error, onReload }) {
                 {o.source?.last?.clickIdType ? ` · clic ${o.source.last.clickIdType}` : o.source?.last?.referrerHost ? ` · via ${o.source.last.referrerHost}` : ''}
                 {' · '}{o.provider === 'external' ? 'redirection externe' : 'Everflow'} · n° {o.orderId.slice(0, 8)}
               </p>
+              {o.provider === 'external' && o.status === 'pending' && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" disabled={Boolean(closing)} onClick={() => closeOrder(o.orderId, 'confirm')} className={btnSecondary}>Paiement vérifié</button>
+                  <button type="button" disabled={Boolean(closing)} onClick={() => closeOrder(o.orderId, 'cancel')} className={btnQuiet}>Annuler</button>
+                </div>
+              )}
             </li>
           )
         })}
