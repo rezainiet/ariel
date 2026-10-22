@@ -1,15 +1,16 @@
 // ─────────────────────────────────────────────────────────────
 // Pixels publicitaires Meta, Snap et Google — chargés uniquement après consentement.
-// Aucun événement de conversion n'est déclenché pour une action
-// factice ou une transaction non vérifiée (voir trackPurchase).
+// Meta Purchase mesure le clic valide sur « Acheter », même si le paiement
+// n'aboutit pas. Snap et Google Purchase restent liés au paiement vérifié.
 //
 // Correspondance des événements :
 //   page vue            Meta PageView          Snap PAGE_VIEW      Google page_view
 //   fiche produit       Meta ViewContent       Snap VIEW_CONTENT   Google view_item
 //   ajout au panier     Meta AddToCart         Snap ADD_CART       Google add_to_cart
 //   page de commande    Meta InitiateCheckout  Snap START_CHECKOUT Google begin_checkout
-//   clic « Acheter »    Meta AddPaymentInfo    Snap ADD_BILLING    Google add_payment_info (+ conversion Ads)
-//   paiement vérifié    Meta Purchase          Snap PURCHASE       Google purchase
+//   clic « Acheter »    Meta Purchase          —                  —
+//   redirection         Meta AddPaymentInfo    Snap ADD_BILLING    Google add_payment_info (+ conversion Ads)
+//   paiement vérifié    —                      Snap PURCHASE       Google purchase
 //
 // Déduplication : chaque conversion porte un identifiant d'événement (Meta eventID, Snap
 // client_dedup_id, Google transaction_id) et n'est envoyée qu'une fois par session et par
@@ -178,7 +179,18 @@ export function trackStartCheckout(payload = {}, offerId = '') {
   gtag('event', 'begin_checkout', googleCommerce(payload))
 }
 
-// A successful pending order is a checkout redirect, never a paid purchase.
+// Meta Purchase represents a valid press of the checkout button, not a paid order.
+// Give each press its own ID so a retry counts as a separate press.
+export function trackMetaPurchaseClick(offerId, clickId) {
+  const offer = getOffer(offerId)
+  if (!metaInitialized || !offer || !firstEvent('purchase_click', clickId)) return false
+  fbq('track', 'Purchase', {
+    currency: 'CHF', value: offer.price, content_ids: [PRODUCT.id], content_type: 'product', num_items: offer.packs,
+  }, { eventID: `purchase-click-${clickId}` })
+  return true
+}
+
+// A successful pending order is a checkout redirect, not a paid order.
 // Only catalog values reach the pixels; customer names, contact details and the
 // customer-bearing hosted URL are deliberately excluded.
 export function trackCheckoutRedirect(orderId, offerId) {
@@ -198,7 +210,7 @@ export function trackCheckoutRedirect(orderId, offerId) {
 // Déduplication obligatoire via transaction_id.
 export function trackPurchase(payload = {}) {
   const tx = payload.transaction_id
-  if (!anyPixel() || !firstEvent('purchase', tx)) return
+  if (!(snapInitialized || googleInitialized) || !firstEvent('verified_purchase', tx)) return
   const clean = metaCommerce(payload)
   snaptr('track', 'PURCHASE', {
     transaction_id: tx, client_dedup_id: tx, currency: clean.currency,
@@ -206,7 +218,6 @@ export function trackPurchase(payload = {}) {
     item_ids: [PRODUCT.id],
     ...(clean.num_items ? { number_items: clean.num_items } : {}),
   })
-  fbq('track', 'Purchase', clean, { eventID: `purchase-${tx}` })
   gtag('event', 'purchase', { transaction_id: tx, ...googleCommerce(payload) })
 }
 

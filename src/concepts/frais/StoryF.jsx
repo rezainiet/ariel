@@ -66,7 +66,7 @@ const GESTURE_ICONS = { pod: PodIcon, load: WashingMachine, run: Play }
 function Gesture() {
   const [ref, shown] = useRevealed({ threshold: 0.2 })
   return (
-    <section id="pourquoi" aria-labelledby="geste-titre" className={`${W} scroll-mt-20 grid items-center gap-8 py-14 lg:grid-cols-[1.08fr_1fr] lg:gap-16 lg:py-24`}>
+    <section id="pourquoi" data-analytics-section="story" aria-labelledby="geste-titre" className={`${W} scroll-mt-20 grid items-center gap-8 py-14 lg:grid-cols-[1.08fr_1fr] lg:gap-16 lg:py-24`}>
       <div className="relative">
         <RevealFrame className="aspect-[4/3.3] bg-fr-mint lg:aspect-[5/6]">
           <Pic p={STORY.podHand} alt="Une capsule Ariel tenue au-dessus du tambour d’un lave-linge" className="h-full w-full object-cover object-[50%_38%]" sizes="(min-width:1024px) 640px, 100vw" />
@@ -149,7 +149,7 @@ function Quantity({ sel, setSel, stock, soldOut }) {
   const idx = OFFERS.findIndex((o) => o.id === sel)
   const save = savingsFor(offer)
   return (
-    <section id="f-quantite" aria-labelledby="quantite-titre" className="scroll-mt-20 bg-gradient-to-b from-fr-mint/70 to-fr-mint/20 py-14 lg:py-24">
+    <section id="f-quantite" data-analytics-section="quantity" aria-labelledby="quantite-titre" className="scroll-mt-20 bg-gradient-to-b from-fr-mint/70 to-fr-mint/20 py-14 lg:py-24">
       <div className={`${W} grid items-center gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-16`}>
         <div>
           <Rise from="right">
@@ -283,7 +283,7 @@ function OnPack() {
     if (k !== null) setExplored(true)
   }
   return (
-    <section id="f-froid" aria-labelledby="froid-titre" className={`${W} scroll-mt-20 grid items-center gap-7 py-14 lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:py-24`}>
+    <section id="f-froid" data-analytics-section="product" aria-labelledby="froid-titre" className={`${W} scroll-mt-20 grid items-center gap-7 py-14 lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:py-24`}>
       <div className="order-2 lg:order-1">
         <Rise from="left">
           <Kicker n="3">Sur l’emballage</Kicker>
@@ -398,7 +398,7 @@ export function FinalCta({ sel, soldOut }) {
   const buyNow = useBuyNow()
   const offer = getOffer(sel)
   return (
-    <section aria-label="Commander" className="hidden bg-white pb-20 lg:block">
+    <section data-analytics-section="final" aria-label="Commander" className="hidden bg-white pb-20 lg:block">
       <div className={W}>
         <Rise from="scale" className="flex items-center gap-8 rounded-[2rem] bg-gradient-to-br from-fr-deep to-[#0E5A3A] px-10 py-8 font-jakarta text-white">
           <span className="flex h-24 w-32 flex-none items-end justify-center rounded-2xl bg-white/10 pb-2">

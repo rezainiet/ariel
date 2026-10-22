@@ -490,7 +490,7 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
 
 export default function HeroF({ sel, setSel, ctaRef, status, reviewState }) {
   return (
-    <section aria-label="Produit et offres" className="mx-auto max-w-[1320px] px-4 pb-10 pt-3 lg:grid lg:grid-cols-[1.08fr_1fr] lg:items-start lg:gap-12 lg:px-8 lg:pb-16 lg:pt-8 xl:gap-16">
+    <section data-analytics-section="hero" aria-label="Produit et offres" className="mx-auto max-w-[1320px] px-4 pb-10 pt-3 lg:grid lg:grid-cols-[1.08fr_1fr] lg:items-start lg:gap-12 lg:px-8 lg:pb-16 lg:pt-8 xl:gap-16">
       <PromoBanner className="mb-4 lg:hidden" />
       <div className="lg:sticky lg:top-24">
         <Stage packs={getOffer(sel).packs} />

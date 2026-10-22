@@ -11,11 +11,12 @@
 //   2. Le prestataire redirige vers /checkout/confirmation?session=…
 //   3. verifyOrder(session) → NOTRE serveur vérifie le paiement auprès du
 //      prestataire (webhook/API) et renvoie la commande confirmée.
-//   4. Seulement alors : e-mail de confirmation + événement PURCHASE.
+//   4. Seulement alors : e-mail de confirmation + événements de paiement vérifié Snap/Google.
 // Tant que rien n'est configuré, aucune commande n'est simulée.
 // ─────────────────────────────────────────────────────────────
 
 import { trackCheckoutRedirect } from './pixel.js'
+import { trackAnalyticsEvent } from './analytics.js'
 import { getTrafficSource } from './trafficSource.js'
 
 const PROVIDER = import.meta.env.VITE_PAYMENT_PROVIDER || ''
@@ -44,6 +45,7 @@ export async function startPayment(order) {
     if (!res.ok) return { status: 'error' }
     const data = await res.json()
     if (data?.redirectUrl) {
+      trackAnalyticsEvent('paymentRedirect')
       window.location.assign(data.redirectUrl)
       return { status: 'redirecting' }
     }
@@ -105,6 +107,7 @@ export async function startRedirectPayment(order, provider = 'external') {
     if (res.status === 409) return { status: 'unavailable' }
     if (res.ok && /^https:\/\//.test(data.redirectUrl || '')) {
       if (data.orderId) trackCheckoutRedirect(data.orderId, order.offerId)
+      trackAnalyticsEvent('paymentRedirect')
       window.location.assign(data.redirectUrl)
       return { status: 'redirecting' }
     }

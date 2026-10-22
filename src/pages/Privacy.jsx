@@ -37,12 +37,14 @@ export default function Privacy() {
           </p>
           <p>
             Nous notons aussi la provenance de votre visite (par exemple une annonce Meta, Snapchat ou Google, ou le nom de la campagne),
-            conservée 30 jours dans votre navigateur puis jointe à votre commande. Elle sert uniquement à savoir quelles annonces
-            fonctionnent ; elle n’est transmise à personne.
+            conservée 30 jours dans votre navigateur puis jointe à votre commande. Avec votre accord, nous enregistrons également
+            sur notre serveur le canal d’arrivée, les pages et sections consultées, la profondeur de défilement, le temps actif
+            et les étapes de commande franchies. Ces statistiques sont conservées environ 90 jours. Nous n’y enregistrons ni
+            vos coordonnées, ni l’identifiant brut d’un clic publicitaire, ni votre adresse IP.
           </p>
         </Block>
         <Block title="Finalités">
-          <p>Ces données servent à préparer, expédier et suivre votre commande, et à vous répondre (confirmations, retours, service client).</p>
+          <p>Ces données servent à préparer, expédier et suivre votre commande, à vous répondre, et, pour les statistiques facultatives, à comprendre le parcours des visiteurs et améliorer la boutique.</p>
         </Block>
         <Block title="Destinataires">
           <p>
@@ -61,7 +63,7 @@ export default function Privacy() {
           {isPixelEnabled() || everflowAttribution ? (
             <p>
               Avec votre accord seulement, les outils publicitaires de Meta, Snapchat et, s’il est activé, Google mesurent l’efficacité de nos annonces
-              (pages vues, ajout au panier, commande), sans votre nom ni vos coordonnées. Vous pouvez
+              (pages vues, ajout au panier, clic sur « Acheter »), sans votre nom ni vos coordonnées. Le signal Meta « Purchase » correspond ici au clic valide sur « Acheter », même si le paiement n’aboutit pas. Vous pouvez
               refuser ce suivi dans la bannière de consentement.
             </p>
           ) : (

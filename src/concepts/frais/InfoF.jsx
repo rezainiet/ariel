@@ -50,7 +50,7 @@ export function ReviewsF({ reviewState }) {
     setVisibleCount(3)
   }
   return (
-    <section id="avis" className="scroll-mt-20 bg-[#F7FAF8] py-12 lg:py-20">
+    <section id="avis" data-analytics-section="reviews" className="scroll-mt-20 bg-[#F7FAF8] py-12 lg:py-20">
       <div className={W}>
         <Rise>
           <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">{hasExternal ? 'Avis sur le produit' : 'Avis clients'}</p>
@@ -176,7 +176,7 @@ export function VideoF() {
     setMuted(next)
   }
   return (
-    <section id="video" aria-labelledby="video-title" className="scroll-mt-20 bg-white py-12 lg:py-20">
+    <section id="video" data-analytics-section="video" aria-labelledby="video-title" className="scroll-mt-20 bg-white py-12 lg:py-20">
       <div className={`${W} grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-16`}>
         <Rise>
           <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">Le produit en vidéo</p>
@@ -256,7 +256,7 @@ export function ServiceF() {
     </Link>
   )
   return (
-    <section id="livraison" className="scroll-mt-20 bg-fr-mint/45 py-14 lg:py-24">
+    <section id="livraison" data-analytics-section="delivery" className="scroll-mt-20 bg-fr-mint/45 py-14 lg:py-24">
       <div className={W}>
         <SectionHead eyebrow="Livraison & retours" title="Livré en Suisse," accent="sans frais." />
         <div className="mt-8 grid gap-3 lg:mt-12 lg:grid-cols-3 lg:gap-5">
@@ -308,7 +308,7 @@ export function ServiceF() {
 export function FaqF() {
   const [open, setOpen] = useState(null)
   return (
-    <section id="faq" aria-labelledby="faq-titre" className="scroll-mt-20 bg-white py-14 lg:py-24">
+    <section id="faq" data-analytics-section="faq" aria-labelledby="faq-titre" className="scroll-mt-20 bg-white py-14 lg:py-24">
       <div className={`${W} grid gap-8 lg:grid-cols-[0.8fr_1.4fr] lg:gap-16`}>
         <div>
           <Rise>

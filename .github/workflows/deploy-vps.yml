@@ -78,3 +78,17 @@ jobs:
           ssh_opts=(-i "$HOME/.ssh/ariel_deploy" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
           scp "${ssh_opts[@]}" "/tmp/ariel-${GITHUB_SHA}.tar.gz" "$DEPLOY_USER@$DEPLOY_HOST:/opt/ariel/incoming/${GITHUB_SHA}.tar.gz"
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$GITHUB_SHA' '$LAUNCH_MODE'" < deploy/deploy-vps.sh
+      - name: Verify public storefront and analytics access
+        shell: bash
+        run: |
+          set -euo pipefail
+          origin=https://destockage-suisse.store
+          curl --fail --silent --show-error --retry 3 --connect-timeout 5 --max-time 15 "$origin/" -o /tmp/ariel-home.html
+          grep -q '<div id="root"></div>' /tmp/ariel-home.html
+          curl --fail --silent --show-error --retry 3 --connect-timeout 5 --max-time 15 "$origin/api/stock" -o /tmp/ariel-stock.json
+          node -e "const s=require('/tmp/ariel-stock.json'); if(!s || typeof s !== 'object') process.exit(1)"
+          status=$(curl --silent --show-error --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}' "$origin/api/admin/analytics?hours=24")
+          test "$status" = 401
+          status=$(curl --silent --show-error --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{}' "$origin/api/analytics")
+          test "$status" = 422
+          echo 'Public storefront, stock API, analytics authentication, and payload validation passed'

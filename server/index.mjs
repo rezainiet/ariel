@@ -20,6 +20,7 @@ import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redi
 import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder } from './everflow.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
 import { recordOrder, listOrders } from './orders.mjs'
+import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
 import { listReviews, addReview, deleteReview, saveReviewImage, reviewImageFile } from './reviews.mjs'
 import { loadStock, publicStock, stockSummary, checkAvailable, setStock, adjustStock, commitReservation, cancelReservation } from './stock.mjs'
 
@@ -129,6 +130,16 @@ async function api(req, res, path) {
     return send(res, 200, { ...featured, serverTime: new Date().toISOString() })
   }
 
+  // First-party, consented visit snapshots. Only bounded aggregate fields are accepted.
+  if (path === '/api/analytics' && method === 'POST') {
+    if (req.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(req.headers['sec-fetch-site'])) return send(res, 403, { error: 'forbidden' })
+    let body
+    try { body = await readJson(req, 6_000) } catch { return send(res, 400, { error: 'bad_request' }) }
+    return await saveAnalytics(DATA_DIR, body)
+      ? send(res, 200, { ok: true })
+      : send(res, 422, { error: 'invalid' })
+  }
+
   // Public : état du paiement par redirection (le domaine sert à informer le client avant la redirection).
   if (path === '/api/payment/config' && method === 'GET') {
     const r = config.externalRedirect
@@ -227,6 +238,10 @@ async function api(req, res, path) {
     }
     if (path === '/api/admin/stock' && method === 'GET') return send(res, 200, await adminStock())
     if (path === '/api/admin/orders' && method === 'GET') return send(res, 200, await listOrders(DATA_DIR))
+    if (path === '/api/admin/analytics' && method === 'GET') {
+      const hours = Number(new URL(req.url, 'http://x').searchParams.get('hours'))
+      return send(res, 200, await analyticsReport(DATA_DIR, hours))
+    }
     if ((path === '/api/admin/stock' && method === 'PUT') || (path === '/api/admin/stock/adjust' && method === 'POST')) {
       let body
       try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
@@ -325,6 +340,8 @@ async function serveStatic(req, res, path) {
 }
 
 await loadConfig()
+await pruneAnalytics(DATA_DIR).catch((error) => console.error('[analytics] nettoyage initial', error?.message))
+setInterval(() => pruneAnalytics(DATA_DIR).catch((error) => console.error('[analytics] nettoyage', error?.message)), 24 * 60 * 60 * 1000).unref()
 createServer(async (req, res) => {
   const path = new URL(req.url, 'http://x').pathname
   try {

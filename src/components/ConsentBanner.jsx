@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { initPixel, isPixelEnabled, trackPageView } from '../lib/pixel.js'
+import { initAnalytics } from '../lib/analytics.js'
 
 // Consentement avant tout pixel publicitaire (nLPD) — deux choix de même poids.
 // N'apparaît que si un pixel Meta/Snap ou une attribution Everflow est configuré.
@@ -44,6 +45,7 @@ export default function ConsentBanner() {
   useEffect(() => {
     if (choice === 'granted') {
       initPixel()
+      initAnalytics()
       trackPageView()
     }
   }, [choice])
@@ -68,7 +70,7 @@ export default function ConsentBanner() {
   return (
     <div role="dialog" aria-label="Cookies et mesure d’audience" className="fixed inset-x-3 bottom-3 z-[65] mx-auto max-w-xl animate-fade-up rounded-2xl border border-fr-line bg-white p-4 font-jakarta shadow-2xl sm:p-5">
       <p className="text-sm leading-relaxed text-fr-ink/80">
-        Nous aimerions mesurer l’efficacité de nos publicités. Ce suivi est facultatif.{' '}
+        Nous aimerions mesurer l’efficacité de nos publicités, le temps passé et les sections consultées. Ce suivi est facultatif.{' '}
         <Link to="/politique-de-confidentialite" className="font-semibold text-fr-green underline">
           En savoir plus
         </Link>

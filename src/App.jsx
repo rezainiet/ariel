@@ -18,6 +18,7 @@ import NotFound from './pages/NotFound.jsx'
 import FraisPage from './concepts/frais/FraisPage.jsx'
 import { Announcement, HeaderF, FooterF } from './concepts/frais/ChromeF.jsx'
 import { trackPageView } from './lib/pixel.js'
+import { trackAnalyticsPage } from './lib/analytics.js'
 
 // Archives de conception (v1, concepts A/B/C, page de comparaison) : INTERNES uniquement.
 // Absentes du build public (VITE_DESIGN_PREVIEW=true seulement pour un environnement de recette).
@@ -37,6 +38,7 @@ function RouteEffects() {
   useEffect(() => {
     if (!hash) window.scrollTo(0, 0)
     trackPageView()
+    trackAnalyticsPage(pathname)
   }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }

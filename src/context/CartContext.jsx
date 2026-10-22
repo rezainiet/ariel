@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useReducer, useCallback, useEffect } from 'react'
 import { getOffer, PRODUCT } from '../config/store'
 import { trackAddCart } from '../lib/pixel'
+import { trackAnalyticsEvent } from '../lib/analytics.js'
 
 // ─────────────────────────────────────────────────────────────
 // État du panier centralisé.
@@ -78,6 +79,7 @@ export function CartProvider({ children }) {
       item_category: 'detergent',
       number_items: o.packs,
     })
+    trackAnalyticsEvent('addToCart')
   }, [])
 
   // Change le bundle déjà présent dans le panier (stepper du panier).

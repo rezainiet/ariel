@@ -17,7 +17,8 @@ import {
 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { OFFERS, PRODUCT, DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
-import { trackStartCheckout } from '../lib/pixel.js'
+import { trackMetaPurchaseClick, trackStartCheckout } from '../lib/pixel.js'
+import { trackAnalyticsEvent } from '../lib/analytics.js'
 import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
 import { validateCustomer, clean, swissNational } from '../lib/orderValidation.js'
 import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
@@ -414,6 +415,7 @@ export default function Checkout() {
     setErrors(errs)
     setSubmitted(true)
     if (Object.keys(errs).length) {
+      trackAnalyticsEvent('checkoutInvalid')
       setStatus('idle')
       return focusAlert()
     }
@@ -422,11 +424,15 @@ export default function Checkout() {
       setStatus('unavailable')
       return focusAlert()
     }
+    if (status === 'loading') return
+    trackAnalyticsEvent('buyClick')
+    trackMetaPurchaseClick(offer.id, crypto.randomUUID())
     setStatus('loading')
     if (redirect.enabled) {
       // Le serveur revalide la commande puis renvoie l'URL de la page de paiement externe.
       const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, customer: clean(values) }, redirect.provider)
       if (res.status === 'redirecting') return
+      trackAnalyticsEvent('checkoutError')
       if (res.status === 'invalid') {
         setErrors(res.errors)
         setStatus('idle')
@@ -440,6 +446,7 @@ export default function Checkout() {
     // Le serveur recalcule le montant à partir de l'offre ; aucun total n'est transmis.
     const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, customer: clean(values) })
     if (res.status !== 'redirecting') {
+      trackAnalyticsEvent('checkoutError')
       setStatus(res.status === 'not_configured' ? 'unavailable' : 'error')
       focusAlert()
     }

@@ -5,10 +5,12 @@ import { useCart } from '../context/CartContext.jsx'
 import { PRODUCT, storeRef } from '../config/store.js'
 import { verifyOrder } from '../lib/payment.js'
 import { trackPurchase } from '../lib/pixel.js'
+import { trackAnalyticsEvent } from '../lib/analytics.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 
-// Confirmation : n'affiche un succès et ne déclenche PURCHASE qu'après
-// vérification SERVEUR du paiement. Sinon : état neutre, aucun événement.
+// Confirmation : n'affiche un succès et ne déclenche les événements de paiement
+// vérifié (Snap/Google) qu'après vérification SERVEUR. Meta Purchase est envoyé
+// lors du clic valide sur « Acheter ».
 export default function OrderConfirmation() {
   const [params] = useSearchParams()
   const session = params.get('session')
@@ -35,6 +37,7 @@ export default function OrderConfirmation() {
           item_ids: [PRODUCT.id],
           number_items: order.packs,
         })
+        trackAnalyticsEvent('verifiedPurchase')
       }
       setState({ status: order ? 'verified' : 'unverified', order })
     })

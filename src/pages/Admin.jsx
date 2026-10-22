@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   LockKeyhole, LogOut, Plus, Trash2, Loader2, Check, AlertCircle, ExternalLink, RotateCcw, RefreshCw,
-  Boxes, Star, CreditCard, Clock, ArrowUpRight, PackageCheck, History, Info, ShoppingBag, Download, Mail, Phone, MapPin,
+  Boxes, Star, CreditCard, Clock, ArrowUpRight, PackageCheck, History, Info, ShoppingBag, Download, Mail, Phone, MapPin, BarChart3,
 } from 'lucide-react'
 import { OFFERS, PRODUCT, formatCHF } from '../config/offers.js'
 import { FIELDS, DEFAULT_PARAMS, validateConfig, buildRedirectUrl, normalizeDomain } from '../lib/redirectPayment.js'
@@ -11,7 +11,7 @@ import { Swap } from '../lib/motion.js'
 import { CHANNELS, CHANNEL_LABELS } from '../lib/trafficSource.js'
 
 // ─────────────────────────────────────────────────────────────
-// Administration — stock, avis clients, paiement.
+// Administration — trafic, stock, avis clients, paiement.
 // Accès protégé côté serveur (mot de passe ADMIN_PASSWORD, cookie de session httpOnly).
 // Page non liée publiquement et non indexée. Le serveur reste la seule source de vérité :
 // rien n'est conservé dans le navigateur.
@@ -1059,8 +1059,68 @@ function PaymentEditor({ initial, everflow, onSaved, onLogout }) {
 }
 
 // ── Tableau de bord ──
+const ANALYTICS_SECTIONS = {
+  hero: 'Produit et offres', story: 'Le geste', quantity: 'Quantité', product: 'Produit',
+  video: 'Vidéo', reviews: 'Avis', delivery: 'Livraison et retours', faq: 'FAQ', final: 'Dernier rappel',
+}
+const ANALYTICS_FUNNEL = [
+  ['addToCart', 'Ajout au panier'], ['checkoutView', 'Page de commande'], ['buyClick', 'Clic Acheter'],
+  ['paymentRedirect', 'Redirection paiement'], ['verifiedPurchase', 'Paiement vérifié'],
+  ['checkoutInvalid', 'Formulaire incomplet'], ['checkoutError', 'Erreur de commande'],
+]
+const duration = (value) => value >= 60 ? `${Math.floor(value / 60)} min ${Math.round(value % 60)} s` : `${Math.round(value || 0)} s`
+
+function AnalyticsPanel({ data, error, hours, onHours, onReload }) {
+  return (
+    <div className="space-y-4 rounded-[1.4rem] bg-white p-4 ring-1 ring-fr-line sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-extrabold">Parcours des visiteurs</h2>
+          <p className="text-xs text-fr-muted">Sessions avec consentement, commencées dans la période. Temps actif = page visible, au premier plan, sans inactivité prolongée.</p>
+        </div>
+        <div className="flex gap-2">
+          {[24, 168, 720].map((value) => <button key={value} type="button" onClick={() => onHours(value)} aria-pressed={hours === value} className={`${btnQuiet} ${hours === value ? 'bg-fr-mint text-fr-green' : ''}`}>{value === 24 ? '24 h' : value === 168 ? '7 j' : '30 j'}</button>)}
+          <button type="button" onClick={onReload} className={btnQuiet} aria-label="Actualiser le trafic"><RefreshCw size={15} /></button>
+        </div>
+      </div>
+      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {!data && !error && <p className="text-sm text-fr-muted">Chargement des statistiques…</p>}
+      {data && <>
+        <div className="grid gap-2 sm:grid-cols-4">
+          {[
+            ['Sessions', data.sessions], ['Temps actif moyen', duration(data.avgActiveSeconds)],
+            ['Défilement moyen', `${data.avgHomeScroll}%`], ['Clics Acheter', data.funnel.buyClick.events],
+          ].map(([label, value]) => <div key={label} className="rounded-xl bg-fr-soft p-3"><span className="block text-xs text-fr-muted">{label}</span><strong className="text-xl tabular-nums">{value}</strong></div>)}
+        </div>
+        <p className="text-xs text-fr-muted">Temps actif par session : minimum {duration(data.minActiveSeconds)}, maximum {duration(data.maxActiveSeconds)}. « Direct » regroupe les liens sans référent, favoris et adresses saisies ; ces cas ne sont pas distinguables.</p>
+        <div className="overflow-x-auto">
+          <h3 className="mb-2 font-bold">Origine et progression</h3>
+          <table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-fr-line text-fr-muted"><th className="py-2">Canal</th><th>Sessions</th><th>Temps moyen</th><th>Clics Acheter</th><th>Redirections</th><th>Paiements vérifiés</th></tr></thead><tbody>
+            {data.channels.map((row) => <tr key={row.channel} className="border-b border-fr-line/70"><th className="py-2 font-semibold">{row.channel === 'direct' ? 'Direct / sans référent' : CHANNEL_LABELS[row.channel]}</th><td>{row.sessions}</td><td>{duration(row.avgActiveSeconds)}</td><td>{row.buyClicks}</td><td>{row.redirects}</td><td>{row.verified}</td></tr>)}
+          </tbody></table>
+        </div>
+        <div className="overflow-x-auto">
+          <h3 className="mb-2 font-bold">Sections de la page d’accueil</h3>
+          <p className="mb-2 text-xs text-fr-muted">« Plus loin atteint » indique la section la plus basse observée durant la visite. Temps moyen, min. et max. sont calculés parmi les sessions qui ont atteint la section.</p>
+          <table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-fr-line text-fr-muted"><th className="py-2">Section</th><th>Atteinte</th><th>Plus loin atteint</th><th>Temps moyen</th><th>Min.</th><th>Max.</th></tr></thead><tbody>
+            {data.sections.map((row) => <tr key={row.key} className="border-b border-fr-line/70"><th className="py-2 font-semibold">{ANALYTICS_SECTIONS[row.key]}</th><td>{row.reached}</td><td>{row.deepest}</td><td>{duration(row.avgSeconds)}</td><td>{duration(row.minSeconds)}</td><td>{duration(row.maxSeconds)}</td></tr>)}
+          </tbody></table>
+          <p className="mt-2 text-xs text-fr-muted">Profondeur atteinte : {data.scrollDepth.map((row) => `${row.depth}% : ${row.sessions}`).join(' · ')} sessions.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <h3 className="mb-2 font-bold">Étapes du parcours</h3>
+          <table className="w-full min-w-[420px] text-left text-sm"><thead><tr className="border-b border-fr-line text-fr-muted"><th className="py-2">Étape</th><th>Sessions</th><th>Actions</th></tr></thead><tbody>
+            {ANALYTICS_FUNNEL.map(([key, label]) => <tr key={key} className="border-b border-fr-line/70"><th className="py-2 font-semibold">{label}</th><td>{data.funnel[key].sessions}</td><td>{data.funnel[key].events}</td></tr>)}
+          </tbody></table>
+        </div>
+      </>}
+    </div>
+  )
+}
+
 const TABS = [
   { id: 'orders', label: 'Commandes', icon: ShoppingBag },
+  { id: 'analytics', label: 'Trafic', icon: BarChart3 },
   { id: 'stock', label: 'Stock', icon: Boxes },
   { id: 'reviews', label: 'Avis', icon: Star },
   { id: 'payment', label: 'Paiement', icon: CreditCard },
@@ -1079,6 +1139,9 @@ function Dashboard({ initial, onLogout }) {
   const [everflow, setEverflow] = useState(null)
   const [orders, setOrders] = useState(null)
   const [ordersError, setOrdersError] = useState('')
+  const [analytics, setAnalytics] = useState(null)
+  const [analyticsError, setAnalyticsError] = useState('')
+  const [analyticsHours, setAnalyticsHours] = useState(24)
   const [refreshing, setRefreshing] = useState(false)
   const tabRefs = useRef([])
   const reservationsRef = useRef(null)
@@ -1101,14 +1164,23 @@ function Dashboard({ initial, onLogout }) {
     } else setOrdersError(r.status === 0 ? 'Serveur injoignable : les commandes n’ont pas pu être chargées.' : 'Les commandes n’ont pas pu être chargées.')
   }, [onLogout])
 
+  const loadAnalytics = useCallback(async () => {
+    const r = await call(`/api/admin/analytics?hours=${analyticsHours}`)
+    if (r.status === 401) return onLogout()
+    if (r.status === 200) {
+      setAnalytics(r.data)
+      setAnalyticsError('')
+    } else setAnalyticsError(r.status === 0 ? 'Serveur injoignable : le trafic n’a pas pu être chargé.' : 'Le trafic n’a pas pu être chargé.')
+  }, [analyticsHours, onLogout])
+
   const refresh = useCallback(async () => {
     setRefreshing(true)
-    const [, , r, p] = await Promise.all([loadStock(), loadOrders(), call('/api/admin/reviews'), call('/api/payment/config')])
+    const [, , , r, p] = await Promise.all([loadStock(), loadOrders(), loadAnalytics(), call('/api/admin/reviews'), call('/api/payment/config')])
     if (r.status === 401) return onLogout()
     if (r.status === 200) setReviews(Array.isArray(r.data) ? r.data : [])
     if (p.status === 200) setEverflow(p.data.everflow || { enabled: false })
     setRefreshing(false)
-  }, [loadStock, loadOrders, onLogout])
+  }, [loadStock, loadOrders, loadAnalytics, onLogout])
 
   useEffect(() => {
     refresh()
@@ -1116,6 +1188,7 @@ function Dashboard({ initial, onLogout }) {
       if (document.visibilityState !== 'visible') return
       loadStock()
       loadOrders()
+      loadAnalytics()
     }
     const onHash = () => setTab(tabFromHash())
     document.addEventListener('visibilitychange', onVisible)
@@ -1124,7 +1197,7 @@ function Dashboard({ initial, onLogout }) {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('hashchange', onHash)
     }
-  }, [refresh, loadStock, loadOrders])
+  }, [refresh, loadStock, loadOrders, loadAnalytics])
 
   const open = (id, focus) => {
     setTab(id)
@@ -1145,6 +1218,7 @@ function Dashboard({ initial, onLogout }) {
 
   const counts = {
     orders: orders ? orders.total : null,
+    analytics: analytics ? analytics.sessions : null,
     stock: stock ? stock.reservations.length : null,
     reviews: reviews ? reviews.length : null,
   }
@@ -1176,13 +1250,13 @@ function Dashboard({ initial, onLogout }) {
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="text-[1.45rem] font-extrabold leading-tight tracking-[-0.025em] lg:text-[1.7rem]">Tableau de bord</h1>
-            <p className="text-[0.82rem] text-fr-muted">Commandes, stock, avis clients et paiement de la boutique.</p>
+            <p className="text-[0.82rem] text-fr-muted">Trafic, commandes, stock, avis clients et paiement de la boutique.</p>
           </div>
         </div>
 
         <Overview stock={stock} reviews={reviews} payment={payment} orders={orders} onOpen={open} />
 
-        <div role="tablist" aria-label="Sections de l’administration" className="sticky top-14 z-20 -mx-4 grid grid-cols-4 gap-1 bg-fr-soft/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:inline-grid sm:rounded-full sm:bg-white sm:p-1 sm:ring-1 sm:ring-fr-line">
+        <div role="tablist" aria-label="Sections de l’administration" className="sticky top-14 z-20 -mx-4 grid grid-cols-5 gap-1 bg-fr-soft/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:inline-grid sm:rounded-full sm:bg-white sm:p-1 sm:ring-1 sm:ring-fr-line">
           {TABS.map((t, k) => {
             const on = tab === t.id
             return (
@@ -1214,6 +1288,9 @@ function Dashboard({ initial, onLogout }) {
         {/* Les panneaux restent montés : une saisie en cours n'est jamais perdue en changeant d'onglet. */}
         <div id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" hidden={tab !== 'orders'} className="animate-panel-in">
           <OrdersPanel data={orders} error={ordersError} onReload={loadOrders} />
+        </div>
+        <div id="panel-analytics" role="tabpanel" aria-labelledby="tab-analytics" hidden={tab !== 'analytics'} className="animate-panel-in">
+          <AnalyticsPanel data={analytics} error={analyticsError} hours={analyticsHours} onHours={setAnalyticsHours} onReload={loadAnalytics} />
         </div>
         <div id="panel-stock" role="tabpanel" aria-labelledby="tab-stock" hidden={tab !== 'stock'} className="animate-panel-in">
           <StockPanel stock={stock} error={stockError} onStock={setStock} onReload={loadStock} onLogout={onLogout} focusRef={reservationsRef} />

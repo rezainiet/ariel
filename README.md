@@ -87,7 +87,8 @@ Captures et notes : `design-review/frais-finition/`.
 - `src/lib/payment.js` — frontière de paiement : session hébergée chez le prestataire, vérification serveur.
 - `src/lib/storeStatus.js` — stock et campagne réels (jamais de valeur fictive).
 - `src/lib/address.js` — aide à la saisie d'adresse, uniquement via un service configuré.
-- `src/lib/pixel.js` — Meta Pixel et Snap Pixel (si configuré) après consentement ; événement PURCHASE uniquement après paiement vérifié.
+- `src/lib/pixel.js` — pixels après consentement ; Meta Purchase au clic valide sur « Acheter » (même sans paiement), Snap/Google Purchase uniquement après paiement vérifié.
+- `src/lib/analytics.js` et `server/analytics.mjs` — statistiques internes après consentement : sessions par canal, temps actif, défilement et étapes de commande. Rapport protégé dans `/admin#analytics`, sur 24 h, 7 j ou 30 j ; conservation d’environ 90 jours. Voir `ANALYTICS.md` pour les définitions et limites.
 - `src/concepts/frais/` — composants de la boutique Frais ; `src/pages/` — commande et pages de service.
 - `server/validate-order.mjs` — validation à appeler par le serveur de commande avant de créer le paiement.
 
