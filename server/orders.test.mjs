@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createPendingOrder, closePendingOrder } from './everflow.mjs'
@@ -43,7 +43,7 @@ test('concurrent clicks from two tabs create a single order', () => withDir(asyn
   assert.equal((await files(dir)).length, 1)
 }))
 
-test('a repeat checkout after its stock hold expires creates a new reserved order', () => withDir(async (dir) => {
+test('a repeat checkout is blocked until 48 hours after the first order, even if its hold expires', () => withDir(async (dir) => {
   await setStock(dir, { onHand: 2, version: (await loadStock(dir)).version })
   const first = await createPendingOrder(click(), config, dir)
   const stock = await loadStock(dir)
@@ -51,22 +51,43 @@ test('a repeat checkout after its stock hold expires creates a new reserved orde
   await writeFile(join(dir, 'stock.json'), JSON.stringify(stock))
 
   const again = await createPendingOrder(click(), config, dir)
-  assert.equal(again.status, 200)
-  assert.notEqual(again.orderId, first.orderId)
-  assert.equal((await files(dir)).length, 2)
-  assert.equal(stockSummary(await loadStock(dir)).held, 2)
+  assert.equal(again.status, 409)
+  assert.equal(again.error, 'recent_order')
+  assert.equal(again.orderId, first.orderId)
+  assert.equal((await files(dir)).length, 1)
 }))
 
-test('another offer or another customer is a separate order; a closed order is never reused', () => withDir(async (dir) => {
+test('the same customer cannot create a second order for another offer or after cancellation within 48 hours', () => withDir(async (dir) => {
   const a = click('pack-1')
-  await createPendingOrder(a, config, dir)
-  await createPendingOrder(click('pack-3'), config, dir)
+  const first = await createPendingOrder(a, config, dir)
+  const anotherOffer = await createPendingOrder(click('pack-3'), config, dir)
+  assert.equal(anotherOffer.orderId, first.orderId)
+  assert.equal(anotherOffer.duplicate, true)
+  assert.equal(new URL(anotherOffer.redirectUrl).pathname, '/2J23GL9/WMD7FHG/')
   await createPendingOrder(click('pack-1', { ...customer, email: 'marc@example.ch' }), config, dir)
-  assert.equal((await files(dir)).length, 3)
+  assert.equal((await files(dir)).length, 2)
   await closePendingOrder(dir, a.idempotencyKey, 'cancelled')
   const reorder = await createPendingOrder(click('pack-1'), config, dir)
-  assert.equal(reorder.duplicate, undefined)
-  assert.equal((await files(dir)).length, 4)
+  assert.equal(reorder.status, 409)
+  assert.equal(reorder.error, 'recent_order')
+  assert.equal((await files(dir)).length, 2)
+}))
+
+test('a new order with the same customer is allowed after 48 hours', () => withDir(async (dir) => {
+  const firstBody = click('pack-1')
+  const first = await createPendingOrder(firstBody, config, dir)
+  const orderFile = join(dir, 'everflow-orders', `${firstBody.idempotencyKey}.json`)
+  const record = JSON.parse(await readFile(orderFile, 'utf8'))
+  record.createdAt = new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString()
+  await writeFile(orderFile, JSON.stringify(record))
+  const dedupFile = join(dir, 'order-dedup', (await readdir(join(dir, 'order-dedup')))[0])
+  const claim = JSON.parse(await readFile(dedupFile, 'utf8'))
+  claim.at = record.createdAt
+  await writeFile(dedupFile, JSON.stringify(claim))
+  const second = await createPendingOrder(click('pack-1'), config, dir)
+  assert.equal(second.status, 200)
+  assert.notEqual(second.orderId, first.orderId)
+  assert.equal((await files(dir)).length, 2)
 }))
 
 test('external redirect clicks are recorded and deduplicated too', () => withDir(async (dir) => {
@@ -79,6 +100,41 @@ test('external redirect clicks are recorded and deduplicated too', () => withDir
   assert.equal(list.total, 1)
   assert.equal(list.orders[0].provider, 'external')
   assert.equal(list.byChannel.google, 1)
+}))
+
+test('concurrent external checkout attempts for different offers keep one customer order', () => withDir(async (dir) => {
+  const one = { offerId: 'pack-1', packs: 1, total: 4, currency: 'CHF', customer }
+  const three = { offerId: 'pack-3', packs: 3, total: 10, currency: 'CHF', customer }
+  const results = await Promise.all([one, three, one].map((order) => recordOrder(dir, {
+    key: crypto.randomUUID(), provider: 'external', order, source: touch('meta'),
+  })))
+  assert.ok(results.every((result) => result.orderId === results[0].orderId))
+  assert.equal(results.filter((result) => result.duplicate === false).length, 1)
+  assert.equal((await files(dir)).length, 1)
+  assert.equal((await listOrders(dir)).total, 1)
+}))
+
+test('external checkout blocks a second order for 48 hours and then allows a new one', () => withDir(async (dir) => {
+  const order = { offerId: 'pack-2', packs: 2, total: 7, currency: 'CHF', customer }
+  const key = crypto.randomUUID()
+  const first = await recordOrder(dir, { key, provider: 'external', order, source: touch('meta') })
+  const sameKeyConflict = await recordOrder(dir, { key, provider: 'external', order: { ...order, total: 10 }, source: touch('meta') })
+  assert.equal(sameKeyConflict.error, 'idempotency_conflict')
+  await closeExternalOrder(dir, first.orderId, 'cancelled')
+  const blocked = await recordOrder(dir, { key: crypto.randomUUID(), provider: 'external', order, source: touch('meta') })
+  assert.equal(blocked.error, 'recent_order')
+  assert.equal(blocked.orderId, first.orderId)
+  const orderFile = join(dir, 'everflow-orders', `${key}.json`)
+  const record = JSON.parse(await readFile(orderFile, 'utf8'))
+  record.createdAt = new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString()
+  await writeFile(orderFile, JSON.stringify(record))
+  const dedupFile = join(dir, 'order-dedup', (await readdir(join(dir, 'order-dedup')))[0])
+  const claim = JSON.parse(await readFile(dedupFile, 'utf8'))
+  claim.at = record.createdAt
+  await writeFile(dedupFile, JSON.stringify(claim))
+  const newOrder = await recordOrder(dir, { key: crypto.randomUUID(), provider: 'external', order, source: touch('meta') })
+  assert.equal(newOrder.duplicate, false)
+  assert.notEqual(newOrder.orderId, first.orderId)
 }))
 
 test('public order status exposes processing and confirmation without customer data', () => withDir(async (dir) => {

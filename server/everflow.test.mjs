@@ -35,8 +35,8 @@ test('three offers preserve destination, query, prefill, images and consent', as
   try {
     for (const [offerId, tracking] of Object.entries(TRACKING_LINKS)) {
       for (const consent of [false, true]) {
-        // A second customer for the consent run: the same customer + offer would be merged (server/orders.mjs).
-        const who = consent ? { ...customer, tel: '079 765 43 21' } : customer
+        // Each checkout uses a distinct customer; one customer is limited to one order for 48 h.
+        const who = { ...customer, email: `${offerId}-${consent ? 'yes' : 'no'}@example.ch`, tel: consent ? '079 765 43 21' : customer.tel }
         const result = await createPendingOrder(request(offerId, consent, who), config, dir)
         assert.equal(result.status, 200)
         assert.equal(result.statusText, 'pending')
@@ -45,7 +45,7 @@ test('three offers preserve destination, query, prefill, images and consent', as
         assert.equal(url.origin + url.pathname, original.origin + original.pathname)
         for (const [key, value] of original.searchParams) assert.equal(url.searchParams.get(key), value)
         assert.deepEqual(Object.fromEntries(['sub10', 'adv3', 'sub3', 'sub4', 'sub6', 'sub7', 'sub8'].map((k) => [k, url.searchParams.get(k)])), {
-          sub10: 'Ana María', adv3: 'D’Été', sub3: '1201', sub4: 'ana.maria@example.ch',
+          sub10: 'Ana María', adv3: 'D’Été', sub3: '1201', sub4: who.email,
           sub6: 'Genève', sub7: "Rue de l'Église, 4/B, Bât. A, étage 2", sub8: consent ? '+41797654321' : '+41791234567',
         })
         assert.equal(url.searchParams.get('adv2'), images[offerId])
@@ -102,7 +102,7 @@ test('Meta-only attribution is present only after marketing consent', async () =
   try {
     const metaOnly = { ...config, metaPixel: '815653229569193', snapPixel: '' }
     const accepted = await createPendingOrder(request('pack-2', true), metaOnly, dir)
-    const declined = await createPendingOrder(request('pack-2', false), metaOnly, dir)
+    const declined = await createPendingOrder(request('pack-2', false, { ...customer, email: 'another@example.ch' }), metaOnly, dir)
     assert.equal(new URL(accepted.redirectUrl).searchParams.get('sub5'), '815653229569193')
     assert.equal(new URL(declined.redirectUrl).searchParams.has('sub5'), false)
   } finally { await rm(dir, { recursive: true, force: true }) }

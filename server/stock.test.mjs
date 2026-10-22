@@ -109,7 +109,7 @@ test('admin confirmation deducts permanently; cancellation releases and closes t
   assert.equal(summary.available, 3)
   assert.deepEqual(summary.movements.map((m) => m.type).slice(0, 4), ['release', 'commit', 'hold', 'hold'])
   // The customer's retry of a closed order is refused instead of re-holding stock.
-  assert.equal((await createPendingOrder(dropped, config, dir)).error, 'order_closed')
+  assert.equal((await createPendingOrder(dropped, config, dir)).error, 'recent_order')
   const record = JSON.parse(await readFile(join(dir, 'everflow-orders', `${dropped.idempotencyKey}.json`), 'utf8'))
   assert.equal(record.customer, undefined)
   assert.equal(record.order.customer.email, dropped.customer.email)

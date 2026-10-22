@@ -9,8 +9,8 @@ import { trackAnalyticsEvent } from '../lib/analytics.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 
 // Confirmation : n'affiche un succès et ne déclenche les événements de paiement
-// vérifié (Snap/Google) qu'après vérification SERVEUR. Meta Purchase est envoyé
-// lors du clic valide sur « Acheter ».
+// vérifié (Snap/Google) qu'après vérification SERVEUR. Meta Purchase est limité
+// à la première commande en attente créée sur cet appareil pendant 48 h.
 export default function OrderConfirmation() {
   const [params] = useSearchParams()
   const session = params.get('session')

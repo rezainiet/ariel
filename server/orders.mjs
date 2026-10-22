@@ -11,17 +11,15 @@ import { CHANNELS, sanitizeSource } from '../src/lib/trafficSource.js'
 // Déduplication à deux niveaux :
 //  1. Clé d'idempotence (un fichier par clé, créé en exclusivité) : double clic, rechargement,
 //     nouvel essai identique → même commande.
-//  2. Client + offre : même e-mail, même téléphone et même offre dans la fenêtre
-//     ORDER_DEDUP_HOURS (24 h par défaut) → la commande en attente existante est mise à jour
-//     (dernières coordonnées saisies) au lieu d'en créer une seconde, même depuis un autre
-//     onglet ou un autre appareil. Une commande annulée ou confirmée n'est jamais réutilisée.
+//  2. Client : même e-mail et téléphone pendant 48 h → une seule commande,
+//     même depuis un autre onglet ou appareil. Une commande close ne peut pas
+//     être réouverte avant la fin de cette fenêtre.
 // ─────────────────────────────────────────────────────────────
 
 export const ORDERS_DIR = 'everflow-orders' // nom historique : toutes les commandes y sont rangées
 const DEDUP_DIR = 'order-dedup'
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const hours = Number(process.env.ORDER_DEDUP_HOURS)
-export const DEDUP_MS = (hours > 0 ? hours : 24) * 60 * 60 * 1000
+export const DEDUP_MS = 48 * 60 * 60 * 1000
 
 export const isOrderKey = (key) => ID_RE.test(key || '')
 export const orderPath = (dataDir, key) => (isOrderKey(key) ? join(dataDir, ORDERS_DIR, `${key.toLowerCase()}.json`) : null)
@@ -62,11 +60,44 @@ export async function readOrder(dataDir, key, options) {
   return path ? readJsonFile(path, options) : null
 }
 
-// Empreinte client + offre (aucune donnée lisible dans le nom de fichier).
+// Empreinte client, indépendante de l'offre (aucune donnée lisible dans le nom de fichier).
 function customerHash(order) {
   const email = String(order.customer.email || '').trim().toLowerCase()
   const phone = normalizePhone(order.customer.tel).replace(/^(\+41|0041|0)/, '')
-  return createHash('sha256').update(`${email}|${phone}|${order.offerId}`).digest('hex')
+  return createHash('sha256').update(`${email}|${phone}`).digest('hex')
+}
+
+const sameCustomer = (a, b) => customerHash(a) === customerHash(b)
+
+// Serialize check-and-create for a customer in this single Node service. The
+// persisted claim file still carries the 48 h window across restarts.
+const customerLocks = new Map()
+export async function withCustomerLock(order, work) {
+  const id = customerHash(order)
+  const previous = customerLocks.get(id) || Promise.resolve()
+  let release
+  const current = new Promise((resolve) => { release = resolve })
+  customerLocks.set(id, current)
+  await previous
+  try { return await work() } finally {
+    if (customerLocks.get(id) === current) customerLocks.delete(id)
+    release()
+  }
+}
+
+// Also finds records created before the customer-only dedup key was introduced.
+export async function findRecentCustomerOrder(dataDir, order) {
+  let names
+  try {
+    names = (await readdir(join(dataDir, ORDERS_DIR))).filter((name) => /^[0-9a-f-]{36}\.json$/.test(name))
+  } catch (error) {
+    if (error.code === 'ENOENT') return null
+    throw error
+  }
+  const records = await Promise.all(names.map(async (name) => ({ key: name.slice(0, -5), record: await readJsonFile(join(dataDir, ORDERS_DIR, name)) })))
+  return records.filter(({ record }) => record?.order?.customer &&
+    Date.now() - Date.parse(record.createdAt) < DEDUP_MS && sameCustomer(record.order, order))
+    .sort((a, b) => Date.parse(b.record.createdAt) - Date.parse(a.record.createdAt))[0] || null
 }
 
 // Réserve le couple client + offre pour `key`. Renvoie la clé de la commande à utiliser :
@@ -113,27 +144,46 @@ export const fingerprintOf = (value) => createHash('sha256').update(JSON.stringi
 
 // Commande enregistrée pour les chemins sans fiche dédiée (redirection externe).
 export async function recordOrder(dataDir, { key, provider, order, source }) {
-  const idempotencyKey = isOrderKey(key) ? key.toLowerCase() : randomUUID()
+  if (!isOrderKey(key)) return { error: 'invalid_idempotency_key' }
+  return withCustomerLock(order, () => recordOrderLocked(dataDir, { key, provider, order, source }))
+}
+
+async function recordOrderLocked(dataDir, { key, provider, order, source }) {
+  const idempotencyKey = key.toLowerCase()
+  const fingerprint = fingerprintOf(order)
   await mkdir(join(dataDir, ORDERS_DIR), { recursive: true })
+  const resultFor = async (existingKey, existing) => {
+    if (!existing) return null
+    if (existingKey === idempotencyKey && existing.fingerprint !== fingerprint) return { error: 'idempotency_conflict', orderId: existing.orderId }
+    if (existing.provider !== provider || existing.status !== 'pending') return { error: 'recent_order', orderId: existing.orderId }
+    if (existing.order.offerId !== order.offerId) return { orderId: existing.orderId, duplicate: true, order: existing.order }
+    const merged = existingKey === idempotencyKey ? existing : await mergeIntoOrder(dataDir, existingKey, { order, fingerprint, source: sanitizeSource(source) })
+    return merged ? { orderId: merged.orderId, duplicate: true, order: merged.order } : { error: 'recent_order', orderId: existing.orderId }
+  }
+  const byKey = await readOrder(dataDir, idempotencyKey)
+  if (byKey) return resultFor(idempotencyKey, byKey)
+  const recent = await findRecentCustomerOrder(dataDir, order)
+  if (recent) return resultFor(recent.key, recent.record)
   const live = await claimCustomer(dataDir, order, idempotencyKey, async (k) => {
     const record = await readOrder(dataDir, k, { wait: true })
-    return record?.provider === provider && record.status === 'pending'
+    return Boolean(record)
   })
   if (live !== idempotencyKey) {
-    const merged = await mergeIntoOrder(dataDir, live, { order, fingerprint: fingerprintOf(order), source: sanitizeSource(source) })
-    if (merged) return { orderId: merged.orderId, duplicate: true }
+    const existing = await readOrder(dataDir, live, { wait: true })
+    const result = await resultFor(live, existing)
+    if (result) return result
   }
   const record = {
     orderId: randomUUID(), provider, status: 'pending', createdAt: new Date().toISOString(),
-    clicks: 1, fingerprint: fingerprintOf(order), order, source: sanitizeSource(source),
+    clicks: 1, fingerprint, order, source: sanitizeSource(source),
   }
   try {
     await writeExclusive(orderPath(dataDir, idempotencyKey), JSON.stringify(record))
-    return { orderId: record.orderId, duplicate: false }
+    return { orderId: record.orderId, duplicate: false, order: record.order }
   } catch (error) {
     if (error.code !== 'EEXIST') throw error
-    const existing = await readOrder(dataDir, idempotencyKey)
-    return { orderId: existing?.orderId || record.orderId, duplicate: true }
+    const existing = await readOrder(dataDir, idempotencyKey, { wait: true })
+    return resultFor(idempotencyKey, existing)
   }
 }
 

@@ -1,21 +1,22 @@
 // ─────────────────────────────────────────────────────────────
 // Pixels publicitaires Meta, Snap et Google — chargés uniquement après consentement.
-// Meta Purchase mesure le clic valide sur « Acheter », même si le paiement
-// n'aboutit pas. Snap et Google Purchase restent liés au paiement vérifié.
+// Meta Purchase mesure la première commande en attente réellement créée par le
+// serveur, au plus une fois par appareil pendant 48 h. Snap et Google Purchase
+// restent liés au paiement vérifié.
 //
 // Correspondance des événements :
 //   page vue            Meta PageView          Snap PAGE_VIEW      Google page_view
 //   fiche produit       Meta ViewContent       Snap VIEW_CONTENT   Google view_item
 //   ajout au panier     Meta AddToCart         Snap ADD_CART       Google add_to_cart
 //   page de commande    Meta InitiateCheckout  Snap START_CHECKOUT Google begin_checkout
-//   clic « Acheter »    Meta Purchase          —                  —
+//   commande en attente Meta Purchase          —                  —
 //   redirection         Meta AddPaymentInfo    Snap ADD_BILLING    Google add_payment_info (+ conversion Ads)
 //   paiement vérifié    —                      Snap PURCHASE       Google purchase
 //
 // Déduplication : chaque conversion porte un identifiant d'événement (Meta eventID, Snap
 // client_dedup_id, Google transaction_id) et n'est envoyée qu'une fois par session et par
-// identifiant (mémoire + sessionStorage). Le clic « Acheter » utilise l'identifiant de la
-// commande enregistrée par le serveur : un nouvel essai fusionné renvoie le même identifiant.
+// identifiant (mémoire + sessionStorage). Meta Purchase a aussi un cookie first-party
+// de 48 h et ne part jamais pour une réponse serveur « duplicate ».
 // Aucune donnée client (nom, e-mail, téléphone, adresse) n'est jamais transmise.
 // ─────────────────────────────────────────────────────────────
 
@@ -40,7 +41,9 @@ function firstEvent(kind, id) {
   if (!EVENT_ID_RE.test(id || '') || fired.has(key)) return false
   try {
     if (sessionStorage.getItem(key)) return false
+    if (kind === 'verified_purchase' && localStorage.getItem(key)) return false
     sessionStorage.setItem(key, '1')
+    if (kind === 'verified_purchase') localStorage.setItem(key, '1')
   } catch { /* in-memory deduplication still applies */ }
   fired.add(key)
   return true
@@ -179,14 +182,33 @@ export function trackStartCheckout(payload = {}, offerId = '') {
   gtag('event', 'begin_checkout', googleCommerce(payload))
 }
 
-// Meta Purchase represents a valid press of the checkout button, not a paid order.
-// Give each press its own ID so a retry counts as a separate press.
-export function trackMetaPurchaseClick(offerId, clickId) {
+const META_PURCHASE_COOKIE = 'ariel_meta_purchase_v1'
+const META_PURCHASE_MS = 48 * 60 * 60 * 1000
+
+function recentMetaPurchase() {
+  let cookieTime = NaN
+  let storedTime = NaN
+  try {
+    const encoded = document.cookie.split('; ').find((part) => part.startsWith(`${META_PURCHASE_COOKIE}=`))?.split('=')[1]
+    cookieTime = Number(encoded?.split('.')[0])
+  } catch { /* cookies unavailable */ }
+  try { storedTime = Number(localStorage.getItem(META_PURCHASE_COOKIE)) } catch { /* storage unavailable */ }
+  return [cookieTime, storedTime].some((time) => Number.isFinite(time) && time > 0 && Date.now() - time < META_PURCHASE_MS)
+}
+
+// Meta Purchase represents a newly recorded pending order, not a paid order.
+// A server duplicate and a second order on the same browser within 48 h cannot fire it.
+export function trackMetaPendingOrder(orderId, offerId, duplicate = false) {
   const offer = getOffer(offerId)
-  if (!metaInitialized || !offer || !firstEvent('purchase_click', clickId)) return false
+  if (!metaInitialized || duplicate || !offer || recentMetaPurchase() || !firstEvent('meta_purchase', orderId)) return false
+  const now = Date.now()
+  try {
+    document.cookie = `${META_PURCHASE_COOKIE}=${now}.${orderId}; Max-Age=172800; Path=/; SameSite=Lax; Secure`
+    localStorage.setItem(META_PURCHASE_COOKIE, String(now))
+  } catch { /* memory and session deduplication still apply */ }
   fbq('track', 'Purchase', {
     currency: 'CHF', value: offer.price, content_ids: [PRODUCT.id], content_type: 'product', num_items: offer.packs,
-  }, { eventID: `purchase-click-${clickId}` })
+  }, { eventID: `pending-order-${orderId}` })
   return true
 }
 

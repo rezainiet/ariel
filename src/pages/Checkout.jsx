@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { OFFERS, PRODUCT, DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
-import { trackMetaPurchaseClick, trackStartCheckout } from '../lib/pixel.js'
+import { trackStartCheckout } from '../lib/pixel.js'
 import { trackAnalyticsEvent } from '../lib/analytics.js'
 import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
 import { validateCustomer, clean, swissNational } from '../lib/orderValidation.js'
@@ -333,6 +333,7 @@ export default function Checkout() {
   const [cities, setCities] = useState([])
   const [streets, setStreets] = useState([])
   const alertRef = useRef(null)
+  const inFlight = useRef(false)
   // Moyen actif : redirection externe (réglée dans /admin) en priorité, sinon prestataire intégré.
   const [redirect, setRedirect] = useState({ enabled: false, domain: '', provider: '', checked: false })
   useEffect(() => {
@@ -421,13 +422,13 @@ export default function Checkout() {
       return focusAlert()
     }
     if (soldOut) return focusAlert()
-    if (!redirect.checked || status === 'loading') return
+    if (!redirect.checked || status === 'loading' || inFlight.current) return
     if (!paymentReady) {
       setStatus('unavailable')
       return focusAlert()
     }
+    inFlight.current = true
     trackAnalyticsEvent('buyClick')
-    trackMetaPurchaseClick(offer.id, crypto.randomUUID())
     setStatus('loading')
     if (redirect.enabled) {
       // Open during the user gesture so browsers do not block the new checkout tab.
@@ -441,15 +442,24 @@ export default function Checkout() {
         } catch {
           // The order status page remains usable without session storage.
         }
-        try {
-          if (paymentTab && !paymentTab.closed) paymentTab.location.replace(res.redirectUrl)
-        } catch {
-          // The status page also offers an explicit link if the browser blocks the tab.
+        if (res.duplicate) {
+          if (paymentTab && !paymentTab.closed) paymentTab.close()
+        } else {
+          try {
+            if (paymentTab && !paymentTab.closed) paymentTab.location.replace(res.redirectUrl)
+          } catch {
+            // The status page also offers an explicit link if the browser blocks the tab.
+          }
         }
-        navigate(`/commande/suivi/${res.orderId}`, { replace: true })
+        navigate(`/commande/suivi/${res.orderId}`, { replace: true, state: { checkoutUrl: res.redirectUrl } })
         return
       }
       if (paymentTab && !paymentTab.closed) paymentTab.close()
+      if (res.status === 'existing') {
+        navigate(`/commande/suivi/${res.orderId}`, { replace: true })
+        return
+      }
+      inFlight.current = false
       trackAnalyticsEvent('checkoutError')
       if (res.status === 'invalid') {
         setErrors(res.errors)
@@ -464,6 +474,7 @@ export default function Checkout() {
     // Le serveur recalcule le montant à partir de l'offre ; aucun total n'est transmis.
     const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, customer: clean(values) })
     if (res.status !== 'redirecting') {
+      inFlight.current = false
       trackAnalyticsEvent('checkoutError')
       setStatus(res.status === 'not_configured' ? 'unavailable' : 'error')
       focusAlert()

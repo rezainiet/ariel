@@ -15,7 +15,7 @@
 // Tant que rien n'est configuré, aucune commande n'est simulée.
 // ─────────────────────────────────────────────────────────────
 
-import { trackCheckoutRedirect } from './pixel.js'
+import { trackCheckoutRedirect, trackMetaPendingOrder } from './pixel.js'
 import { trackAnalyticsEvent } from './analytics.js'
 import { getTrafficSource } from './trafficSource.js'
 
@@ -85,16 +85,23 @@ export async function getRedirectPayment() {
   }
 }
 
+let attemptMemory = null
+const ATTEMPT_MS = 48 * 60 * 60 * 1000
+
 // order = { offerId, termsAccepted, customer } → { status: 'ready', orderId, redirectUrl } or an error.
 export async function startRedirectPayment(order, provider = 'external') {
   try {
     // Chaque clic sur « Acheter » enregistre une commande côté serveur. Même clé pour un nouvel essai
     // identique (double clic, retour arrière, rechargement) : le serveur renvoie la même commande.
-    const marketingConsent = localStorage.getItem('consent.marketing.v1') === 'granted'
+    let marketingConsent = false
+    try { marketingConsent = localStorage.getItem('consent.marketing.v1') === 'granted' } catch { /* storage unavailable */ }
     const fingerprint = JSON.stringify({ provider, order, marketingConsent })
-    const stored = JSON.parse(sessionStorage.getItem('everflow-attempt-v1') || 'null')
-    const idempotencyKey = stored?.fingerprint === fingerprint ? stored.key : crypto.randomUUID()
-    sessionStorage.setItem('everflow-attempt-v1', JSON.stringify({ fingerprint, key: idempotencyKey }))
+    let stored = attemptMemory
+    try { stored = JSON.parse(sessionStorage.getItem('everflow-attempt-v1') || 'null') || stored } catch { /* use memory */ }
+    const reuse = stored?.fingerprint === fingerprint && Date.now() - Number(stored.at) < ATTEMPT_MS
+    const idempotencyKey = reuse ? stored.key : crypto.randomUUID()
+    attemptMemory = { fingerprint, key: idempotencyKey, at: reuse ? stored.at : Date.now() }
+    try { sessionStorage.setItem('everflow-attempt-v1', JSON.stringify(attemptMemory)) } catch { /* use memory */ }
     const payload = { ...order, idempotencyKey, source: getTrafficSource(), ...(provider === 'everflow' ? { marketingConsent } : {}) }
     const res = await fetch(provider === 'everflow' ? '/api/checkout/everflow' : '/api/checkout/redirect', {
       method: 'POST',
@@ -104,11 +111,15 @@ export async function startRedirectPayment(order, provider = 'external') {
     const data = await res.json().catch(() => ({}))
     if (res.status === 422) return { status: 'invalid', errors: data.errors || {} }
     if (res.status === 409 && data.error === 'out_of_stock') return { status: 'sold_out' }
+    if (res.status === 409 && data.error === 'recent_order' && data.orderId) return { status: 'existing', orderId: data.orderId }
     if (res.status === 409) return { status: 'unavailable' }
     if (res.ok && /^[0-9a-f-]{36}$/i.test(data.orderId || '') && /^https:\/\//.test(data.redirectUrl || '')) {
-      if (data.orderId) trackCheckoutRedirect(data.orderId, order.offerId)
-      trackAnalyticsEvent('paymentRedirect')
-      return { status: 'ready', orderId: data.orderId, redirectUrl: data.redirectUrl }
+      if (!data.duplicate) {
+        trackCheckoutRedirect(data.orderId, order.offerId)
+        trackMetaPendingOrder(data.orderId, order.offerId)
+        trackAnalyticsEvent('paymentRedirect')
+      }
+      return { status: 'ready', orderId: data.orderId, redirectUrl: data.redirectUrl, duplicate: Boolean(data.duplicate) }
     }
     return { status: 'error' }
   } catch {

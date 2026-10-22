@@ -19,7 +19,7 @@ import { getOffer } from '../src/config/offers.js'
 import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redirectPayment.js'
 import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder } from './everflow.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
-import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder } from './orders.mjs'
+import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder, isOrderKey } from './orders.mjs'
 import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
 import { listReviews, addReview, deleteReview, saveReviewImage, reviewImageFile } from './reviews.mjs'
 import { loadStock, publicStock, stockSummary, checkAvailable, setStock, adjustStock, commitReservation, cancelReservation } from './stock.mjs'
@@ -159,10 +159,10 @@ async function api(req, res, path) {
     const result = await createPendingOrder(body, everflowSettings(process.env, localCheckoutRequest(req)), DATA_DIR)
     if (result.status !== 200) {
       if (result.error === 'out_of_stock') console.info('[commande] refusée — stock insuffisant pour', body?.offerId)
-      return send(res, result.status, { error: result.error, ...(result.errors ? { errors: result.errors } : {}) })
+      return send(res, result.status, { error: result.error, ...(result.errors ? { errors: result.errors } : {}), ...(result.orderId ? { orderId: result.orderId } : {}) })
     }
     console.info(`[commande] Everflow en attente — identifiant ${result.orderId}${result.duplicate ? ' (doublon fusionné)' : ''}`)
-    return send(res, 200, { orderId: result.orderId, status: 'pending', redirectUrl: result.redirectUrl })
+    return send(res, 200, { orderId: result.orderId, status: 'pending', redirectUrl: result.redirectUrl, duplicate: Boolean(result.duplicate) })
   }
 
   // Public : commande → validation serveur → URL de paiement externe.
@@ -175,6 +175,7 @@ async function api(req, res, path) {
     } catch {
       return send(res, 400, { error: 'bad_request' })
     }
+    if (!isOrderKey(body.idempotencyKey)) return send(res, 400, { error: 'invalid_idempotency_key' })
     const result = validateOrder(body)
     if (!result.ok) {
       console.warn('[commande] refusée — champs :', Object.keys(result.errors).join(', ')) // jamais les valeurs
@@ -185,11 +186,13 @@ async function api(req, res, path) {
     if (!(await checkAvailable(DATA_DIR, offer.id))) return send(res, 409, { error: 'out_of_stock' })
     const pkg = r.packages[offer.id]
     if (r.pathTemplate.includes('{code}') && !pkg?.code) return send(res, 409, { error: 'payment_unavailable' })
-    const redirectUrl = buildRedirectUrl(config, offer, result.order.customer, { origin: originOf(req) })
     // Le clic « Acheter » devient une commande (coordonnées + provenance), dédupliquée.
     const recorded = await recordOrder(DATA_DIR, { key: body.idempotencyKey, provider: 'external', order: result.order, source: body.source })
+    if (recorded.error) return send(res, 409, { error: recorded.error, orderId: recorded.orderId || null })
+    const actualOffer = getOffer(recorded.order.offerId)
+    const redirectUrl = buildRedirectUrl(config, actualOffer, recorded.order.customer, { origin: originOf(req) })
     console.info(`[commande] redirection paiement — offre ${offer.id}, identifiant ${recorded.orderId}${recorded.duplicate ? ' (doublon fusionné)' : ''}`)
-    return send(res, 200, { redirectUrl, orderId: recorded.orderId })
+    return send(res, 200, { redirectUrl, orderId: recorded.orderId, duplicate: Boolean(recorded.duplicate) })
   }
 
   // ── Administration ──

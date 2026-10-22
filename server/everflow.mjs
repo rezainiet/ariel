@@ -5,7 +5,7 @@ import { getOffer, PRODUCT } from '../src/config/offers.js'
 import { META_PIXEL_ID } from '../src/config/attribution.js'
 import { validateOrder, normalizePhone } from '../src/lib/orderValidation.js'
 import { reserve, attachOrder, loadStock } from './stock.mjs'
-import { ORDERS_DIR, orderPath, claimCustomer, mergeIntoOrder, readOrder, readJsonFile, writeExclusive, fingerprintOf } from './orders.mjs'
+import { ORDERS_DIR, orderPath, claimCustomer, mergeIntoOrder, readOrder, readJsonFile, writeExclusive, fingerprintOf, findRecentCustomerOrder, withCustomerLock } from './orders.mjs'
 import { sanitizeSource } from '../src/lib/trafficSource.js'
 
 // These are the three offer links supplied for this shop. No admin setting or request
@@ -100,22 +100,40 @@ export function prepareCheckout(body, cfg) {
 export async function createPendingOrder(body, cfg, dataDir) {
   const prepared = prepareCheckout(body, cfg)
   if (prepared.status !== 200) return prepared
+  return withCustomerLock(prepared.order, () => createPendingOrderLocked(body, cfg, dataDir, prepared))
+}
+
+async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   const key = body.idempotencyKey.toLowerCase()
   const source = sanitizeSource(body.source)
   const fingerprint = fingerprintOf({ order: prepared.order, attribution: prepared.attribution })
   await mkdir(join(dataDir, ORDERS_DIR), { recursive: true })
+  const resultFor = async (existingKey, existing) => {
+    if (!existing) return null
+    if (existingKey === key && existing.fingerprint !== fingerprint) return { status: 409, error: 'idempotency_conflict' }
+    if (existing.provider !== 'everflow' || existing.status !== 'pending') return { status: 409, error: 'recent_order', orderId: existing.orderId }
+    const stock = await loadStock(dataDir)
+    const held = stock.reservations.some((r) => r.key === existingKey && r.state === 'held' && Date.parse(r.expiresAt) > Date.now())
+    if (!held) return { status: 409, error: 'recent_order', orderId: existing.orderId }
+    const merged = existingKey !== key && existing.order.offerId === prepared.order.offerId
+      ? await mergeIntoOrder(dataDir, existingKey, { order: prepared.order, attribution: prepared.attribution, fingerprint, source, imageUrl: cfg.images[prepared.order.offerId] })
+      : existing
+    if (!merged) return { status: 409, error: 'recent_order', orderId: existing.orderId }
+    return { status: 200, orderId: merged.orderId, statusText: 'pending', duplicate: true,
+      redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.attribution) }
+  }
+  const byKey = await readOrder(dataDir, key)
+  if (byKey) return resultFor(key, byKey)
+  const recent = await findRecentCustomerOrder(dataDir, prepared.order)
+  if (recent) return resultFor(recent.key, recent.record)
   const live = await claimCustomer(dataDir, prepared.order, key, async (k) => {
     const record = await readOrder(dataDir, k, { wait: true })
-    if (record?.provider !== 'everflow' || record.status !== 'pending') return false
-    const stock = await loadStock(dataDir)
-    return stock.reservations.some((r) => r.key === k && r.state === 'held' && Date.parse(r.expiresAt) > Date.now())
+    return Boolean(record)
   })
   if (live !== key) {
-    const merged = await mergeIntoOrder(dataDir, live, { order: prepared.order, attribution: prepared.attribution, fingerprint, source, imageUrl: cfg.images[prepared.order.offerId] })
-    if (merged) {
-      return { status: 200, orderId: merged.orderId, statusText: 'pending', duplicate: true,
-        redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.attribution) }
-    }
+    const existing = await readOrder(dataDir, live, { wait: true })
+    const result = await resultFor(live, existing)
+    if (result) return result
   }
   const hold = await reserve(dataDir, { key, offerId: prepared.order.offerId })
   if (!hold.ok) return { status: 409, error: hold.error === 'out_of_stock' ? 'out_of_stock' : 'order_closed' }
@@ -129,7 +147,7 @@ export async function createPendingOrder(body, cfg, dataDir) {
   } catch (error) {
     if (error.code !== 'EEXIST') throw error
     // Another request may still be writing the newly created file.
-    record = await readJsonFile(path)
+    record = await readJsonFile(path, { wait: true })
     if (!record) throw new Error('pending_order_unreadable')
     if (record.fingerprint !== fingerprint) return { status: 409, error: 'idempotency_conflict' }
     if (record.status !== 'pending') return { status: 409, error: 'order_closed' }
