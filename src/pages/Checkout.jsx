@@ -345,7 +345,7 @@ export default function Checkout() {
   const formComplete = useMemo(() =>
     Object.keys(validateCustomer(values, { terms })).length === 0,
   [values, terms])
-  const canContinue = formComplete && paymentReady && !soldOut && status !== 'loading'
+  const canContinue = formComplete && redirect.checked && !soldOut && status !== 'loading'
   // Offre épuisée : le récapitulatif (où l'on change d'offre) s'ouvre aussi sur mobile.
   useEffect(() => {
     if (soldOut) setShowSummary(true)
@@ -420,13 +420,13 @@ export default function Checkout() {
       return focusAlert()
     }
     if (soldOut) return focusAlert()
+    if (!redirect.checked || status === 'loading') return
+    trackAnalyticsEvent('buyClick')
+    trackMetaPurchaseClick(offer.id, crypto.randomUUID())
     if (!paymentReady) {
       setStatus('unavailable')
       return focusAlert()
     }
-    if (status === 'loading') return
-    trackAnalyticsEvent('buyClick')
-    trackMetaPurchaseClick(offer.id, crypto.randomUUID())
     setStatus('loading')
     if (redirect.enabled) {
       // Le serveur revalide la commande puis renvoie l'URL de la page de paiement externe.
@@ -630,8 +630,8 @@ export default function Checkout() {
                 <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] leading-relaxed text-fr-ink">
                   <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
                   <span>
-                    <strong className="font-bold">Paiement sur une page sécurisée.</strong> Vos coordonnées de livraison sont
-                    transmises au prestataire pour finaliser la commande. Aucune donnée de carte n’est saisie sur ce site.
+                    <strong className="font-bold">Paiement en ligne indisponible pour le moment.</strong> Vous pouvez vérifier
+                    votre sélection ci-dessous, mais aucune commande ne sera enregistrée et aucun montant ne sera débité.
                   </span>
                 </p>
               )}
@@ -750,8 +750,9 @@ export default function Checkout() {
               )}
             </button>
             <p className="text-center text-[0.76rem] leading-relaxed text-fr-muted">
-              En cliquant sur « Acheter », vous passez une commande avec obligation de paiement auprès de {storeRef()}. Une
-              confirmation vous est envoyée par e-mail.
+              {paymentReady
+                ? <>En cliquant sur « Acheter », vous passez une commande avec obligation de paiement auprès de {storeRef()}. Une confirmation vous est envoyée par e-mail.</>
+                : <>Le paiement en ligne n’est pas encore ouvert. Un clic sur « Acheter » ne crée pas de commande et ne débite aucun montant.</>}
             </p>
           </form>
         </div>
