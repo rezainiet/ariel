@@ -15,7 +15,7 @@ import StickyBuyF from './StickyBuyF.jsx'
 // BOUTIQUE — Concept 2 « Frais » (approuvé).
 // Parcours : 1. annonce · 2. héros + 3 offres (la scène montre les sachets de l'offre choisie)
 // 3. le geste · 4. la quantité (même sélection que le héros) · 5. ce que promet l'emballage
-// 6. avis externes identifiés · 7. vidéo (fichier réel) · 8. livraison & retours
+// 6. avis externes identifiés · 7. vidéos fournies (capsules et entrepôt) · 8. livraison & retours
 // 9. bon à savoir (produit, sécurité, questions) · 10. rappel de la sélection (desktop) · pied de page.
 // Une seule action principale à chaque étape : sur mobile, la barre d'achat prend le relais après le héros.
 export default function FraisPage() {

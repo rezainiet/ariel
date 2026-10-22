@@ -77,6 +77,12 @@ export const VIDEO = {
   caption: import.meta.env.VITE_PRODUCT_VIDEO_CAPTION || 'Vidéo d’une autre variante Ariel All-in-1 PODS. L’emballage et la formule montrés diffèrent du sachet Universal+ proposé ici.',
 }
 
+export const STOCK_VIDEO = {
+  src: '/video/ariel-stock.mp4',
+  poster: '/video/ariel-stock-poster.webp',
+  caption: 'Images de cartons Ariel Professional en entrepôt. Ils ne représentent pas les sachets Ariel All-in-1 PODS Universal+ proposés ici.',
+}
+
 // Moyens de paiement réellement activés chez le prestataire (liste séparée par des virgules).
 // Valeurs reconnues : twint, visa, mastercard, amex, apple_pay, google_pay, postfinance, invoice.
 // Vide = aucun moyen affiché comme actif.

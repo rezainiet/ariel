@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, Play, Pause, Volume2, VolumeX, Truck, RotateCcw, LockKeyhole, Plus, ArrowUpRight, MessageCircleQuestion, Star, ShieldAlert } from 'lucide-react'
-import { DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, STORE, VIDEO } from '../../config/store.js'
+import { BadgeCheck, Play, Pause, Truck, RotateCcw, LockKeyhole, Plus, ArrowUpRight, MessageCircleQuestion, Star, ShieldAlert } from 'lucide-react'
+import { DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, STORE, VIDEO, STOCK_VIDEO } from '../../config/store.js'
 import { summarize, formatReviewDate } from '../../data/reviews.js'
 import { IconTile } from './Icons.jsx'
 import { Rise } from './motion.jsx'
@@ -120,26 +120,31 @@ export function ReviewsF({ reviewState }) {
   )
 }
 
-// ── Vidéo réelle (fichier du marchand). Sans fichier : la section n'existe pas. ──
+// ── Vidéos fournies par le marchand. Sans fichier : la section n'existe pas. ──
 const videoTime = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+const VIDEO_CLIPS = [
+  { id: 'product', title: 'Les capsules de près', ...VIDEO },
+  { id: 'stock', title: 'Ariel en entrepôt', ...STOCK_VIDEO },
+].filter((clip) => clip.src)
 
-export function VideoF() {
+function VideoCard({ clip, activeId, setActiveId }) {
   const ref = useRef(null)
   const playerRef = useRef(null)
   const inView = useRef(false)
   const userPaused = useRef(false)
   const [playing, setPlaying] = useState(false)
-  const [muted, setMuted] = useState(true)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
 
   useEffect(() => {
     const video = ref.current
     const player = playerRef.current
-    if (!video || !player || !VIDEO.src) return
+    if (!video || !player) return
+    if (activeId && activeId !== clip.id) video.pause()
+    const mayPlay = () => activeId === clip.id || (activeId === null && clip.id === 'product')
     const observer = new IntersectionObserver(([entry]) => {
       inView.current = entry.isIntersecting
-      if (entry.isIntersecting && !userPaused.current && !document.hidden) {
+      if (entry.isIntersecting && !userPaused.current && !document.hidden && mayPlay()) {
         video.play().catch(() => {})
       } else {
         video.pause()
@@ -147,86 +152,83 @@ export function VideoF() {
     }, { threshold: 0.45 })
     const onVisibilityChange = () => {
       if (document.hidden) video.pause()
-      else if (inView.current && !userPaused.current) video.play().catch(() => {})
+      else if (inView.current && !userPaused.current && mayPlay()) video.play().catch(() => {})
     }
     observer.observe(player)
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       observer.disconnect()
       document.removeEventListener('visibilitychange', onVisibilityChange)
-      video.pause()
     }
-  }, [])
+  }, [activeId, clip.id])
 
-  if (!VIDEO.src) return null
   const togglePlay = () => {
     const video = ref.current
     if (!video) return
     if (video.paused) {
       userPaused.current = false
+      setActiveId(clip.id)
       video.play().catch(() => {})
     } else {
       userPaused.current = true
       video.pause()
     }
   }
-  const toggleSound = () => {
-    const next = !muted
-    ref.current.muted = next
-    setMuted(next)
-  }
+  return (
+    <figure className="mx-auto w-full max-w-[20rem]">
+      <h3 className="mb-3 font-jakarta text-[0.98rem] font-extrabold text-fr-ink">{clip.title}</h3>
+      <div ref={playerRef} className="overflow-hidden rounded-[1.5rem] border border-fr-line bg-white shadow-[0_20px_45px_rgba(11,61,42,0.14)]">
+        <div className="relative bg-fr-deep">
+          <video
+            ref={ref}
+            src={clip.src}
+            poster={clip.poster || undefined}
+            muted
+            loop
+            playsInline
+            preload="none"
+            onPlay={() => { setPlaying(true); setActiveId(clip.id) }}
+            onPause={() => setPlaying(false)}
+            onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+            onTimeUpdate={(event) => setCurrent(Math.floor(event.currentTarget.currentTime))}
+            className="aspect-[236/414] w-full object-contain"
+            aria-label={clip.title}
+          />
+          {!playing && (
+            <button type="button" onClick={togglePlay} className="group absolute inset-0 flex items-center justify-center bg-fr-deep/10" aria-label={`Lire : ${clip.title}`}>
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-fr-green shadow-xl transition-transform duration-base ease-out-soft can-hover:group-hover:scale-105 motion-safe:active:scale-95">
+                <Play size={26} className="ml-1 fill-current" />
+              </span>
+            </button>
+          )}
+        </div>
+        <div className="flex h-14 items-center gap-2.5 px-3 font-jakarta text-fr-ink">
+          <button type="button" onClick={togglePlay} aria-label={playing ? `Mettre en pause : ${clip.title}` : `Lire : ${clip.title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fr-green text-white transition-colors hover:bg-fr-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fr-green">
+            {playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5 fill-current" />}
+          </button>
+          <input type="range" min="0" max={Math.max(1, Math.floor(duration))} value={current} onChange={(event) => { if (ref.current) ref.current.currentTime = Number(event.target.value); setCurrent(Number(event.target.value)) }} aria-label={`Position : ${clip.title}`} className="h-1 min-w-0 flex-1 cursor-pointer accent-fr-green" />
+          <span className="shrink-0 text-[0.65rem] font-semibold tabular-nums text-fr-muted">{videoTime(current)} / {videoTime(duration)}</span>
+        </div>
+      </div>
+      <figcaption className="mt-3 font-jakarta text-[0.72rem] leading-relaxed text-fr-muted">{clip.caption}</figcaption>
+    </figure>
+  )
+}
+
+export function VideoF() {
+  const [activeId, setActiveId] = useState(null)
+  if (!VIDEO_CLIPS.length) return null
   return (
     <section id="video" data-analytics-section="video" aria-labelledby="video-title" className="scroll-mt-20 bg-white py-12 lg:py-20">
-      <div className={`${W} grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-16`}>
+      <div className={W}>
         <Rise>
-          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">Le produit en vidéo</p>
-          <h2 id="video-title" className="mt-3 max-w-xl font-jakarta text-[1.9rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink lg:text-[2.8rem]">Les PODS, de plus près.</h2>
-          <p className="mt-4 max-w-lg font-jakarta text-[0.92rem] leading-relaxed text-fr-muted">Voyez le format des capsules Ariel dans ce court clip. La lecture démarre sans son et vous gardez le contrôle.</p>
+          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">En images</p>
+          <h2 id="video-title" className="mt-3 max-w-xl font-jakarta text-[1.9rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink lg:text-[2.8rem]">Ariel en vidéo.</h2>
+          <p className="mt-4 max-w-2xl font-jakarta text-[0.92rem] leading-relaxed text-fr-muted">Découvrez les capsules et une vue de produits Ariel en entrepôt. Les variantes filmées diffèrent du sachet proposé ici.</p>
         </Rise>
-        <figure className="mx-auto w-full max-w-[18rem] sm:max-w-[20rem]">
-          <div ref={playerRef} className="overflow-hidden rounded-[1.5rem] border border-fr-line bg-white shadow-[0_20px_45px_rgba(11,61,42,0.14)]">
-            <div className="relative bg-fr-deep">
-            <video
-              ref={ref}
-              src={VIDEO.src}
-              poster={VIDEO.poster || undefined}
-              muted={muted}
-              loop
-              playsInline
-              preload="none"
-              onPlay={() => setPlaying(true)}
-              onPause={() => setPlaying(false)}
-              onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
-              onTimeUpdate={(event) => setCurrent(Math.floor(event.currentTarget.currentTime))}
-              className="aspect-[236/414] w-full object-cover"
-              aria-label="Vidéo de démonstration Ariel All-in-1 PODS, autre variante"
-            />
-            {!playing && (
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="group absolute inset-0 flex items-center justify-center bg-fr-deep/10"
-                aria-label="Lire la vidéo"
-              >
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-fr-green shadow-xl transition-transform duration-base ease-out-soft can-hover:group-hover:scale-105 motion-safe:active:scale-95">
-                  <Play size={26} className="ml-1 fill-current" />
-                </span>
-              </button>
-            )}
-            </div>
-            <div className="flex h-14 items-center gap-2.5 px-3 font-jakarta text-fr-ink">
-              <button type="button" onClick={togglePlay} aria-label={playing ? 'Mettre la vidéo en pause' : 'Lire la vidéo'} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fr-green text-white transition-colors hover:bg-fr-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fr-green">
-                {playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5 fill-current" />}
-              </button>
-              <input type="range" min="0" max={Math.max(1, Math.floor(duration))} value={current} onChange={(event) => { ref.current.currentTime = Number(event.target.value); setCurrent(Number(event.target.value)) }} aria-label="Position dans la vidéo" className="h-1 min-w-0 flex-1 cursor-pointer accent-fr-green" />
-              <span className="shrink-0 text-[0.65rem] font-semibold tabular-nums text-fr-muted">{videoTime(current)} / {videoTime(duration)}</span>
-              <button type="button" onClick={toggleSound} aria-label={muted ? 'Activer le son' : 'Couper le son'} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fr-green transition-colors hover:bg-fr-mint focus-visible:outline-2 focus-visible:outline-fr-green">
-                {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-              </button>
-            </div>
-          </div>
-          <figcaption className="mt-3 font-jakarta text-[0.72rem] leading-relaxed text-fr-muted">{VIDEO.caption}</figcaption>
-        </figure>
+        <div className={`mx-auto mt-8 grid max-w-[20rem] gap-8 ${VIDEO_CLIPS.length > 1 ? 'md:max-w-[48rem] md:grid-cols-2' : ''}`}>
+          {VIDEO_CLIPS.map((clip) => <VideoCard key={clip.id} clip={clip} activeId={activeId} setActiveId={setActiveId} />)}
+        </div>
       </div>
     </section>
   )
