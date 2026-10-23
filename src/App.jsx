@@ -18,7 +18,8 @@ import NotFound from './pages/NotFound.jsx'
 // Boutique (Concept 2 « Frais », approuvé) : chargée immédiatement — page d'arrivée des publicités.
 import FraisPage from './concepts/frais/FraisPage.jsx'
 import { Announcement, HeaderF, FooterF } from './concepts/frais/ChromeF.jsx'
-import { trackPageView } from './lib/pixel.js'
+import { trackPageView, trackViewContent } from './lib/pixel.js'
+import { PRODUCT } from './config/offers.js'
 import { trackAnalyticsPage } from './lib/analytics.js'
 
 // Archives de conception (v1, concepts A/B/C, page de comparaison) : INTERNES uniquement.
@@ -39,6 +40,7 @@ function RouteEffects() {
   useEffect(() => {
     if (!hash) window.scrollTo(0, 0)
     trackPageView()
+    if (pathname === '/') trackViewContent({ item_ids: [PRODUCT.id], item_category: 'detergent', currency: 'CHF' })
     trackAnalyticsPage(pathname)
   }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   return null

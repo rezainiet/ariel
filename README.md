@@ -57,8 +57,10 @@ En développement : lancer `npm run server` (port 8787) en parallèle de `npm ru
   `public/images/everflow/`). Le serveur crée d'abord une commande
   `pending` idempotente dans `DATA_DIR/everflow-orders/`, puis renvoie l'URL hébergée. Aucune redirection
   ou visite de retour ne confirme le paiement. Aucun webhook/API de confirmation Everflow n'est configuré.
-  L'identifiant Meta public est défini dans `src/config/attribution.js`. Il sert à `sub5` uniquement après consentement ;
-  avec un identifiant Snap approuvé, les deux identifiants sont séparés par exactement 21 tirets bas.
+  Les trois liens fournis incluent `sub5=815653229569193`. Le serveur conserve ce paramètre et ajoute les coordonnées
+  validées du formulaire, le libellé de l'offre et son image. Les paramètres déjà présents dans les liens fournis
+  ne sont pas remplacés par les réglages d'attribution. Après consentement, le `fbclid` capturé à l'arrivée est
+  ajouté au lien Everflow sous le paramètre `fbclid` (macro Everflow `{fbclid}`).
   Tester avec `node --test server/everflow.test.mjs` ; ces tests n'ouvrent pas le prestataire et ne paient rien.
 
 ## Routes
@@ -87,7 +89,7 @@ Captures et notes : `design-review/frais-finition/`.
 - `src/lib/payment.js` — frontière de paiement : session hébergée chez le prestataire, vérification serveur.
 - `src/lib/storeStatus.js` — stock et campagne réels (jamais de valeur fictive).
 - `src/lib/address.js` — aide à la saisie d'adresse, uniquement via un service configuré.
-- `src/lib/pixel.js` — pixels après consentement ; Meta Purchase au clic valide sur « Acheter » (même sans paiement), Snap/Google Purchase uniquement après paiement vérifié.
+- `src/lib/pixel.js` — pixels après consentement ; Meta PageView/ViewContent et InitiateCheckout au clic « Acheter » valide. Le site n'envoie pas Meta Purchase : Everflow l'envoie après paiement réussi. Snap/Google Purchase restent liés au paiement vérifié.
 - `src/lib/analytics.js` et `server/analytics.mjs` — statistiques internes après consentement : sessions par canal, temps actif, défilement et étapes de commande. Rapport protégé dans `/admin#analytics`, sur 24 h, 7 j ou 30 j ; conservation d’environ 90 jours. Voir `ANALYTICS.md` pour les définitions et limites.
 - `src/concepts/frais/` — composants de la boutique Frais ; `src/pages/` — commande et pages de service.
 - `server/validate-order.mjs` — validation à appeler par le serveur de commande avant de créer le paiement.

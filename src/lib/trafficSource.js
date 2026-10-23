@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────
 // Provenance des visiteurs (Meta, Snapchat, Google…) — module PARTAGÉ navigateur / serveur.
 // Le navigateur classe l'arrivée (paramètres d'URL + site référent) et garde la dernière
-// provenance publicitaire 30 jours (stockage local, première partie, jamais envoyé à un tiers).
+// provenance publicitaire 30 jours (stockage local, première partie).
 // Le serveur ne fait confiance à rien : il re-nettoie la provenance reçue avec la commande.
-// Les identifiants de clic (fbclid, gclid, ScCid…) ne sont PAS conservés : seul leur type l'est.
+// Le fbclid Meta est conservé localement pour le remettre à Everflow au paiement.
+// Les autres identifiants de clic ne sont pas conservés.
 // ─────────────────────────────────────────────────────────────
 
 export const CHANNELS = ['meta', 'snapchat', 'google', 'other', 'direct']
@@ -11,6 +12,11 @@ export const CHANNEL_LABELS = { meta: 'Meta', snapchat: 'Snapchat', google: 'Goo
 
 const KEY = 'traffic-source.v1'
 const WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+const FBCLID_RE = /^[A-Za-z0-9_-]{1,500}$/
+let pendingFbclid = ''
+const marketingAllowed = () => {
+  try { return localStorage.getItem('consent.marketing.v1') === 'granted' } catch { return false }
+}
 
 // Identifiant de clic publicitaire → canal.
 const CLICK_IDS = [
@@ -93,6 +99,11 @@ export function captureTrafficSource() {
     landingPath: text(window.location.pathname, 120),
     at: new Date().toISOString(),
   }
+  const fbclid = new URLSearchParams(window.location.search).get('fbclid') || ''
+  if (touch.clickIdType === 'fbclid' && FBCLID_RE.test(fbclid)) {
+    pendingFbclid = fbclid
+    if (marketingAllowed()) touch.fbclid = fbclid
+  }
   const saved = read()
   if (saved && touch.channel === 'direct') return
   try {
@@ -103,4 +114,18 @@ export function captureTrafficSource() {
 export function getTrafficSource() {
   const saved = read()
   return saved ? { first: saved.first, last: saved.last } : { first: null, last: null }
+}
+
+export function getMetaClickId() {
+  const last = read()?.last
+  return marketingAllowed() && last?.channel === 'meta' && last.clickIdType === 'fbclid' && FBCLID_RE.test(last.fbclid || '') ? last.fbclid : ''
+}
+
+export function commitMetaClickId() {
+  if (!marketingAllowed() || !pendingFbclid) return
+  const saved = read()
+  if (saved?.last?.channel === 'meta' && saved.last.clickIdType === 'fbclid') {
+    try { localStorage.setItem(KEY, JSON.stringify({ ...saved, last: { ...saved.last, fbclid: pendingFbclid } })) } catch { /* storage unavailable */ }
+  }
+  pendingFbclid = ''
 }

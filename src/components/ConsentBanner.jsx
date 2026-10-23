@@ -1,7 +1,9 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
-import { initPixel, isPixelEnabled, trackPageView } from '../lib/pixel.js'
+import { initPixel, isPixelEnabled, trackPageView, trackViewContent } from '../lib/pixel.js'
 import { initAnalytics } from '../lib/analytics.js'
+import { PRODUCT } from '../config/offers.js'
+import { commitMetaClickId } from '../lib/trafficSource.js'
 
 // Consentement avant tout pixel publicitaire (nLPD) — deux choix de même poids.
 // N'apparaît que si un pixel Meta/Snap ou une attribution Everflow est configuré.
@@ -47,6 +49,7 @@ export default function ConsentBanner() {
       initPixel()
       initAnalytics()
       trackPageView()
+      if (window.location.pathname === '/') trackViewContent({ item_ids: [PRODUCT.id], item_category: 'detergent', currency: 'CHF' })
     }
   }, [choice])
 
@@ -61,6 +64,7 @@ export default function ConsentBanner() {
   const decide = (value) => {
     try {
       localStorage.setItem(KEY, value)
+      if (value === 'granted') commitMetaClickId()
     } catch {
       /* stockage indisponible : le choix vaut pour cette page */
     }

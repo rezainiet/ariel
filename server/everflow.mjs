@@ -11,10 +11,19 @@ import { sanitizeSource } from '../src/lib/trafficSource.js'
 // These are the three offer links supplied for this shop. No admin setting or request
 // value may replace their origin, path, or existing tracking query parameters.
 export const TRACKING_LINKS = Object.freeze({
-  'pack-1': 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/',
-  'pack-2': 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/',
-  'pack-3': 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/',
+  'pack-1': 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/?sub5=815653229569193',
+  'pack-2': 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/?sub5=815653229569193',
+  'pack-3': 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/?sub5=815653229569193',
 })
+
+// The live admin redirect may still be enabled while the dedicated Everflow
+// checkout is off. Use the same approved URLs whenever that configuration
+// points to these three offers.
+export function usesApprovedEverflowLinks(redirect) {
+  return redirect?.enabled === true && redirect.domain === 'www.molipy8trk.com' &&
+    Object.entries(TRACKING_LINKS).every(([id, link]) =>
+      redirect.pathTemplate?.replace('{code}', redirect.packages?.[id]?.code || '') === new URL(link).pathname)
+}
 
 export const IMAGE_PATHS = Object.freeze({
   'pack-1': '/images/everflow/pack-1.webp',
@@ -25,6 +34,7 @@ export const IMAGE_PATHS = Object.freeze({
 const PREFILL = ['sub10', 'adv3', 'sub3', 'sub4', 'sub6', 'sub7', 'sub8']
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const PIXEL_RE = /^[0-9]{5,30}$/
+const FBCLID_RE = /^[A-Za-z0-9_-]{1,500}$/
 
 export function settings(env = process.env, localRequest = false) {
   let origin = ''
@@ -47,7 +57,7 @@ export function settings(env = process.env, localRequest = false) {
   }
 }
 
-export function buildEverflowUrl(offerId, customer, imageUrl, attribution = '') {
+export function buildEverflowUrl(offerId, customer, imageUrl, attribution = '', fbclid = '') {
   const approved = TRACKING_LINKS[offerId]
   const offer = getOffer(offerId)
   if (!approved || !offer) throw new Error('unsupported_offer')
@@ -65,7 +75,8 @@ export function buildEverflowUrl(offerId, customer, imageUrl, attribution = '') 
   for (const key of PREFILL) if (values[key]) url.searchParams.set(key, values[key])
   url.searchParams.set('adv1', `${PRODUCT.name} – ${offer.packs} sachet${offer.packs > 1 ? 's' : ''} (${offer.washes} capsules)`)
   url.searchParams.set('adv2', imageUrl)
-  if (attribution) url.searchParams.set('sub5', attribution)
+  if (attribution && !url.searchParams.has('sub5')) url.searchParams.set('sub5', attribution)
+  if (FBCLID_RE.test(fbclid)) url.searchParams.set('fbclid', fbclid)
   return url.toString()
 }
 
@@ -88,7 +99,8 @@ export function prepareCheckout(body, cfg) {
       ? `${cfg.metaPixel}${'_'.repeat(21)}${cfg.snapPixel}`
       : cfg.metaPixel || cfg.snapPixel || ''
     : ''
-  return { status: 200, order, attribution }
+  const fbclid = body.marketingConsent === true && FBCLID_RE.test(body.fbclid || '') ? body.fbclid : ''
+  return { status: 200, order, attribution, fbclid }
 }
 
 // A file per idempotency key, created exclusively. Concurrent retries therefore
@@ -106,7 +118,7 @@ export async function createPendingOrder(body, cfg, dataDir) {
 async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   const key = body.idempotencyKey.toLowerCase()
   const source = sanitizeSource(body.source)
-  const fingerprint = fingerprintOf({ order: prepared.order, attribution: prepared.attribution })
+  const fingerprint = fingerprintOf({ order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid })
   await mkdir(join(dataDir, ORDERS_DIR), { recursive: true })
   const resultFor = async (existingKey, existing) => {
     if (!existing) return null
@@ -116,11 +128,11 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
     const held = stock.reservations.some((r) => r.key === existingKey && r.state === 'held' && Date.parse(r.expiresAt) > Date.now())
     if (!held) return { status: 409, error: 'recent_order', orderId: existing.orderId }
     const merged = existingKey !== key && existing.order.offerId === prepared.order.offerId
-      ? await mergeIntoOrder(dataDir, existingKey, { order: prepared.order, attribution: prepared.attribution, fingerprint, source, imageUrl: cfg.images[prepared.order.offerId] })
+      ? await mergeIntoOrder(dataDir, existingKey, { order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid, fingerprint, source, imageUrl: cfg.images[prepared.order.offerId] })
       : existing
     if (!merged) return { status: 409, error: 'recent_order', orderId: existing.orderId }
     return { status: 200, orderId: merged.orderId, statusText: 'pending', duplicate: true,
-      redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.attribution) }
+      redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.attribution, merged.fbclid) }
   }
   const byKey = await readOrder(dataDir, key)
   if (byKey) return resultFor(key, byKey)
@@ -141,7 +153,7 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   let record
   try {
     record = { orderId: randomUUID(), provider: 'everflow', status: 'pending', createdAt: new Date().toISOString(),
-      clicks: 1, fingerprint, order: prepared.order, attribution: prepared.attribution, source,
+      clicks: 1, fingerprint, order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid, source,
       imageUrl: cfg.images[prepared.order.offerId] }
     await writeExclusive(path, JSON.stringify(record))
   } catch (error) {
@@ -154,7 +166,7 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   }
   await attachOrder(dataDir, key, record.orderId)
   return { status: 200, orderId: record.orderId, statusText: 'pending',
-    redirectUrl: buildEverflowUrl(record.order.offerId, record.order.customer, record.imageUrl, record.attribution) }
+    redirectUrl: buildEverflowUrl(record.order.offerId, record.order.customer, record.imageUrl, record.attribution, record.fbclid) }
 }
 
 export async function readPendingOrder(dataDir, key) {

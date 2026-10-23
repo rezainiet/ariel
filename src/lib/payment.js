@@ -15,9 +15,9 @@
 // Tant que rien n'est configuré, aucune commande n'est simulée.
 // ─────────────────────────────────────────────────────────────
 
-import { trackCheckoutRedirect, trackMetaPendingOrder } from './pixel.js'
+import { trackCheckoutRedirect } from './pixel.js'
 import { trackAnalyticsEvent } from './analytics.js'
-import { getTrafficSource } from './trafficSource.js'
+import { getTrafficSource, getMetaClickId } from './trafficSource.js'
 
 const PROVIDER = import.meta.env.VITE_PAYMENT_PROVIDER || ''
 const API = import.meta.env.VITE_CHECKOUT_API || ''
@@ -95,14 +95,15 @@ export async function startRedirectPayment(order, provider = 'external') {
     // identique (double clic, retour arrière, rechargement) : le serveur renvoie la même commande.
     let marketingConsent = false
     try { marketingConsent = localStorage.getItem('consent.marketing.v1') === 'granted' } catch { /* storage unavailable */ }
-    const fingerprint = JSON.stringify({ provider, order, marketingConsent })
+    const fbclid = marketingConsent ? getMetaClickId() : ''
+    const fingerprint = JSON.stringify({ provider, order, marketingConsent, fbclid })
     let stored = attemptMemory
     try { stored = JSON.parse(sessionStorage.getItem('everflow-attempt-v1') || 'null') || stored } catch { /* use memory */ }
     const reuse = stored?.fingerprint === fingerprint && Date.now() - Number(stored.at) < ATTEMPT_MS
     const idempotencyKey = reuse ? stored.key : crypto.randomUUID()
     attemptMemory = { fingerprint, key: idempotencyKey, at: reuse ? stored.at : Date.now() }
     try { sessionStorage.setItem('everflow-attempt-v1', JSON.stringify(attemptMemory)) } catch { /* use memory */ }
-    const payload = { ...order, idempotencyKey, source: getTrafficSource(), ...(provider === 'everflow' ? { marketingConsent } : {}) }
+    const payload = { ...order, idempotencyKey, source: getTrafficSource(), marketingConsent, fbclid }
     const res = await fetch(provider === 'everflow' ? '/api/checkout/everflow' : '/api/checkout/redirect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -116,7 +117,6 @@ export async function startRedirectPayment(order, provider = 'external') {
     if (res.ok && /^[0-9a-f-]{36}$/i.test(data.orderId || '') && /^https:\/\//.test(data.redirectUrl || '')) {
       if (!data.duplicate) {
         trackCheckoutRedirect(data.orderId, order.offerId)
-        trackMetaPendingOrder(data.orderId, order.offerId)
         trackAnalyticsEvent('paymentRedirect')
       }
       return { status: 'ready', orderId: data.orderId, redirectUrl: data.redirectUrl, duplicate: Boolean(data.duplicate) }

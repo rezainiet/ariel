@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { validateOrder } from '../src/lib/orderValidation.js'
 import { getOffer } from '../src/config/offers.js'
 import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redirectPayment.js'
-import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder } from './everflow.mjs'
+import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder, buildEverflowUrl, usesApprovedEverflowLinks } from './everflow.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
 import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder, isOrderKey } from './orders.mjs'
 import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
@@ -190,7 +190,10 @@ async function api(req, res, path) {
     const recorded = await recordOrder(DATA_DIR, { key: body.idempotencyKey, provider: 'external', order: result.order, source: body.source })
     if (recorded.error) return send(res, 409, { error: recorded.error, orderId: recorded.orderId || null })
     const actualOffer = getOffer(recorded.order.offerId)
-    const redirectUrl = buildRedirectUrl(config, actualOffer, recorded.order.customer, { origin: originOf(req) })
+    const redirectUrl = usesApprovedEverflowLinks(r)
+      ? buildEverflowUrl(actualOffer.id, recorded.order.customer, everflowSettings(process.env).images[actualOffer.id] || r.packages[actualOffer.id]?.photoUrl || '',
+        '', body.marketingConsent === true ? body.fbclid : '')
+      : buildRedirectUrl(config, actualOffer, recorded.order.customer, { origin: originOf(req) })
     console.info(`[commande] redirection paiement — offre ${offer.id}, identifiant ${recorded.orderId}${recorded.duplicate ? ' (doublon fusionné)' : ''}`)
     return send(res, 200, { redirectUrl, orderId: recorded.orderId, duplicate: Boolean(recorded.duplicate) })
   }
