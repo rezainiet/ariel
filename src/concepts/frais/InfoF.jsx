@@ -44,7 +44,10 @@ export function ReviewsF({ reviewState }) {
   const sum = summarize(reviews)
   const hasExternal = reviews.some((review) => review.source)
   const filtered = ratingFilter ? reviews.filter((review) => review.rating === ratingFilter) : reviews
-  const items = [...filtered].sort((a, b) => b.date.localeCompare(a.date)).slice(0, visibleCount)
+  const hasPhoto = (review) => Array.isArray(review.photos) && review.photos.length > 0
+  const items = [...filtered].sort((a, b) =>
+    Number(hasPhoto(b)) - Number(hasPhoto(a)) || b.date.localeCompare(a.date),
+  ).slice(0, visibleCount)
   const selectRating = (rating) => {
     setRatingFilter(rating)
     setVisibleCount(3)
