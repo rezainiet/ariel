@@ -12,7 +12,7 @@ export const CHANNEL_LABELS = { meta: 'Meta', snapchat: 'Snapchat', google: 'Goo
 
 const KEY = 'traffic-source.v1'
 const WINDOW_MS = 30 * 24 * 60 * 60 * 1000
-const FBCLID_RE = /^[A-Za-z0-9_-]{1,500}$/
+const FBCLID_RE = /^[A-Za-z0-9._-]{1,500}$/
 const SCCID_RE = /^[A-Za-z0-9_-]{1,500}$/
 let pendingFbclid = ''
 let pendingSccid = ''

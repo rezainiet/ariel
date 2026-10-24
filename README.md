@@ -57,10 +57,11 @@ En développement : lancer `npm run server` (port 8787) en parallèle de `npm ru
   `public/images/everflow/`). Le serveur crée d'abord une commande
   `pending` idempotente dans `DATA_DIR/everflow-orders/`, puis renvoie l'URL hébergée. Aucune redirection
   ou visite de retour ne confirme le paiement. Aucun webhook/API de confirmation Everflow n'est configuré.
-  Les trois liens utilisent `sub5=<Meta Pixel ID>_____________________<Snap Pixel ID>` (21 underscores). Le serveur conserve ce paramètre et ajoute les coordonnées
-  validées du formulaire, le libellé de l'offre et son image. Les paramètres déjà présents dans les liens fournis
-  ne sont pas remplacés par les réglages d'attribution. Après consentement, le `fbclid` Meta et le `ScCid` Snapchat capturés à l'arrivée sont
-  ajoutés au lien Everflow sous leurs paramètres respectifs. Les identifiants publics des deux pixels sont définis dans `src/config/attribution.js`.
+  Les trois liens n'utilisent pas `sub5`. Le serveur ajoute les coordonnées validées du formulaire,
+  le libellé de l'offre et son image. Après consentement, le `fbclid` Meta capturé à l'arrivée est
+  ajouté au lien Everflow dans `sub1` et `fbclid` ; le `ScCid` Snapchat reste transmis dans `ScCid`.
+  Le Pixel Meta du site continue les événements de parcours, tandis qu'Everflow CAPI gère seul Meta Purchase
+  après paiement confirmé. Les identifiants publics des pixels restent dans `src/config/attribution.js`.
   Tester avec `node --test server/everflow.test.mjs` ; ces tests n'ouvrent pas le prestataire et ne paient rien.
 
 ## Routes

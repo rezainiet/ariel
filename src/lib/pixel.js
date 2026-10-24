@@ -29,6 +29,7 @@ let snapInitialized = false
 let metaInitialized = false
 let googleInitialized = false
 let lastPageView = ''
+let lastViewContent = ''
 const fired = new Set() // anti-duplication en mémoire (en plus de sessionStorage)
 const EVENT_ID_RE = /^[a-zA-Z0-9_-]{1,128}$/
 
@@ -150,6 +151,7 @@ export function trackPageView() {
   if (!anyPixel() || typeof window === 'undefined') return
   const page = window.location.pathname + window.location.search
   if (page === lastPageView) return
+  if (lastPageView) lastViewContent = ''
   lastPageView = page
   snaptr('track', 'PAGE_VIEW')
   fbq('track', 'PageView')
@@ -157,6 +159,10 @@ export function trackPageView() {
 }
 
 export function trackViewContent(payload = {}) {
+  if (!anyPixel() || typeof window === 'undefined') return
+  const page = window.location.pathname + window.location.search
+  if (page === lastViewContent) return
+  lastViewContent = page
   snaptr('track', 'VIEW_CONTENT', payload)
   fbq('track', 'ViewContent', metaCommerce(payload))
   gtag('event', 'view_item', googleCommerce(payload))

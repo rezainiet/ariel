@@ -22,12 +22,14 @@ test('Snap and Meta initialize after consent and keep purchase events separate',
     const product = { price: 7, currency: 'CHF', item_ids: ['ariel-all-in-1-pods'], number_items: 2 }
     trackPageView()
     trackViewContent(product)
+    trackViewContent(product)
     trackStartCheckout(product, 'pack-2')
     assert.equal(scripts.length, 0) // consent has not initialized the pixel
 
     initPixel()
     assert.deepEqual(scripts.map((script) => script.src), ['https://sc-static.net/scevent.min.js', 'https://connect.facebook.net/en_US/fbevents.js'])
     trackPageView()
+    trackViewContent(product)
     trackViewContent(product)
     trackStartCheckout(product, 'pack-2')
     trackStartCheckout(product, 'pack-2')

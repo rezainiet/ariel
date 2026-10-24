@@ -18,6 +18,7 @@
 import { trackCheckoutRedirect } from './pixel.js'
 import { trackAnalyticsEvent } from './analytics.js'
 import { getTrafficSource, getMetaClickId, getSnapClickId } from './trafficSource.js'
+import { cleanCheckoutUrl } from './checkoutUrl.js'
 
 const PROVIDER = import.meta.env.VITE_PAYMENT_PROVIDER || ''
 const API = import.meta.env.VITE_CHECKOUT_API || ''
@@ -44,9 +45,10 @@ export async function startPayment(order) {
     })
     if (!res.ok) return { status: 'error' }
     const data = await res.json()
-    if (data?.redirectUrl) {
+    const redirectUrl = cleanCheckoutUrl(data?.redirectUrl)
+    if (redirectUrl) {
       trackAnalyticsEvent('paymentRedirect')
-      window.location.assign(data.redirectUrl)
+      window.location.assign(redirectUrl)
       return { status: 'redirecting' }
     }
     return { status: 'error' }
@@ -115,12 +117,13 @@ export async function startRedirectPayment(order, provider = 'external') {
     if (res.status === 409 && data.error === 'out_of_stock') return { status: 'sold_out' }
     if (res.status === 409 && data.error === 'recent_order' && data.orderId) return { status: 'existing', orderId: data.orderId }
     if (res.status === 409) return { status: 'unavailable' }
-    if (res.ok && /^[0-9a-f-]{36}$/i.test(data.orderId || '') && /^https:\/\//.test(data.redirectUrl || '')) {
+    const redirectUrl = cleanCheckoutUrl(data.redirectUrl)
+    if (res.ok && /^[0-9a-f-]{36}$/i.test(data.orderId || '') && redirectUrl) {
       if (!data.duplicate) {
         trackCheckoutRedirect(data.orderId, order.offerId)
         trackAnalyticsEvent('paymentRedirect')
       }
-      return { status: 'ready', orderId: data.orderId, redirectUrl: data.redirectUrl, duplicate: Boolean(data.duplicate) }
+      return { status: 'ready', orderId: data.orderId, redirectUrl, duplicate: Boolean(data.duplicate) }
     }
     return { status: 'error' }
   } catch {

@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, Clock3, Copy, Loader2, Lo
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { formatCHF, getOffer, PRODUCT } from '../config/store.js'
 import { trackPurchase } from '../lib/pixel.js'
+import { cleanCheckoutUrl } from '../lib/checkoutUrl.js'
 
 const dateLabel = new Intl.DateTimeFormat('fr-CH', {
   timeZone: 'Europe/Zurich', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -13,8 +14,7 @@ const dateLabel = new Intl.DateTimeFormat('fr-CH', {
 function paymentLink(orderId, routeUrl) {
   try {
     const value = routeUrl || sessionStorage.getItem(`checkout-payment-v1:${orderId}`)
-    const url = new URL(value)
-    return url.protocol === 'https:' ? url.href : ''
+    return cleanCheckoutUrl(value)
   } catch {
     return ''
   }

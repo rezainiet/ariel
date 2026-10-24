@@ -3,16 +3,16 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { TRACKING_LINKS, TRACKING_SUB5, IMAGE_PATHS, settings, createPendingOrder, prepareCheckout, usesApprovedEverflowLinks, buildEverflowUrl } from './everflow.mjs'
+import { TRACKING_LINKS, IMAGE_PATHS, settings, createPendingOrder, prepareCheckout, usesApprovedEverflowLinks, buildEverflowUrl } from './everflow.mjs'
 import { getOffer } from '../src/config/offers.js'
 
 test('offer prices and approved checkout destinations match the three campaigns', () => {
   assert.deepEqual(Object.fromEntries(Object.keys(TRACKING_LINKS).map((id) => [id, { price: getOffer(id).price, url: TRACKING_LINKS[id] }])), {
-    'pack-1': { price: 4, url: `https://www.molipy8trk.com/2J23GL9/WMD7FHG/?sub5=${TRACKING_SUB5}` },
-    'pack-2': { price: 7, url: `https://www.molipy8trk.com/2J23GL9/WMJD3P9/?sub5=${TRACKING_SUB5}` },
-    'pack-3': { price: 10, url: `https://www.molipy8trk.com/2J23GL9/WMKQZFW/?sub5=${TRACKING_SUB5}` },
+    'pack-1': { price: 4, url: 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/' },
+    'pack-2': { price: 7, url: 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/' },
+    'pack-3': { price: 10, url: 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/' },
   })
-  assert.equal(TRACKING_SUB5, `815653229569193${'_'.repeat(21)}2b408aa3-8a2d-48aa-b535-5c8dfe935d97`)
+  assert.ok(Object.values(TRACKING_LINKS).every((link) => !new URL(link).searchParams.has('sub5')))
 })
 
 test('live admin redirect configuration resolves to the approved links', () => {
@@ -22,8 +22,9 @@ test('live admin redirect configuration resolves to the approved links', () => {
   }
   assert.equal(usesApprovedEverflowLinks(redirect), true)
   assert.equal(usesApprovedEverflowLinks({ ...redirect, packages: { ...redirect.packages, 'pack-2': { code: 'WRONG' } } }), false)
-  const url = new URL(buildEverflowUrl('pack-2', { prenom: 'Ana', nom: 'Test', npa: '1201', email: 'ana@example.ch', ville: 'Genève', adresse: 'Rue Test 1', tel: '079 123 45 67' }, 'https://shop.example.ch/images/everflow/pack-2.png', '', 'IwAR_sample_123'))
-  assert.equal(url.searchParams.get('sub5'), TRACKING_SUB5)
+  const url = new URL(buildEverflowUrl('pack-2', { prenom: 'Ana', nom: 'Test', npa: '1201', email: 'ana@example.ch', ville: 'Genève', adresse: 'Rue Test 1', tel: '079 123 45 67' }, 'https://shop.example.ch/images/everflow/pack-2.png', 'IwAR_sample_123'))
+  assert.equal(url.searchParams.has('sub5'), false)
+  assert.equal(url.searchParams.get('sub1'), 'IwAR_sample_123')
   assert.equal(url.searchParams.get('fbclid'), 'IwAR_sample_123')
   assert.equal(url.searchParams.get('sub4'), 'ana@example.ch')
 })
@@ -66,7 +67,8 @@ test('three offers preserve destination, query, prefill, images and consent', as
         })
         assert.equal(url.searchParams.get('adv2'), images[offerId])
         assert.match(url.searchParams.get('adv1'), new RegExp(`${{ 'pack-1': 1, 'pack-2': 2, 'pack-3': 3 }[offerId]} sachet`))
-        assert.equal(url.searchParams.get('sub5'), TRACKING_SUB5)
+        assert.equal(url.searchParams.has('sub5'), false)
+        assert.equal(url.searchParams.get('sub1'), consent ? 'IwAR123_test_ClickId' : null)
         assert.equal(url.searchParams.get('fbclid'), consent ? 'IwAR123_test_ClickId' : null)
         assert.equal(url.searchParams.get('ScCid'), consent ? 'snap_test_ClickId' : null)
       }
@@ -97,8 +99,8 @@ test('unsupported carts, absent phone, and unapproved configuration stay blocked
   assert.equal(preview.images['pack-2'], 'http://localhost:5173/images/everflow/pack-2.png')
   assert.equal(settings({ EVERFLOW_LOCAL_PREVIEW: 'true' }, true).enabled, false)
   assert.equal(settings({ ...previewEnv, NODE_ENV: 'production' }, true).enabled, false)
-  assert.equal(prepareCheckout(request('pack-1', true), { ...config, snapPixel: '' }).attribution, '815653229569193')
-  assert.equal(prepareCheckout(request('pack-1', false), { ...config, snapPixel: '' }).attribution, '')
+  assert.equal(prepareCheckout(request('pack-1', true), { ...config, snapPixel: '' }).fbclid, 'IwAR123_test_ClickId')
+  assert.equal(prepareCheckout(request('pack-1', false), { ...config, snapPixel: '' }).fbclid, '')
   assert.equal(prepareCheckout({ ...request('pack-1', true), fbclid: 'bad&injection' }, config).fbclid, '')
   assert.equal(prepareCheckout({ ...request('pack-1', true), sccid: 'bad&injection' }, config).sccid, '')
   assert.equal(settings({}).metaPixel, '815653229569193')
@@ -118,13 +120,19 @@ test('retry reuses pending order and changed payload conflicts', async () => {
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
-test('configured attribution cannot replace the approved combined sub5', async () => {
+test('Pixel IDs and declined consent never add sub5 or click attribution', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ariel-everflow-meta-'))
   try {
     const metaOnly = { ...config, metaPixel: '815653229569193', snapPixel: '' }
     const accepted = await createPendingOrder(request('pack-2', true), metaOnly, dir)
     const declined = await createPendingOrder(request('pack-2', false, { ...customer, email: 'another@example.ch' }), metaOnly, dir)
-    assert.equal(new URL(accepted.redirectUrl).searchParams.get('sub5'), TRACKING_SUB5)
-    assert.equal(new URL(declined.redirectUrl).searchParams.get('sub5'), TRACKING_SUB5)
+    const acceptedUrl = new URL(accepted.redirectUrl)
+    const declinedUrl = new URL(declined.redirectUrl)
+    assert.equal(acceptedUrl.searchParams.has('sub5'), false)
+    assert.equal(declinedUrl.searchParams.has('sub5'), false)
+    assert.equal(acceptedUrl.searchParams.get('sub1'), 'IwAR123_test_ClickId')
+    assert.equal(acceptedUrl.searchParams.get('fbclid'), 'IwAR123_test_ClickId')
+    assert.equal(declinedUrl.searchParams.has('sub1'), false)
+    assert.equal(declinedUrl.searchParams.has('fbclid'), false)
   } finally { await rm(dir, { recursive: true, force: true }) }
 })

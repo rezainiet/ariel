@@ -59,6 +59,9 @@ export const defaultConfig = () => ({
 const DOMAIN_RE = /^(?=.{3,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/i
 const CODE_RE = /^[A-Za-z0-9._~-]{1,80}$/
 const PARAM_RE = /^[A-Za-z0-9_-]{1,40}$/
+const FBCLID_RE = /^[A-Za-z0-9._-]{1,500}$/
+const SCCID_RE = /^[A-Za-z0-9_-]{1,500}$/
+const isEverflow = (domain) => /^(www\.)?molipy8trk\.com$/i.test(domain)
 
 // Nettoie le domaine saisi (accepte « https://pay.exemple.ch/ » → « pay.exemple.ch »).
 export const normalizeDomain = (d) =>
@@ -97,7 +100,9 @@ export function validateConfig(input) {
     const param = String(row?.param || '').trim()
     const field = String(row?.field || '')
     if (!param && !field) continue
-    if (!PARAM_RE.test(param)) errors.params = `Nom de paramètre invalide : « ${param || '(vide)'} ».`
+    if (/^sub5$/i.test(param)) errors.params = 'Le paramètre sub5 est désactivé pour éviter un second signal Purchase.'
+    else if (isEverflow(domain) && /^(sub1|fbclid|sccid)$/i.test(param)) errors.params = `Le paramètre « ${param} » est réservé aux identifiants de clic.`
+    else if (!PARAM_RE.test(param)) errors.params = `Nom de paramètre invalide : « ${param || '(vide)'} ».`
     else if (!FIELDS[field]) errors.params = `Donnée inconnue pour « ${param} ».`
     else if (seen.has(param)) errors.params = `Paramètre en double : « ${param} ».`
     else {
@@ -133,14 +138,23 @@ function fieldValue(field, { offer, customer, pkg, origin }) {
 }
 
 // Construit l'URL de redirection. `customer` doit déjà être validé et nettoyé (orderValidation.clean).
-export function buildRedirectUrl(config, offer, customer, { origin = '' } = {}) {
+export function buildRedirectUrl(config, offer, customer, { origin = '', fbclid = '', sccid = '' } = {}) {
   const r = config.externalRedirect
   const pkg = r.packages[offer.id] || {}
   const path = r.pathTemplate.replace('{code}', encodeURIComponent(pkg.code || ''))
   const url = new URL(`https://${r.domain}${path}`)
   for (const { param, field } of r.params) {
+    // Also protects active configurations saved before sub5 was retired.
+    if (/^sub5$/i.test(param) || (isEverflow(r.domain) && /^(sub1|fbclid|sccid)$/i.test(param))) continue
     const v = fieldValue(field, { offer, customer, pkg, origin })
     if (v !== '') url.searchParams.set(param, v)
+  }
+  if (isEverflow(r.domain)) {
+    if (FBCLID_RE.test(fbclid)) {
+      url.searchParams.set('sub1', fbclid)
+      url.searchParams.set('fbclid', fbclid)
+    }
+    if (SCCID_RE.test(sccid)) url.searchParams.set('ScCid', sccid)
   }
   return url.toString()
 }
