@@ -90,7 +90,7 @@ Captures et notes : `design-review/frais-finition/`.
 - `src/lib/payment.js` — frontière de paiement : session hébergée chez le prestataire, vérification serveur.
 - `src/lib/storeStatus.js` — stock et campagne réels (jamais de valeur fictive).
 - `src/lib/address.js` — aide à la saisie d'adresse, uniquement via un service configuré.
-- `src/lib/pixel.js` — pixels Meta et Snapchat après consentement ; PageView/ViewContent et événements de début de paiement au clic « Acheter » valide. Le site n'envoie pas Meta Purchase : Everflow l'envoie après paiement réussi. Snap/Google Purchase restent liés au paiement vérifié.
+- `src/lib/pixel.js` — pixels Meta et Snapchat après consentement ; Snapchat envoie uniquement PAGE_VIEW, VIEW_CONTENT et START_CHECKOUT. Le site n'envoie ni Meta Purchase ni Snapchat PURCHASE ; Everflow gère Meta Purchase et l'intégration Snapchat CAPI reste à venir. Google purchase reste lié au paiement vérifié.
 - `src/lib/analytics.js` et `server/analytics.mjs` — statistiques internes après consentement : sessions par canal, temps actif, défilement et étapes de commande. Rapport protégé dans `/admin#analytics`, sur 24 h, 7 j ou 30 j ; conservation d’environ 90 jours. Voir `ANALYTICS.md` pour les définitions et limites.
 - `src/concepts/frais/` — composants de la boutique Frais ; `src/pages/` — commande et pages de service.
 - `server/validate-order.mjs` — validation à appeler par le serveur de commande avant de créer le paiement.

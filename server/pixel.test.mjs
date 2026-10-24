@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 
-test('Snap and Meta initialize after consent and keep purchase events separate', async () => {
+test('Snap sends only the three requested website events while Meta stays unchanged', async () => {
   const vite = await createServer({ configFile: false, server: { middlewareMode: true }, appType: 'custom' })
   const { initPixel, trackPageView, trackViewContent, trackStartCheckout, trackCheckoutRedirect, trackPurchase } = await vite.ssrLoadModule('/src/lib/pixel.js')
   const session = new Map()
@@ -43,14 +43,14 @@ test('Snap and Meta initialize after consent and keep purchase events separate',
     assert.deepEqual(events[4][3], { eventID: `order-${orderId}` })
     assert.equal(JSON.stringify(events).includes('Purchase'), false)
     const snapEvents = window.snaptr.queue.map((args) => Array.from(args))
-    assert.deepEqual(snapEvents.map((event) => event[1]), ['2b408aa3-8a2d-48aa-b535-5c8dfe935d97', 'PAGE_VIEW', 'VIEW_CONTENT', 'START_CHECKOUT', 'ADD_BILLING'])
+    assert.deepEqual(snapEvents.map((event) => event[1]), ['2b408aa3-8a2d-48aa-b535-5c8dfe935d97', 'PAGE_VIEW', 'VIEW_CONTENT', 'START_CHECKOUT'])
     assert.equal(snapEvents[3][2].client_dedup_id, events[3][3].eventID)
     assert.equal(JSON.stringify(snapEvents).includes('PURCHASE'), false)
 
-    // The caller must have server-verified payment before invoking trackPurchase.
+    // Even after a server-verified payment, the website must not send Snap PURCHASE.
     trackPurchase({ transaction_id: orderId, price: 7, currency: 'CHF' })
     trackPurchase({ transaction_id: orderId, price: 7, currency: 'CHF' })
-    assert.equal(window.snaptr.queue.filter((event) => event[1] === 'PURCHASE').length, 1)
+    assert.deepEqual(window.snaptr.queue.map((args) => args[1]), ['2b408aa3-8a2d-48aa-b535-5c8dfe935d97', 'PAGE_VIEW', 'VIEW_CONTENT', 'START_CHECKOUT'])
     assert.equal(window.fbq.queue.some((event) => event[1] === 'Purchase'), false)
     assert.equal(session.has('pixel.start_checkout.pack-2'), true)
     assert.equal(session.has(`pixel.checkout_redirect.${orderId}`), true)

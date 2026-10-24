@@ -6,10 +6,10 @@
 // Correspondance des événements :
 //   page vue            Meta PageView          Snap PAGE_VIEW      Google page_view
 //   fiche produit       Meta ViewContent       Snap VIEW_CONTENT   Google view_item
-//   ajout au panier     Meta AddToCart         Snap ADD_CART       Google add_to_cart
+//   ajout au panier     Meta AddToCart         —                   Google add_to_cart
 //   clic Acheter valide Meta InitiateCheckout  Snap START_CHECKOUT Google begin_checkout
-//   redirection         Meta AddPaymentInfo    Snap ADD_BILLING    Google add_payment_info (+ conversion Ads)
-//   paiement vérifié    —                      Snap PURCHASE       Google purchase
+//   redirection         Meta AddPaymentInfo    —                   Google add_payment_info (+ conversion Ads)
+//   paiement vérifié    —                      —                   Google purchase
 //
 // Déduplication : chaque conversion porte un identifiant d'événement (Meta eventID, Snap
 // client_dedup_id, Google transaction_id) et n'est envoyée qu'une fois par session et par
@@ -170,7 +170,6 @@ export function trackViewContent(payload = {}) {
 
 // À n'appeler QUE lors d'une vraie sélection ajoutée au panier.
 export function trackAddCart(payload = {}) {
-  snaptr('track', 'ADD_CART', payload)
   fbq('track', 'AddToCart', metaCommerce(payload))
   gtag('event', 'add_to_cart', googleCommerce(payload))
 }
@@ -192,9 +191,6 @@ export function trackCheckoutRedirect(orderId, offerId) {
   if (!anyPixel() || !offer || !firstEvent('checkout_redirect', orderId)) return false
   const values = { currency: 'CHF', value: offer.price, content_ids: [PRODUCT.id], content_type: 'product', num_items: offer.packs }
   fbq('track', 'AddPaymentInfo', values, { eventID: `order-${orderId}` })
-  snaptr('track', 'ADD_BILLING', {
-    currency: 'CHF', price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs, client_dedup_id: `order-${orderId}`,
-  })
   gtag('event', 'add_payment_info', googleCommerce({ price: offer.price, number_items: offer.packs }))
   if (GOOGLE_ADS_SEND_TO) gtag('event', 'conversion', { send_to: GOOGLE_ADS_SEND_TO, value: offer.price, currency: 'CHF', transaction_id: orderId })
   return true
@@ -204,14 +200,7 @@ export function trackCheckoutRedirect(orderId, offerId) {
 // Déduplication obligatoire via transaction_id.
 export function trackPurchase(payload = {}) {
   const tx = payload.transaction_id
-  if (!(snapInitialized || googleInitialized) || !firstEvent('verified_purchase', tx)) return
-  const clean = metaCommerce(payload)
-  snaptr('track', 'PURCHASE', {
-    transaction_id: tx, client_dedup_id: tx, currency: clean.currency,
-    ...(clean.value !== undefined ? { price: clean.value } : {}),
-    item_ids: [PRODUCT.id],
-    ...(clean.num_items ? { number_items: clean.num_items } : {}),
-  })
+  if (!googleInitialized || !firstEvent('verified_purchase', tx)) return
   gtag('event', 'purchase', { transaction_id: tx, ...googleCommerce(payload) })
 }
 
