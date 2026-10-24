@@ -3,8 +3,8 @@
 // Le navigateur classe l'arrivée (paramètres d'URL + site référent) et garde la dernière
 // provenance publicitaire 30 jours (stockage local, première partie).
 // Le serveur ne fait confiance à rien : il re-nettoie la provenance reçue avec la commande.
-// Le fbclid Meta est conservé localement pour le remettre à Everflow au paiement.
-// Les autres identifiants de clic ne sont pas conservés.
+// Les identifiants de clic Meta et Snapchat sont conservés après consentement
+// pour les remettre à Everflow au paiement. Les autres ne sont pas conservés.
 // ─────────────────────────────────────────────────────────────
 
 export const CHANNELS = ['meta', 'snapchat', 'google', 'other', 'direct']
@@ -13,7 +13,9 @@ export const CHANNEL_LABELS = { meta: 'Meta', snapchat: 'Snapchat', google: 'Goo
 const KEY = 'traffic-source.v1'
 const WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 const FBCLID_RE = /^[A-Za-z0-9_-]{1,500}$/
+const SCCID_RE = /^[A-Za-z0-9_-]{1,500}$/
 let pendingFbclid = ''
+let pendingSccid = ''
 const marketingAllowed = () => {
   try { return localStorage.getItem('consent.marketing.v1') === 'granted' } catch { return false }
 }
@@ -99,10 +101,16 @@ export function captureTrafficSource() {
     landingPath: text(window.location.pathname, 120),
     at: new Date().toISOString(),
   }
-  const fbclid = new URLSearchParams(window.location.search).get('fbclid') || ''
+  const params = new URLSearchParams(window.location.search)
+  const fbclid = params.get('fbclid') || ''
   if (touch.clickIdType === 'fbclid' && FBCLID_RE.test(fbclid)) {
     pendingFbclid = fbclid
     if (marketingAllowed()) touch.fbclid = fbclid
+  }
+  const sccid = params.get('ScCid') || params.get('sccid') || ''
+  if (['ScCid', 'sccid'].includes(touch.clickIdType) && SCCID_RE.test(sccid)) {
+    pendingSccid = sccid
+    if (marketingAllowed()) touch.sccid = sccid
   }
   const saved = read()
   if (saved && touch.channel === 'direct') return
@@ -121,6 +129,11 @@ export function getMetaClickId() {
   return marketingAllowed() && last?.channel === 'meta' && last.clickIdType === 'fbclid' && FBCLID_RE.test(last.fbclid || '') ? last.fbclid : ''
 }
 
+export function getSnapClickId() {
+  const last = read()?.last
+  return marketingAllowed() && last?.channel === 'snapchat' && ['ScCid', 'sccid'].includes(last.clickIdType) && SCCID_RE.test(last.sccid || '') ? last.sccid : ''
+}
+
 export function commitMetaClickId() {
   if (!marketingAllowed() || !pendingFbclid) return
   const saved = read()
@@ -128,4 +141,13 @@ export function commitMetaClickId() {
     try { localStorage.setItem(KEY, JSON.stringify({ ...saved, last: { ...saved.last, fbclid: pendingFbclid } })) } catch { /* storage unavailable */ }
   }
   pendingFbclid = ''
+}
+
+export function commitSnapClickId() {
+  if (!marketingAllowed() || !pendingSccid) return
+  const saved = read()
+  if (saved?.last?.channel === 'snapchat' && ['ScCid', 'sccid'].includes(saved.last.clickIdType)) {
+    try { localStorage.setItem(KEY, JSON.stringify({ ...saved, last: { ...saved.last, sccid: pendingSccid } })) } catch { /* storage unavailable */ }
+  }
+  pendingSccid = ''
 }

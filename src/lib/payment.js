@@ -17,7 +17,7 @@
 
 import { trackCheckoutRedirect } from './pixel.js'
 import { trackAnalyticsEvent } from './analytics.js'
-import { getTrafficSource, getMetaClickId } from './trafficSource.js'
+import { getTrafficSource, getMetaClickId, getSnapClickId } from './trafficSource.js'
 
 const PROVIDER = import.meta.env.VITE_PAYMENT_PROVIDER || ''
 const API = import.meta.env.VITE_CHECKOUT_API || ''
@@ -96,14 +96,15 @@ export async function startRedirectPayment(order, provider = 'external') {
     let marketingConsent = false
     try { marketingConsent = localStorage.getItem('consent.marketing.v1') === 'granted' } catch { /* storage unavailable */ }
     const fbclid = marketingConsent ? getMetaClickId() : ''
-    const fingerprint = JSON.stringify({ provider, order, marketingConsent, fbclid })
+    const sccid = marketingConsent ? getSnapClickId() : ''
+    const fingerprint = JSON.stringify({ provider, order, marketingConsent, fbclid, sccid })
     let stored = attemptMemory
     try { stored = JSON.parse(sessionStorage.getItem('everflow-attempt-v1') || 'null') || stored } catch { /* use memory */ }
     const reuse = stored?.fingerprint === fingerprint && Date.now() - Number(stored.at) < ATTEMPT_MS
     const idempotencyKey = reuse ? stored.key : crypto.randomUUID()
     attemptMemory = { fingerprint, key: idempotencyKey, at: reuse ? stored.at : Date.now() }
     try { sessionStorage.setItem('everflow-attempt-v1', JSON.stringify(attemptMemory)) } catch { /* use memory */ }
-    const payload = { ...order, idempotencyKey, source: getTrafficSource(), marketingConsent, fbclid }
+    const payload = { ...order, idempotencyKey, source: getTrafficSource(), marketingConsent, fbclid, sccid }
     const res = await fetch(provider === 'everflow' ? '/api/checkout/everflow' : '/api/checkout/redirect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

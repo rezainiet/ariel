@@ -17,10 +17,9 @@
 // Aucune donnée client (nom, e-mail, téléphone, adresse) n'est jamais transmise.
 // ─────────────────────────────────────────────────────────────
 
-import { META_PIXEL_ID } from '../config/attribution.js'
+import { META_PIXEL_ID, SNAP_PIXEL_ID } from '../config/attribution.js'
 import { getOffer, PRODUCT } from '../config/offers.js'
 
-const SNAP_PIXEL_ID = import.meta.env.VITE_SNAP_PIXEL_ID || ''
 // Balise Google (G-… ou AW-…) et, en option, l'action de conversion Google Ads du clic « Acheter »
 // (« AW-123456789/AbCdEfGh »). Vides = rien n'est chargé.
 const GOOGLE_TAG_ID = /^(G|AW)-[A-Z0-9]+$/i.test(import.meta.env.VITE_GOOGLE_TAG_ID || '') ? import.meta.env.VITE_GOOGLE_TAG_ID : ''

@@ -192,7 +192,7 @@ async function api(req, res, path) {
     const actualOffer = getOffer(recorded.order.offerId)
     const redirectUrl = usesApprovedEverflowLinks(r)
       ? buildEverflowUrl(actualOffer.id, recorded.order.customer, everflowSettings(process.env).images[actualOffer.id] || r.packages[actualOffer.id]?.photoUrl || '',
-        '', body.marketingConsent === true ? body.fbclid : '')
+        '', body.marketingConsent === true ? body.fbclid : '', body.marketingConsent === true ? body.sccid : '')
       : buildRedirectUrl(config, actualOffer, recorded.order.customer, { origin: originOf(req) })
     console.info(`[commande] redirection paiement — offre ${offer.id}, identifiant ${recorded.orderId}${recorded.duplicate ? ' (doublon fusionné)' : ''}`)
     return send(res, 200, { redirectUrl, orderId: recorded.orderId, duplicate: Boolean(recorded.duplicate) })

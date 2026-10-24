@@ -63,7 +63,7 @@ export default function Privacy() {
           {isPixelEnabled() || everflowAttribution ? (
             <p>
               Avec votre accord seulement, les outils publicitaires de Meta, Snapchat et, s’il est activé, Google mesurent l’efficacité de nos annonces
-              (pages vues, vue du produit et début du paiement), sans votre nom ni vos coordonnées. Avec votre accord, l'identifiant de clic publicitaire Meta présent dans l'adresse d'arrivée est conservé localement pendant 30 jours et transmis au prestataire de paiement lors de la commande pour attribuer un paiement réussi. Le site n'envoie pas de signal Meta « Purchase » au clic ; le prestataire l'envoie après confirmation du paiement. Les signaux d’achat Snapchat et Google ne sont envoyés qu’après vérification du paiement. Vous pouvez refuser ce suivi dans la bannière de consentement.
+              (pages vues, vue du produit et début du paiement), sans votre nom ni vos coordonnées. Avec votre accord, les identifiants de clic publicitaire Meta et Snapchat présents dans l'adresse d'arrivée sont conservés localement pendant 30 jours et transmis au prestataire de paiement lors de la commande pour attribuer un paiement réussi. Le site n'envoie pas de signal Meta « Purchase » au clic ; le prestataire l'envoie après confirmation du paiement. Les signaux d’achat Snapchat et Google ne sont envoyés qu’après vérification du paiement. Vous pouvez refuser ce suivi dans la bannière de consentement.
             </p>
           ) : (
             <p>Aucun outil de mesure publicitaire n’est utilisé sur ce site.</p>

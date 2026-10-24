@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { getOffer, PRODUCT } from '../src/config/offers.js'
-import { META_PIXEL_ID } from '../src/config/attribution.js'
+import { META_PIXEL_ID, SNAP_PIXEL_ID } from '../src/config/attribution.js'
 import { validateOrder, normalizePhone } from '../src/lib/orderValidation.js'
 import { reserve, attachOrder, loadStock } from './stock.mjs'
 import { ORDERS_DIR, orderPath, claimCustomer, mergeIntoOrder, readOrder, readJsonFile, writeExclusive, fingerprintOf, findRecentCustomerOrder, withCustomerLock } from './orders.mjs'
@@ -10,10 +10,11 @@ import { sanitizeSource } from '../src/lib/trafficSource.js'
 
 // These are the three offer links supplied for this shop. No admin setting or request
 // value may replace their origin, path, or existing tracking query parameters.
+export const TRACKING_SUB5 = `${META_PIXEL_ID}${'_'.repeat(21)}${SNAP_PIXEL_ID}`
 export const TRACKING_LINKS = Object.freeze({
-  'pack-1': 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/?sub5=815653229569193',
-  'pack-2': 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/?sub5=815653229569193',
-  'pack-3': 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/?sub5=815653229569193',
+  'pack-1': `https://www.molipy8trk.com/2J23GL9/WMD7FHG/?sub5=${TRACKING_SUB5}`,
+  'pack-2': `https://www.molipy8trk.com/2J23GL9/WMJD3P9/?sub5=${TRACKING_SUB5}`,
+  'pack-3': `https://www.molipy8trk.com/2J23GL9/WMKQZFW/?sub5=${TRACKING_SUB5}`,
 })
 
 // The live admin redirect may still be enabled while the dedicated Everflow
@@ -33,8 +34,8 @@ export const IMAGE_PATHS = Object.freeze({
 
 const PREFILL = ['sub10', 'adv3', 'sub3', 'sub4', 'sub6', 'sub7', 'sub8']
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const PIXEL_RE = /^[0-9]{5,30}$/
 const FBCLID_RE = /^[A-Za-z0-9_-]{1,500}$/
+const SCCID_RE = /^[A-Za-z0-9_-]{1,500}$/
 
 export function settings(env = process.env, localRequest = false) {
   let origin = ''
@@ -52,12 +53,12 @@ export function settings(env = process.env, localRequest = false) {
     enabled: (env.EVERFLOW_ENABLED === 'true' && env.EVERFLOW_IMAGES_APPROVED === 'true' && Boolean(origin) && !preview) || preview,
     preview,
     images,
-    metaPixel: PIXEL_RE.test(env.EVERFLOW_META_PIXEL_ID ?? META_PIXEL_ID) ? (env.EVERFLOW_META_PIXEL_ID ?? META_PIXEL_ID) : '',
-    snapPixel: PIXEL_RE.test(env.EVERFLOW_SNAP_PIXEL_ID || '') ? env.EVERFLOW_SNAP_PIXEL_ID : '',
+    metaPixel: META_PIXEL_ID,
+    snapPixel: SNAP_PIXEL_ID,
   }
 }
 
-export function buildEverflowUrl(offerId, customer, imageUrl, attribution = '', fbclid = '') {
+export function buildEverflowUrl(offerId, customer, imageUrl, attribution = '', fbclid = '', sccid = '') {
   const approved = TRACKING_LINKS[offerId]
   const offer = getOffer(offerId)
   if (!approved || !offer) throw new Error('unsupported_offer')
@@ -77,6 +78,7 @@ export function buildEverflowUrl(offerId, customer, imageUrl, attribution = '', 
   url.searchParams.set('adv2', imageUrl)
   if (attribution && !url.searchParams.has('sub5')) url.searchParams.set('sub5', attribution)
   if (FBCLID_RE.test(fbclid)) url.searchParams.set('fbclid', fbclid)
+  if (SCCID_RE.test(sccid)) url.searchParams.set('ScCid', sccid)
   return url.toString()
 }
 
@@ -100,7 +102,8 @@ export function prepareCheckout(body, cfg) {
       : cfg.metaPixel || cfg.snapPixel || ''
     : ''
   const fbclid = body.marketingConsent === true && FBCLID_RE.test(body.fbclid || '') ? body.fbclid : ''
-  return { status: 200, order, attribution, fbclid }
+  const sccid = body.marketingConsent === true && SCCID_RE.test(body.sccid || '') ? body.sccid : ''
+  return { status: 200, order, attribution, fbclid, sccid }
 }
 
 // A file per idempotency key, created exclusively. Concurrent retries therefore
@@ -118,7 +121,7 @@ export async function createPendingOrder(body, cfg, dataDir) {
 async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   const key = body.idempotencyKey.toLowerCase()
   const source = sanitizeSource(body.source)
-  const fingerprint = fingerprintOf({ order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid })
+  const fingerprint = fingerprintOf({ order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid, sccid: prepared.sccid })
   await mkdir(join(dataDir, ORDERS_DIR), { recursive: true })
   const resultFor = async (existingKey, existing) => {
     if (!existing) return null
@@ -128,11 +131,11 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
     const held = stock.reservations.some((r) => r.key === existingKey && r.state === 'held' && Date.parse(r.expiresAt) > Date.now())
     if (!held) return { status: 409, error: 'recent_order', orderId: existing.orderId }
     const merged = existingKey !== key && existing.order.offerId === prepared.order.offerId
-      ? await mergeIntoOrder(dataDir, existingKey, { order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid, fingerprint, source, imageUrl: cfg.images[prepared.order.offerId] })
+      ? await mergeIntoOrder(dataDir, existingKey, { order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid, sccid: prepared.sccid, fingerprint, source, imageUrl: cfg.images[prepared.order.offerId] })
       : existing
     if (!merged) return { status: 409, error: 'recent_order', orderId: existing.orderId }
     return { status: 200, orderId: merged.orderId, statusText: 'pending', duplicate: true,
-      redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.attribution, merged.fbclid) }
+      redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.attribution, merged.fbclid, merged.sccid) }
   }
   const byKey = await readOrder(dataDir, key)
   if (byKey) return resultFor(key, byKey)
@@ -153,7 +156,7 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   let record
   try {
     record = { orderId: randomUUID(), provider: 'everflow', status: 'pending', createdAt: new Date().toISOString(),
-      clicks: 1, fingerprint, order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid, source,
+      clicks: 1, fingerprint, order: prepared.order, attribution: prepared.attribution, fbclid: prepared.fbclid, sccid: prepared.sccid, source,
       imageUrl: cfg.images[prepared.order.offerId] }
     await writeExclusive(path, JSON.stringify(record))
   } catch (error) {
@@ -166,7 +169,7 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   }
   await attachOrder(dataDir, key, record.orderId)
   return { status: 200, orderId: record.orderId, statusText: 'pending',
-    redirectUrl: buildEverflowUrl(record.order.offerId, record.order.customer, record.imageUrl, record.attribution, record.fbclid) }
+    redirectUrl: buildEverflowUrl(record.order.offerId, record.order.customer, record.imageUrl, record.attribution, record.fbclid, record.sccid) }
 }
 
 export async function readPendingOrder(dataDir, key) {

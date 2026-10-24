@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { initPixel, isPixelEnabled, trackPageView, trackViewContent } from '../lib/pixel.js'
 import { initAnalytics } from '../lib/analytics.js'
 import { PRODUCT } from '../config/offers.js'
-import { commitMetaClickId } from '../lib/trafficSource.js'
+import { commitMetaClickId, commitSnapClickId } from '../lib/trafficSource.js'
 
 // Consentement avant tout pixel publicitaire (nLPD) — deux choix de même poids.
 // N'apparaît que si un pixel Meta/Snap ou une attribution Everflow est configuré.
@@ -64,7 +64,10 @@ export default function ConsentBanner() {
   const decide = (value) => {
     try {
       localStorage.setItem(KEY, value)
-      if (value === 'granted') commitMetaClickId()
+      if (value === 'granted') {
+        commitMetaClickId()
+        commitSnapClickId()
+      }
     } catch {
       /* stockage indisponible : le choix vaut pour cette page */
     }

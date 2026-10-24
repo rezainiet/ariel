@@ -3,15 +3,16 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { TRACKING_LINKS, IMAGE_PATHS, settings, createPendingOrder, prepareCheckout, usesApprovedEverflowLinks, buildEverflowUrl } from './everflow.mjs'
+import { TRACKING_LINKS, TRACKING_SUB5, IMAGE_PATHS, settings, createPendingOrder, prepareCheckout, usesApprovedEverflowLinks, buildEverflowUrl } from './everflow.mjs'
 import { getOffer } from '../src/config/offers.js'
 
 test('offer prices and approved checkout destinations match the three campaigns', () => {
   assert.deepEqual(Object.fromEntries(Object.keys(TRACKING_LINKS).map((id) => [id, { price: getOffer(id).price, url: TRACKING_LINKS[id] }])), {
-    'pack-1': { price: 4, url: 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/?sub5=815653229569193' },
-    'pack-2': { price: 7, url: 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/?sub5=815653229569193' },
-    'pack-3': { price: 10, url: 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/?sub5=815653229569193' },
+    'pack-1': { price: 4, url: `https://www.molipy8trk.com/2J23GL9/WMD7FHG/?sub5=${TRACKING_SUB5}` },
+    'pack-2': { price: 7, url: `https://www.molipy8trk.com/2J23GL9/WMJD3P9/?sub5=${TRACKING_SUB5}` },
+    'pack-3': { price: 10, url: `https://www.molipy8trk.com/2J23GL9/WMKQZFW/?sub5=${TRACKING_SUB5}` },
   })
+  assert.equal(TRACKING_SUB5, `815653229569193${'_'.repeat(21)}2b408aa3-8a2d-48aa-b535-5c8dfe935d97`)
 })
 
 test('live admin redirect configuration resolves to the approved links', () => {
@@ -22,7 +23,7 @@ test('live admin redirect configuration resolves to the approved links', () => {
   assert.equal(usesApprovedEverflowLinks(redirect), true)
   assert.equal(usesApprovedEverflowLinks({ ...redirect, packages: { ...redirect.packages, 'pack-2': { code: 'WRONG' } } }), false)
   const url = new URL(buildEverflowUrl('pack-2', { prenom: 'Ana', nom: 'Test', npa: '1201', email: 'ana@example.ch', ville: 'Genève', adresse: 'Rue Test 1', tel: '079 123 45 67' }, 'https://shop.example.ch/images/everflow/pack-2.png', '', 'IwAR_sample_123'))
-  assert.equal(url.searchParams.get('sub5'), '815653229569193')
+  assert.equal(url.searchParams.get('sub5'), TRACKING_SUB5)
   assert.equal(url.searchParams.get('fbclid'), 'IwAR_sample_123')
   assert.equal(url.searchParams.get('sub4'), 'ana@example.ch')
 })
@@ -32,7 +33,7 @@ const images = {
   'pack-2': 'https://assets.example.ch/ariel/two.webp',
   'pack-3': 'https://assets.example.ch/ariel/three.webp',
 }
-const config = { enabled: true, images, metaPixel: '123456789', snapPixel: '987654321' }
+const config = { enabled: true, images, metaPixel: '815653229569193', snapPixel: '2b408aa3-8a2d-48aa-b535-5c8dfe935d97' }
 const customer = {
   prenom: 'Ana María', nom: "D’Été", email: 'Ana.Maria@Example.ch',
   tel: '+41 (79) 123-45-67', adresse: "Rue de l'Église, 4/B", complement: 'Bât. A, étage 2',
@@ -41,6 +42,7 @@ const customer = {
 const request = (offerId, consent = false, who = customer) => ({
   offerId, customer: who, termsAccepted: true, marketingConsent: consent,
   fbclid: 'IwAR123_test_ClickId',
+  sccid: 'snap_test_ClickId',
   idempotencyKey: crypto.randomUUID(),
 })
 
@@ -64,8 +66,9 @@ test('three offers preserve destination, query, prefill, images and consent', as
         })
         assert.equal(url.searchParams.get('adv2'), images[offerId])
         assert.match(url.searchParams.get('adv1'), new RegExp(`${{ 'pack-1': 1, 'pack-2': 2, 'pack-3': 3 }[offerId]} sachet`))
-        assert.equal(url.searchParams.get('sub5'), '815653229569193')
+        assert.equal(url.searchParams.get('sub5'), TRACKING_SUB5)
         assert.equal(url.searchParams.get('fbclid'), consent ? 'IwAR123_test_ClickId' : null)
+        assert.equal(url.searchParams.get('ScCid'), consent ? 'snap_test_ClickId' : null)
       }
     }
     const files = await readdir(join(dir, 'everflow-orders'))
@@ -94,10 +97,12 @@ test('unsupported carts, absent phone, and unapproved configuration stay blocked
   assert.equal(preview.images['pack-2'], 'http://localhost:5173/images/everflow/pack-2.png')
   assert.equal(settings({ EVERFLOW_LOCAL_PREVIEW: 'true' }, true).enabled, false)
   assert.equal(settings({ ...previewEnv, NODE_ENV: 'production' }, true).enabled, false)
-  assert.equal(prepareCheckout(request('pack-1', true), { ...config, snapPixel: '' }).attribution, '123456789')
+  assert.equal(prepareCheckout(request('pack-1', true), { ...config, snapPixel: '' }).attribution, '815653229569193')
   assert.equal(prepareCheckout(request('pack-1', false), { ...config, snapPixel: '' }).attribution, '')
   assert.equal(prepareCheckout({ ...request('pack-1', true), fbclid: 'bad&injection' }, config).fbclid, '')
+  assert.equal(prepareCheckout({ ...request('pack-1', true), sccid: 'bad&injection' }, config).sccid, '')
   assert.equal(settings({}).metaPixel, '815653229569193')
+  assert.equal(settings({}).snapPixel, '2b408aa3-8a2d-48aa-b535-5c8dfe935d97')
 })
 
 test('retry reuses pending order and changed payload conflicts', async () => {
@@ -113,13 +118,13 @@ test('retry reuses pending order and changed payload conflicts', async () => {
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
-test('configured attribution cannot replace the supplied sub5', async () => {
+test('configured attribution cannot replace the approved combined sub5', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ariel-everflow-meta-'))
   try {
     const metaOnly = { ...config, metaPixel: '815653229569193', snapPixel: '' }
     const accepted = await createPendingOrder(request('pack-2', true), metaOnly, dir)
     const declined = await createPendingOrder(request('pack-2', false, { ...customer, email: 'another@example.ch' }), metaOnly, dir)
-    assert.equal(new URL(accepted.redirectUrl).searchParams.get('sub5'), '815653229569193')
-    assert.equal(new URL(declined.redirectUrl).searchParams.get('sub5'), '815653229569193')
+    assert.equal(new URL(accepted.redirectUrl).searchParams.get('sub5'), TRACKING_SUB5)
+    assert.equal(new URL(declined.redirectUrl).searchParams.get('sub5'), TRACKING_SUB5)
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
