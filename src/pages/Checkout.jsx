@@ -16,7 +16,8 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { OFFERS, PRODUCT, DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, formatCHF, savingsFor, storeRef } from '../config/store.js'
+import { PRODUCT, PAYMENT_METHODS, PAYMENT_LABELS } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 import { trackStartCheckout } from '../lib/pixel.js'
 import { trackAnalyticsEvent } from '../lib/analytics.js'
 import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
@@ -28,6 +29,8 @@ import UrgencyPanel from '../concepts/frais/Urgency.jsx'
 import { useStoreStatus } from '../lib/storeStatus.js'
 import { useStock, isSoldOut, refreshStock } from '../lib/stock.js'
 import { Chf } from '../concepts/frais/Icons.jsx'
+import LanguageSwitcher from '../components/LanguageSwitcher.jsx'
+
 import { Swap, useMediaQuery } from '../lib/motion.js'
 
 // ─────────────────────────────────────────────────────────────
@@ -45,18 +48,19 @@ const readForm = () => {
   }
 }
 
+// Libellés, aides et exemples de saisie : t.checkout.fields[name] (langue affichée).
 const CONTACT = [
-  { name: 'prenom', label: 'Prénom', autoComplete: 'given-name', half: true, required: true },
-  { name: 'nom', label: 'Nom', autoComplete: 'family-name', half: true, required: true },
-  { name: 'email', label: 'Adresse e-mail', type: 'email', autoComplete: 'email', inputMode: 'email', required: true, hint: 'Pour la confirmation et le suivi de votre commande.' },
+  { name: 'prenom', autoComplete: 'given-name', half: true, required: true },
+  { name: 'nom', autoComplete: 'family-name', half: true, required: true },
+  { name: 'email', type: 'email', autoComplete: 'email', inputMode: 'email', required: true },
   // Indicatif +41 fixe (livraison en Suisse uniquement) : la valeur enregistrée est « +41 79 123 45 67 ».
-  { name: 'tel', label: 'Téléphone', type: 'tel', autoComplete: 'tel', inputMode: 'tel', required: true, placeholder: '79 123 45 67', prefix: '+41', hint: 'Numéro suisse, utile au transporteur en cas de besoin.' },
+  { name: 'tel', type: 'tel', autoComplete: 'tel', inputMode: 'tel', required: true, prefix: '+41' },
 ]
 const ADDRESS = [
-  { name: 'adresse', label: 'Adresse', autoComplete: 'address-line1', required: true, placeholder: 'Rue et numéro' },
-  { name: 'complement', label: 'Complément d’adresse', autoComplete: 'address-line2', placeholder: 'Appartement, étage, c/o…' },
-  { name: 'npa', label: 'Code postal', autoComplete: 'postal-code', inputMode: 'numeric', maxLength: 4, pattern: '[0-9]*', required: true, zip: true },
-  { name: 'ville', label: 'Ville', autoComplete: 'address-level2', required: true, city: true },
+  { name: 'adresse', autoComplete: 'address-line1', required: true },
+  { name: 'complement', autoComplete: 'address-line2' },
+  { name: 'npa', autoComplete: 'postal-code', inputMode: 'numeric', maxLength: 4, pattern: '[0-9]*', required: true, zip: true },
+  { name: 'ville', autoComplete: 'address-level2', required: true, city: true },
 ]
 const ORDERED = [...CONTACT, ...ADDRESS]
 
@@ -68,7 +72,9 @@ const withPrefix = (f, input) => {
   return n ? `${f.prefix} ${n}` : ''
 }
 
-function Field({ f, value, error, valid, onChange, onBlur, list }) {
+function Field({ f: base, value, error, valid, onChange, onBlur, list }) {
+  const { t } = useI18n()
+  const f = { ...base, ...t.checkout.fields[base.name] }
   const id = `f-${f.name}`
   const described = [error && `${id}-err`, f.hint && `${id}-hint`].filter(Boolean).join(' ') || undefined
   const span = f.half ? 'col-span-2 min-[400px]:col-span-1' : f.zip || f.city ? 'col-span-2 min-[360px]:col-span-1' : 'col-span-2'
@@ -81,7 +87,7 @@ function Field({ f, value, error, valid, onChange, onBlur, list }) {
             *
           </span>
         ) : (
-          <span className="ml-1.5 text-[0.76rem] font-medium text-fr-muted">(facultatif)</span>
+          <span className="ml-1.5 text-[0.76rem] font-medium text-fr-muted">{t.checkout.optional}</span>
         )}
       </label>
       <div className="relative mt-1.5">
@@ -106,7 +112,7 @@ function Field({ f, value, error, valid, onChange, onBlur, list }) {
           required={f.required}
           list={list}
           value={(f.prefix ? swissNational(value) : value) || ''}
-          aria-label={f.prefix ? `${f.label}, indicatif ${f.prefix}` : undefined}
+          aria-label={f.prefix ? t.checkout.prefixAria(f.label, f.prefix) : undefined}
           aria-invalid={Boolean(error)}
           aria-describedby={described}
           onChange={(e) => onChange(f.name, f.zip ? e.target.value.replace(/\D/g, '').slice(0, 4) : f.prefix ? withPrefix(f, e.target.value) : e.target.value)}
@@ -167,10 +173,11 @@ function Section({ n, title, children, aside, done = false, style }) {
 // Étapes : le trait vers « Paiement » se remplit à mesure que les informations obligatoires sont complètes.
 // « Paiement » devient « prêt » (contour vert), jamais « fait » : le paiement a lieu chez le prestataire.
 function Steps({ progress }) {
-  const steps = ['Panier', 'Informations', 'Paiement']
+  const { t } = useI18n()
+  const steps = t.checkout.steps
   const ready = progress >= 1
   return (
-    <ol className="flex items-center gap-2 text-[0.76rem] font-semibold" aria-label="Étapes de la commande">
+    <ol className="flex items-center gap-2 text-[0.76rem] font-semibold" aria-label={t.checkout.stepsLabel}>
       {steps.map((s, k) => (
         <li key={s} className="flex items-center gap-2" aria-current={k === 1 ? 'step' : undefined}>
           <span
@@ -188,7 +195,7 @@ function Steps({ progress }) {
           </span>
           <span className={k === 1 ? 'text-fr-ink' : 'text-fr-muted max-[379px]:sr-only'}>
             {s}
-            {k === 1 && <span className="sr-only"> ({Math.round(progress * 100)} % complété)</span>}
+            {k === 1 && <span className="sr-only">{t.checkout.progress(Math.round(progress * 100))}</span>}
           </span>
           {k < steps.length - 1 && (
             <span className="relative h-0.5 w-4 overflow-hidden rounded-full bg-fr-line min-[400px]:w-7" aria-hidden="true">
@@ -205,11 +212,13 @@ function Steps({ progress }) {
 }
 
 function Summary({ offer, changeOffer, stock }) {
-  const save = savingsFor(offer)
+  const { t, money, currency, offers: OFFERS, savings } = useI18n()
+  const sm = t.checkout.summary
+  const save = savings(offer)
   const group = useId()
   return (
     <div className="rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-7">
-      <h2 className="text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-fr-green">Votre commande</h2>
+      <h2 className="text-[0.74rem] font-extrabold uppercase tracking-[0.14em] text-fr-green">{sm.title}</h2>
       <div className="mt-4 flex items-center gap-4">
         <span className="flex h-[4.5rem] w-[4.5rem] flex-none items-end justify-center rounded-2xl bg-fr-mint pb-2">
           <Swap value={offer.id} anim="animate-fade-in" className="flex">
@@ -219,17 +228,17 @@ function Summary({ offer, changeOffer, stock }) {
         <div className="min-w-0 flex-1">
           <p className="font-extrabold leading-tight text-fr-ink">{PRODUCT.name}</p>
           <Swap value={offer.id} as="p" className="mt-0.5 text-[0.86rem] text-fr-muted">
-            {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules
+            {sm.line(offer.packs, offer.washes)}
           </Swap>
         </div>
         <Swap value={offer.id} as="p" className="text-[1.05rem] font-extrabold tabular-nums text-fr-ink">
-          <Chf v={offer.price} format={formatCHF} />
+          <Chf v={offer.price} format={money} />
         </Swap>
       </div>
 
       {/* Modifier la sélection : remplace l'offre (jamais de doublon), les coordonnées restent saisies */}
       <fieldset className="mt-5">
-        <legend className="text-[0.8rem] font-bold text-fr-ink">Modifier mon offre</legend>
+        <legend className="text-[0.8rem] font-bold text-fr-ink">{sm.change}</legend>
         <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-2xl bg-fr-soft p-1.5">
           {OFFERS.map((o) => {
             const on = o.id === offer.id
@@ -243,10 +252,10 @@ function Summary({ offer, changeOffer, stock }) {
               >
                 <input type="radio" name={group} value={o.id} checked={on} onChange={() => changeOffer(o.id)} className="sr-only" />
                 <span className="text-[0.8rem] font-bold text-fr-ink">
-                  {o.packs} sachet{o.packs > 1 ? 's' : ''}
+                  {t.common.sachets(o.packs)}
                 </span>
                 <span className={`text-[0.78rem] font-extrabold tabular-nums transition-colors duration-base ${out ? 'text-fr-muted' : on ? 'text-fr-green' : 'text-fr-muted'}`}>
-                  {out ? 'Épuisé' : <Chf v={o.price} format={formatCHF} />}
+                  {out ? t.common.soldOut : <Chf v={o.price} format={money} />}
                 </span>
               </label>
             )
@@ -256,40 +265,41 @@ function Summary({ offer, changeOffer, stock }) {
 
       <dl className="mt-5 space-y-2 text-[0.9rem]">
         <div className="flex justify-between text-fr-muted">
-          <dt>Sous-total</dt>
+          <dt>{sm.subtotal}</dt>
           <Swap value={offer.id} as="dd" className="tabular-nums text-fr-ink">
-            <Chf v={offer.price} format={formatCHF} />
+            <Chf v={offer.price} format={money} />
           </Swap>
         </div>
         <div className="flex justify-between text-fr-muted">
-          <dt>Livraison (Suisse)</dt>
-          <dd className="font-bold text-fr-green">Offerte</dd>
+          <dt>{sm.delivery}</dt>
+          <dd className="font-bold text-fr-green">{t.common.free}</dd>
         </div>
         {save > 0 && (
           <div className="flex justify-between text-fr-muted">
-            <dt>Vous économisez</dt>
+            <dt>{sm.save}</dt>
             <Swap value={offer.id} as="dd" className="font-semibold tabular-nums text-fr-green">
-              − <Chf v={save} format={formatCHF} />
+              − <Chf v={save} format={money} />
             </Swap>
           </div>
         )}
         <div className="flex items-baseline justify-between border-t border-fr-line pt-3">
-          <dt className="text-[1rem] font-extrabold text-fr-ink">Total à payer</dt>
+          <dt className="text-[1rem] font-extrabold text-fr-ink">{sm.total}</dt>
           <Swap value={offer.id} as="dd" className="text-[1.6rem] font-extrabold tabular-nums tracking-[-0.03em] text-fr-green">
-            <Chf v={offer.price} format={formatCHF} />
+            <Chf v={offer.price} format={money} />
           </Swap>
         </div>
       </dl>
       <p className="mt-1 text-right text-[0.74rem] text-fr-muted">
-        Prix en CHF{MERCHANT.vatNote ? ` · ${MERCHANT.vatNote}` : ''} · {offer.washes} lavages au dosage standard
+        {sm.note(currency, t.pages.policies.vatNote, offer.washes)}
       </p>
     </div>
   )
 }
 
 function MethodPicker({ method, setMethod }) {
+  const { t } = useI18n()
   return (
-    <div role="radiogroup" aria-label="Moyen de paiement" className="grid gap-2 sm:grid-cols-2">
+    <div role="radiogroup" aria-label={t.checkout.method} className="grid gap-2 sm:grid-cols-2">
       {PAYMENT_METHODS.map((m) => {
         const Icon = METHOD_ICONS[m]
         const on = method === m
@@ -302,7 +312,7 @@ function MethodPicker({ method, setMethod }) {
           >
             <input type="radio" name="method" value={m} checked={on} onChange={() => setMethod(m)} className="h-4 w-4 accent-[#0E7A47]" />
             {Icon && <Icon size={18} strokeWidth={1.8} className="text-fr-green" aria-hidden="true" />}
-            {PAYMENT_LABELS[m] || m}
+            {t.payment[m] || PAYMENT_LABELS[m] || m}
           </label>
         )
       })}
@@ -312,6 +322,9 @@ function MethodPicker({ method, setMethod }) {
 
 export default function Checkout() {
   const { offer, hasItems, changeOffer } = useCart()
+  const { t, lang, money, currency, syncCurrency } = useI18n()
+  const c = t.checkout
+  const messages = t.validation
   const storeStatus = useStoreStatus()
   const stock = useStock()
   const soldOut = Boolean(offer) && isSoldOut(stock, offer.id)
@@ -347,6 +360,13 @@ export default function Checkout() {
   const formComplete = useMemo(() =>
     Object.keys(validateCustomer(values, { terms })).length === 0,
   [values, terms])
+  // Changement de langue : les messages déjà affichés sont réécrits dans la nouvelle langue.
+  const firstLang = useRef(lang)
+  useEffect(() => {
+    if (lang === firstLang.current) return
+    firstLang.current = lang
+    setErrors((prev) => (Object.keys(prev).length ? validateCustomer(values, { terms: submitted ? terms : undefined, messages }) : prev))
+  }, [lang]) // eslint-disable-line react-hooks/exhaustive-deps
   const canContinue = formComplete && redirect.checked && paymentReady && !soldOut && status !== 'loading'
   // Offre épuisée : le récapitulatif (où l'on change d'offre) s'ouvre aussi sur mobile.
   useEffect(() => {
@@ -394,22 +414,22 @@ export default function Checkout() {
   const set = (name, v) => {
     const next = { ...values, [name]: v }
     setValues(next)
-    if (touched[name] || submitted) setErrors(validateCustomer(next, { terms: submitted ? terms : undefined }))
+    if (touched[name] || submitted) setErrors(validateCustomer(next, { terms: submitted ? terms : undefined, messages }))
   }
   const blur = (name) => {
     setTouched((t) => ({ ...t, [name]: true }))
-    setErrors(validateCustomer(values, { terms: submitted ? terms : undefined }))
+    setErrors(validateCustomer(values, { terms: submitted ? terms : undefined, messages }))
   }
   const toggleTerms = (v) => {
     setTerms(v)
-    if (submitted) setErrors(validateCustomer(values, { terms: v }))
+    if (submitted) setErrors(validateCustomer(values, { terms: v, messages }))
   }
 
   const focusAlert = () => requestAnimationFrame(() => alertRef.current?.focus())
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    const errs = validateCustomer(values, { terms })
+    const errs = validateCustomer(values, { terms, messages })
     setErrors(errs)
     setSubmitted(true)
     if (Object.keys(errs).length) {
@@ -424,7 +444,7 @@ export default function Checkout() {
       return focusAlert()
     }
     inFlight.current = true
-    trackStartCheckout({ currency: 'CHF', price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs }, offer.id)
+    trackStartCheckout({ currency, price: offer.price, item_ids: [PRODUCT.id], number_items: offer.packs }, offer.id)
     trackAnalyticsEvent('buyClick')
     setStatus('loading')
     if (redirect.enabled) {
@@ -432,7 +452,8 @@ export default function Checkout() {
       const paymentTab = window.open('', '_blank')
       if (paymentTab) paymentTab.opener = null
       // Le serveur revalide la commande puis renvoie l'URL de la page de paiement externe.
-      const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, customer: clean(values) }, redirect.provider)
+      // Devise et total affichés : le serveur refuse la commande s'ils ne correspondent plus à ce qu'il encaissera.
+      const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, currency, total: offer.price, lang, customer: clean(values) }, redirect.provider)
       if (res.status === 'ready') {
         try {
           sessionStorage.setItem(`checkout-payment-v1:${res.orderId}`, res.redirectUrl)
@@ -459,8 +480,14 @@ export default function Checkout() {
       inFlight.current = false
       trackAnalyticsEvent('checkoutError')
       if (res.status === 'invalid') {
-        setErrors(res.errors)
+        // Champs refusés par le serveur, expliqués dans la langue affichée.
+        const local = validateCustomer(values, { terms: true, messages })
+        setErrors(Object.fromEntries(Object.keys(res.errors).map((k) => [k, local[k] || messages.invalid])))
         setStatus('idle')
+      } else if (res.status === 'currency_changed') {
+        // Devise périmée (changement de pays) : les prix se mettent à jour, rien n'est créé ni débité.
+        await syncCurrency()
+        setStatus('currency')
       } else if (res.status === 'sold_out') {
         // Le serveur a refusé : stock insuffisant au moment de la commande. Rien n'est réservé ni débité.
         await refreshStock()
@@ -469,7 +496,7 @@ export default function Checkout() {
       return focusAlert()
     }
     // Le serveur recalcule le montant à partir de l'offre ; aucun total n'est transmis.
-    const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, customer: clean(values) })
+    const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, currency, lang, customer: clean(values) })
     if (res.status !== 'redirecting') {
       inFlight.current = false
       trackAnalyticsEvent('checkoutError')
@@ -482,7 +509,10 @@ export default function Checkout() {
     () => Object.fromEntries(Object.entries(errors).filter(([k]) => touched[k] || submitted)),
     [errors, touched, submitted]
   )
-  const errorList = [...ORDERED.filter((f) => shown[f.name]), ...(shown.terms ? [{ name: 'terms', label: 'Conditions générales' }] : [])]
+  const errorList = [
+    ...ORDERED.filter((f) => shown[f.name]).map((f) => ({ name: f.name, label: c.fields[f.name].label })),
+    ...(shown.terms ? [{ name: 'terms', label: c.termsField }] : []),
+  ]
   const isValid = (name) => (touched[name] || submitted) && !errors[name] && Boolean((values[name] || '').trim())
   // Avancement en direct (sans attendre la sortie du champ) : pastilles de section et trait des étapes.
   const liveErrors = useMemo(() => validateCustomer(values), [values])
@@ -495,10 +525,10 @@ export default function Checkout() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-fr-soft px-6 text-center font-jakarta">
         <Logo />
-        <h1 className="mt-8 text-[1.8rem] font-extrabold tracking-[-0.025em] text-fr-ink">Votre panier est vide</h1>
-        <p className="mt-2 max-w-sm text-fr-muted">Choisissez votre offre Ariel All‑in‑1 PODS avant de passer commande.</p>
+        <h1 className="mt-8 text-[1.8rem] font-extrabold tracking-[-0.025em] text-fr-ink">{t.cart.empty}</h1>
+        <p className="mt-2 max-w-sm text-fr-muted">{c.emptyText}</p>
         <Link to="/#offres" className="mt-6 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white shadow-[0_12px_26px_rgba(14,122,71,0.28)]">
-          Voir les offres
+          {t.cart.seeOffers}
         </Link>
       </div>
     )
@@ -511,24 +541,27 @@ export default function Checkout() {
       <header className="border-b border-fr-line bg-white">
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-4 lg:h-[4.5rem] lg:px-8">
           <Logo />
-          <span className="flex items-center gap-1.5 rounded-full bg-fr-mint px-3 py-1.5 text-[0.76rem] font-bold text-fr-deep">
-            <LockKeyhole size={14} strokeWidth={2} className="text-fr-green" /> Paiement sécurisé
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 rounded-full bg-fr-mint px-3 py-1.5 text-[0.76rem] font-bold text-fr-deep max-[399px]:hidden">
+              <LockKeyhole size={14} strokeWidth={2} className="text-fr-green" /> {c.secure}
+            </span>
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-[1180px] px-4 pb-16 pt-5 lg:px-8 lg:pt-9">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link to="/" className="inline-flex items-center gap-1.5 text-[0.86rem] font-semibold text-fr-muted hover:text-fr-green">
-            <ArrowLeft size={16} /> Retour à la boutique
+            <ArrowLeft size={16} /> {t.common.backToShop}
           </Link>
           <Steps progress={progress} />
         </div>
-        <h1 className="mt-5 animate-fade-up text-[1.85rem] font-extrabold leading-tight tracking-[-0.025em] lg:mt-6 lg:text-[2.5rem]">Finaliser ma commande</h1>
+        <h1 className="mt-5 animate-fade-up text-[1.85rem] font-extrabold leading-tight tracking-[-0.025em] lg:mt-6 lg:text-[2.5rem]">{c.title}</h1>
 
         <div className="mt-5 grid grid-cols-1 gap-5 lg:mt-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
           {/* Récapitulatif : repliable sur mobile, collant sur desktop */}
-          <aside className="min-w-0 lg:sticky lg:top-6 lg:order-2" aria-label="Récapitulatif de commande">
+          <aside className="min-w-0 lg:sticky lg:top-6 lg:order-2" aria-label={c.summaryLabel}>
             <button
               type="button"
               onClick={() => setShowSummary((v) => !v)}
@@ -543,15 +576,15 @@ export default function Checkout() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1 text-[0.86rem] font-bold text-fr-green">
-                  {showSummary ? 'Masquer' : 'Afficher'} le récapitulatif
+                  {showSummary ? c.hideSummary : c.showSummary}
                   <ChevronDown size={16} className={`transition-transform duration-slow ease-out-soft ${showSummary ? 'rotate-180' : ''}`} />
                 </span>
                 <span className="block truncate text-[0.76rem] text-fr-muted">
-                  {offer.packs} sachet{offer.packs > 1 ? 's' : ''} · {offer.washes} capsules · livraison offerte
+                  {c.summaryLine(offer.packs, offer.washes)}
                 </span>
               </span>
               <Swap value={offer.id} className="text-[1.15rem] font-extrabold tabular-nums text-fr-ink">
-                <Chf v={offer.price} format={formatCHF} />
+                <Chf v={offer.price} format={money} />
               </Swap>
             </button>
             <div
@@ -566,15 +599,11 @@ export default function Checkout() {
               <div className="pt-3 lg:pt-0">
               <Summary offer={offer} changeOffer={changeOffer} stock={stock} />
               <ul className="mt-3 hidden space-y-2.5 rounded-[1.6rem] bg-white p-5 text-[0.84rem] ring-1 ring-fr-line lg:block">
-                <li className="flex items-center gap-2.5">
-                  <ShieldCheck size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Aucune donnée de carte ne transite par notre boutique
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Truck size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Livraison offerte en Suisse
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <RotateCcw size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> Retour possible sous {DELIVERY.returnWindowDays} jours après réception
-                </li>
+                {[ShieldCheck, Truck, RotateCcw].map((Icon, k) => (
+                  <li key={k} className="flex items-center gap-2.5">
+                    <Icon size={17} strokeWidth={1.8} className="flex-none text-fr-green" /> {c.assurances[k]}
+                  </li>
+                ))}
               </ul>
               </div>
               </div>
@@ -582,7 +611,7 @@ export default function Checkout() {
           </aside>
 
           <form onSubmit={onSubmit} noValidate className="min-w-0 space-y-4 lg:order-1">
-            <Section n={1} title="Vos coordonnées" done={sectionDone(CONTACT)}>
+            <Section n={1} title={c.contact} done={sectionDone(CONTACT)}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 {CONTACT.map((f) => (
                   <Field key={f.name} {...fieldProps(f)} />
@@ -590,18 +619,18 @@ export default function Checkout() {
               </div>
             </Section>
 
-            <Section n={2} title="Adresse de livraison" done={sectionDone(ADDRESS)} style={{ animationDelay: '50ms' }}>
+            <Section n={2} title={c.address} done={sectionDone(ADDRESS)} style={{ animationDelay: '50ms' }}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 <div className="col-span-2">
                   <p className="block text-[0.86rem] font-bold text-fr-ink" id="pays-label">
-                    Pays
+                    {c.country}
                   </p>
                   <p
                     aria-labelledby="pays-label"
                     className="mt-1.5 flex h-[3.25rem] items-center justify-between gap-3 rounded-2xl border border-fr-line bg-fr-soft px-4 text-[1rem] text-fr-ink"
                   >
-                    Suisse (CH)
-                    <span className="text-right text-[0.72rem] font-semibold leading-tight text-fr-muted">Livraison en Suisse uniquement</span>
+                    {t.common.countryWithCode}
+                    <span className="text-right text-[0.72rem] font-semibold leading-tight text-fr-muted">{c.countryOnly}</span>
                   </p>
                 </div>
                 {ADDRESS.map((f) => (
@@ -631,33 +660,31 @@ export default function Checkout() {
             {!redirect.enabled && (
               <Section
                 n={3}
-                title="Paiement"
+                title={c.payment}
                 style={{ animationDelay: '100ms' }}
                 aside={
                   <span className="hidden items-center gap-1 text-[0.74rem] font-semibold text-fr-muted min-[400px]:flex">
-                    <LockKeyhole size={13} /> Page sécurisée
+                    <LockKeyhole size={13} /> {c.securePage}
                   </span>
                 }
               >
               {!redirect.checked ? (
                 <p className="flex items-center gap-2 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] text-fr-muted">
-                  <Loader2 size={16} className="animate-spin" /> Chargement des moyens de paiement…
+                  <Loader2 size={16} className="animate-spin" /> {c.loadingMethods}
                 </p>
               ) : paymentReady ? (
                 <div className="space-y-3">
                   {PAYMENT_METHODS.length > 0 && <MethodPicker method={method} setMethod={setMethod} />}
                   <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.84rem] leading-relaxed text-fr-muted">
                     <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
-                    Vous serez redirigé vers la page sécurisée de notre prestataire de paiement pour régler {formatCHF(offer.price)}.
-                    Aucune donnée de carte n’est saisie ni conservée par notre boutique.
+                    {c.redirectNote(money(offer.price))}
                   </p>
                 </div>
               ) : (
                 <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] leading-relaxed text-fr-ink">
                   <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
                   <span>
-                    <strong className="font-bold">Paiement en ligne indisponible pour le moment.</strong> Vous pouvez vérifier
-                    votre sélection ci-dessous, mais aucune commande ne sera enregistrée et aucun montant ne sera débité.
+                    <strong className="font-bold">{c.unavailableTitle}</strong>{c.unavailableText}
                   </span>
                 </p>
               )}
@@ -678,15 +705,10 @@ export default function Checkout() {
                   className="mt-0.5 h-5 w-5 flex-none rounded accent-[#0E7A47]"
                 />
                 <span className="text-[0.86rem] leading-relaxed text-fr-ink">
-                  J’accepte les{' '}
-                  <Link to="/conditions-generales-de-vente" target="_blank" rel="noopener" className="font-semibold text-fr-green underline">
-                    conditions générales de vente
-                  </Link>{' '}
-                  et j’ai pris connaissance de la{' '}
-                  <Link to="/retours-remboursements" target="_blank" rel="noopener" className="font-semibold text-fr-green underline">
-                    politique de retour
-                  </Link>
-                  .
+                  {c.terms(
+                    (label) => <Link key="cgv" to="/conditions-generales-de-vente" target="_blank" rel="noopener" className="font-semibold text-fr-green underline">{label}</Link>,
+                    (label) => <Link key="returns" to="/retours-remboursements" target="_blank" rel="noopener" className="font-semibold text-fr-green underline">{label}</Link>,
+                  )}
                   {shown.terms && (
                     <span id="f-terms-err" className="mt-1 flex animate-reveal-down items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
                       <AlertCircle size={14} /> {shown.terms}
@@ -701,7 +723,7 @@ export default function Checkout() {
               {errorList.length > 0 && (
                 <div role="alert" className="animate-reveal-down rounded-2xl border border-red-200 bg-red-50 p-4">
                   <p className="flex items-center gap-2 text-[0.9rem] font-bold text-red-700">
-                    <AlertCircle size={17} /> {errorList.length > 1 ? `Veuillez vérifier ${errorList.length} champs` : 'Veuillez vérifier un champ'}
+                    <AlertCircle size={17} /> {c.checkFields(errorList.length)}
                   </p>
                   <ul className="mt-2 space-y-1 pl-7 text-[0.86rem] text-red-700">
                     {errorList.map((f) => (
@@ -720,22 +742,28 @@ export default function Checkout() {
                   <AlertCircle size={18} className="mt-0.5 flex-none" />
                   <span>
                     <strong className="font-bold">
-                      {offer.packs} sachet{offer.packs > 1 ? 's' : ''} : épuisé pour le moment.
-                    </strong>{' '}
-                    Aucune commande n’a été enregistrée. Choisissez une autre offre dans le récapitulatif ; vos informations sont conservées.
+                      {c.soldOutTitle(offer.packs)}
+                    </strong>
+                    {c.soldOutText}
                   </span>
                 </p>
               )}
               {status === 'cancelled' && (
                 <p role="status" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-fr-line bg-white p-4 text-[0.88rem] text-fr-ink">
                   <Info size={18} className="mt-0.5 flex-none text-fr-green" />
-                  Paiement annulé : aucune commande n’a été passée. Vos informations sont conservées, vous pouvez réessayer.
+                  {c.cancelled}
+                </p>
+              )}
+              {status === 'currency' && (
+                <p role="alert" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-[0.88rem] text-amber-900">
+                  <Info size={18} className="mt-0.5 flex-none" />
+                  {c.currencyChanged}
                 </p>
               )}
               {status === 'error' && (
                 <p role="alert" className="flex animate-reveal-down gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-4 text-[0.88rem] text-red-700">
                   <AlertCircle size={18} className="mt-0.5 flex-none" />
-                  Le paiement n’a pas pu être lancé. Aucun montant n’a été débité. Veuillez réessayer dans un instant.
+                  {c.error}
                 </p>
               )}
             </div>
@@ -751,12 +779,12 @@ export default function Checkout() {
             >
               {status === 'loading' ? (
                 <>
-                  <Loader2 size={19} className="animate-spin" /> Redirection vers le paiement…
+                  <Loader2 size={19} className="animate-spin" /> {c.redirecting}
                 </>
               ) : soldOut ? (
-                'Offre épuisée'
+                t.common.offerSoldOut
               ) : redirect.checked && !paymentReady ? (
-                'Paiement indisponible'
+                c.unavailable
               ) : (
                 <>
                   <span className="relative inline-block h-[18px] w-[18px] shrink-0" aria-hidden="true">
@@ -765,13 +793,13 @@ export default function Checkout() {
                     {canContinue && <ShoppingBag size={18} strokeWidth={2} className="checkout-ready-bag absolute inset-0" />}
                   </span>
                   <span>
-                    Acheter — <Swap value={offer.id}><Chf v={offer.price} format={formatCHF} /></Swap>
+                    {c.buy}<Swap value={offer.id}><Chf v={offer.price} format={money} /></Swap>
                   </span>
                 </>
               )}
             </button>
             <p className="text-center text-[0.76rem] leading-relaxed text-fr-muted">
-              {paymentReady && <>En cliquant sur « Acheter », vous passez une commande avec obligation de paiement auprès de {storeRef()}. Terminez le paiement dans le nouvel onglet.</>}
+              {paymentReady && c.legal}
             </p>
           </form>
         </div>

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
-import { getOffer, PRODUCT } from '../src/config/offers.js'
+import { getOffer, PRODUCT, OFFERS, BASE_CURRENCY, hasPrices } from '../src/config/offers.js'
 import { META_PIXEL_ID, SNAP_PIXEL_ID } from '../src/config/attribution.js'
 import { validateOrder, normalizePhone } from '../src/lib/orderValidation.js'
 import { reserve, attachOrder, loadStock } from './stock.mjs'
@@ -15,6 +15,25 @@ export const TRACKING_LINKS = Object.freeze({
   'pack-2': 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/',
   'pack-3': 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/',
 })
+
+// Payment links per currency. Each link charges the amount set at Everflow for that offer, so a
+// currency is only enabled once its approved prices (src/config/offers.js PRICES) AND all three
+// approved links exist. EUR: links still to be supplied by the merchant (same domain and format).
+export const EUR_TRACKING_LINKS = Object.freeze({})
+const LINKS_BY_CURRENCY = { CHF: TRACKING_LINKS, EUR: EUR_TRACKING_LINKS }
+
+export const linksFor = (currency = BASE_CURRENCY) => LINKS_BY_CURRENCY[currency] || null
+
+// A currency can be charged only with approved prices and one payment link per offer.
+export const currencyReady = (currency) =>
+  currency === BASE_CURRENCY || (hasPrices(currency) && OFFERS.every((o) => Boolean(linksFor(currency)?.[o.id])))
+
+// Product label shown on the hosted payment page, in the customer's language.
+export function productLabel(offer, lang = 'fr') {
+  return lang === 'de'
+    ? `${PRODUCT.name} – ${offer.packs} Beutel (${offer.washes} Kapseln)`
+    : `${PRODUCT.name} – ${offer.packs} sachet${offer.packs > 1 ? 's' : ''} (${offer.washes} capsules)`
+}
 
 // The live admin redirect may still be enabled while the dedicated Everflow
 // checkout is off. Use the same approved URLs whenever that configuration
@@ -57,8 +76,8 @@ export function settings(env = process.env, localRequest = false) {
   }
 }
 
-export function buildEverflowUrl(offerId, customer, imageUrl, fbclid = '', sccid = '') {
-  const approved = TRACKING_LINKS[offerId]
+export function buildEverflowUrl(offerId, customer, imageUrl, fbclid = '', sccid = '', { currency = BASE_CURRENCY, lang = 'fr' } = {}) {
+  const approved = linksFor(currency)?.[offerId]
   const offer = getOffer(offerId)
   if (!approved || !offer) throw new Error('unsupported_offer')
   const url = new URL(approved)
@@ -73,7 +92,7 @@ export function buildEverflowUrl(offerId, customer, imageUrl, fbclid = '', sccid
     sub8: normalizePhone(customer.tel).replace(/^0041/, '+41').replace(/^0([1-9]\d{8})$/, '+41$1'),
   }
   for (const key of PREFILL) if (values[key]) url.searchParams.set(key, values[key])
-  url.searchParams.set('adv1', `${PRODUCT.name} – ${offer.packs} sachet${offer.packs > 1 ? 's' : ''} (${offer.washes} capsules)`)
+  url.searchParams.set('adv1', productLabel(offer, lang))
   url.searchParams.set('adv2', imageUrl)
   if (FBCLID_RE.test(fbclid)) {
     url.searchParams.set('sub1', fbclid)
@@ -83,20 +102,23 @@ export function buildEverflowUrl(offerId, customer, imageUrl, fbclid = '', sccid
   return url.toString()
 }
 
-export function prepareCheckout(body, cfg) {
+// `currency` is the one the server assigned to this visitor (server/geo.mjs). The browser sends the one
+// it displayed; if they differ nothing is created, so the charged amount always matches the shown one.
+export function prepareCheckout(body, cfg, { currency = BASE_CURRENCY } = {}) {
   if (!cfg.enabled) return { status: 409, error: 'payment_unavailable' }
   if (!ID_RE.test(body?.idempotencyKey || '')) return { status: 400, error: 'invalid_idempotency_key' }
-  const result = validateOrder(body)
+  if (!currencyReady(currency)) return { status: 409, error: 'payment_unavailable' }
+  if (body?.currency !== undefined && body.currency !== currency) return { status: 409, error: 'currency_mismatch', currency }
+  const result = validateOrder(body, { currency })
   if (!result.ok) return { status: 422, error: 'invalid', errors: result.errors }
   const order = result.order
   if (!order.customer.tel) return { status: 422, error: 'invalid', errors: { tel: 'Veuillez indiquer votre numéro de téléphone.' } }
   if (body.cart !== undefined || (body.packs !== undefined && body.packs !== order.packs) ||
       (body.quantity !== undefined && body.quantity !== order.packs) ||
-      (body.currency !== undefined && body.currency !== 'CHF') ||
       (body.total !== undefined && body.total !== order.total)) {
     return { status: 422, error: 'unsupported_cart' }
   }
-  if (!TRACKING_LINKS[order.offerId] || !cfg.images[order.offerId]) return { status: 422, error: 'unsupported_offer' }
+  if (!linksFor(currency)?.[order.offerId] || !cfg.images[order.offerId]) return { status: 422, error: 'unsupported_offer' }
   const fbclid = body.marketingConsent === true && FBCLID_RE.test(body.fbclid || '') ? body.fbclid : ''
   const sccid = body.marketingConsent === true && SCCID_RE.test(body.sccid || '') ? body.sccid : ''
   return { status: 200, order, fbclid, sccid }
@@ -108,8 +130,8 @@ export function prepareCheckout(body, cfg) {
 // a sold-out offer never produces a pending order, and a retry never holds the stock twice.
 // The same customer (e-mail + phone) ordering the same offer again within the dedup window
 // (server/orders.mjs) reuses their pending order and its stock hold, updated with the latest details.
-export async function createPendingOrder(body, cfg, dataDir) {
-  const prepared = prepareCheckout(body, cfg)
+export async function createPendingOrder(body, cfg, dataDir, options = {}) {
+  const prepared = prepareCheckout(body, cfg, options)
   if (prepared.status !== 200) return prepared
   return withCustomerLock(prepared.order, () => createPendingOrderLocked(body, cfg, dataDir, prepared))
 }
@@ -131,7 +153,7 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
       : existing
     if (!merged) return { status: 409, error: 'recent_order', orderId: existing.orderId }
     return { status: 200, orderId: merged.orderId, statusText: 'pending', duplicate: true,
-      redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.fbclid, merged.sccid) }
+      redirectUrl: buildEverflowUrl(merged.order.offerId, merged.order.customer, merged.imageUrl, merged.fbclid, merged.sccid, linkOptions(merged.order)) }
   }
   const byKey = await readOrder(dataDir, key)
   if (byKey) return resultFor(key, byKey)
@@ -165,8 +187,11 @@ async function createPendingOrderLocked(body, cfg, dataDir, prepared) {
   }
   await attachOrder(dataDir, key, record.orderId)
   return { status: 200, orderId: record.orderId, statusText: 'pending',
-    redirectUrl: buildEverflowUrl(record.order.offerId, record.order.customer, record.imageUrl, record.fbclid, record.sccid) }
+    redirectUrl: buildEverflowUrl(record.order.offerId, record.order.customer, record.imageUrl, record.fbclid, record.sccid, linkOptions(record.order)) }
 }
+
+// Orders stored before localization have neither field: CHF and French.
+const linkOptions = (order) => ({ currency: order.currency || BASE_CURRENCY, lang: order.lang || 'fr' })
 
 export async function readPendingOrder(dataDir, key) {
   const path = orderPath(dataDir, key)

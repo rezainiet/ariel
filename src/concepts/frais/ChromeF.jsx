@@ -2,16 +2,23 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ShoppingBag, Truck, RotateCcw, Tag } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
-import { MERCHANT, STORE, DELIVERY, storeRef } from '../../config/store.js'
+import { MERCHANT, STORE } from '../../config/store.js'
 import MissingInfo from '../../components/ui/MissingInfo.jsx'
-import { ANNOUNCEMENTS } from './contentF.js'
+import LanguageSwitcher from '../../components/LanguageSwitcher.jsx'
+import { useI18n } from '../../i18n/index.jsx'
 import { Swap } from '../../lib/motion.js'
 
 const ICONS = [Tag, Truck, RotateCcw]
 
+// Prix d'entrée (offre la moins chère) dans la devise du visiteur.
+const entryPrice = (offers, money) => money(Math.min(...offers.map((o) => o.price)))
+
 // Bandeau d'annonce : desktop = les trois messages côte à côte ; mobile = fondu enchaîné lent
 // (pas de défilement), en pause au survol/focus et figé si l'utilisateur réduit les animations.
 export function Announcement() {
+  const { t, offers, money } = useI18n()
+  const from = entryPrice(offers, money)
+  const ANNOUNCEMENTS = [t.announce.clearance(from), t.announce.freeDelivery, t.announce.returns]
   const [i, setI] = useState(0)
   const [paused, setPaused] = useState(false)
   useEffect(() => {
@@ -49,7 +56,7 @@ export function Announcement() {
                   {i === 0 ? (
                     <>
                       <span className="max-[379px]:hidden">{ANNOUNCEMENTS[0]}</span>
-                      <span className="min-[380px]:hidden">Déstockage · dès CHF 4.–</span>
+                      <span className="min-[380px]:hidden">{t.announce.clearanceShort(from)}</span>
                     </>
                   ) : (
                     ANNOUNCEMENTS[i]
@@ -65,6 +72,7 @@ export function Announcement() {
 }
 
 export function Logo({ light = false }) {
+  const { t } = useI18n()
   return (
     <Link to="/" className="flex items-center gap-2.5 font-jakarta text-[1.02rem] font-extrabold tracking-[-0.02em] text-fr-ink">
       <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-fr-leaf to-fr-green text-white shadow-[0_4px_10px_rgba(14,122,71,0.3)]">
@@ -77,23 +85,17 @@ export function Logo({ light = false }) {
         <span className="max-[359px]:text-[0.9rem]">{STORE.name}</span>
       ) : (
         <span className="leading-none">
-          Déstockage
-          <span className={`block text-[0.62rem] font-bold uppercase tracking-[0.18em] ${light ? 'text-fr-leaf' : 'text-fr-green'}`}>Suisse</span>
+          {t.logo.top}
+          <span className={`block text-[0.62rem] font-bold uppercase tracking-[0.18em] ${light ? 'text-fr-leaf' : 'text-fr-green'}`}>{t.logo.bottom}</span>
         </span>
       )}
     </Link>
   )
 }
 
-const NAV = [
-  ['Offres', '#offres'],
-  ['Pourquoi Ariel', '#pourquoi'],
-  ['Livraison', '#livraison'],
-  ['FAQ', '#faq'],
-]
-
 export function HeaderF() {
   const { packs, openDrawer, addedAt } = useCart()
+  const { t } = useI18n()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 40)
@@ -109,46 +111,51 @@ export function HeaderF() {
     >
       <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-10 px-4 lg:h-[4.5rem] lg:px-8">
         <Logo />
-        <nav aria-label="Navigation principale" className="hidden gap-8 font-jakarta text-[0.9rem] font-semibold text-fr-ink/80 lg:flex">
-          {NAV.map(([label, href]) => (
+        <nav aria-label={t.nav.label} className="hidden gap-8 font-jakarta text-[0.9rem] font-semibold text-fr-ink/80 lg:flex">
+          {t.nav.items.map(([label, href]) => (
             <a key={href} href={href} className="relative py-2 transition-colors hover:text-fr-green after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-fr-green after:transition-transform after:duration-base after:ease-out-soft hover:after:scale-x-100">
               {label}
             </a>
           ))}
         </nav>
-        <button
-          onClick={openDrawer}
-          aria-label={packs ? `Panier : ${packs} sachet${packs > 1 ? 's' : ''}` : 'Panier vide'}
-          className="relative ml-auto flex h-11 items-center gap-2 rounded-full bg-fr-mint px-3.5 font-jakarta text-sm font-bold text-fr-deep transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint2 motion-safe:active:scale-[0.97] lg:px-4"
-        >
-          {/* Ajout au panier : un seul anneau qui s'efface (jamais une confirmation de commande) */}
-          <Swap value={addedAt} anim="glow-once" className="pointer-events-none absolute inset-0 rounded-full" aria-hidden="true" />
-          <ShoppingBag size={19} strokeWidth={1.9} />
-          <span className="hidden lg:inline">Panier</span>
-          {/* La pastille se pose en douceur quand le contenu du panier change */}
-          <Swap
-            value={packs}
-            anim="animate-pop"
-            className={`flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.68rem] font-extrabold ${
-              packs ? 'bg-fr-green text-white' : 'bg-white text-fr-muted'
-            }`}
+        <div className="ml-auto flex items-center gap-2 lg:gap-2.5">
+          <LanguageSwitcher />
+          <button
+            onClick={openDrawer}
+            aria-label={packs ? t.nav.cartCount(packs) : t.nav.cartEmpty}
+            className="relative flex h-11 items-center gap-2 rounded-full bg-fr-mint px-3.5 font-jakarta text-sm font-bold text-fr-deep transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint2 motion-safe:active:scale-[0.97] lg:px-4"
           >
-            {packs}
-          </Swap>
-        </button>
+            {/* Ajout au panier : un seul anneau qui s'efface (jamais une confirmation de commande) */}
+            <Swap value={addedAt} anim="glow-once" className="pointer-events-none absolute inset-0 rounded-full" aria-hidden="true" />
+            <ShoppingBag size={19} strokeWidth={1.9} />
+            <span className="hidden lg:inline">{t.nav.cart}</span>
+            {/* La pastille se pose en douceur quand le contenu du panier change */}
+            <Swap
+              value={packs}
+              anim="animate-pop"
+              className={`flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.68rem] font-extrabold ${
+                packs ? 'bg-fr-green text-white' : 'bg-white text-fr-muted'
+              }`}
+            >
+              {packs}
+            </Swap>
+          </button>
+        </div>
       </div>
     </header>
   )
 }
 
 export function FooterF({ stickyPad = false }) {
+  const { t, currency } = useI18n()
+  const f = t.footer
   const address = [MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
-    ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${MERCHANT.country}` : null
+    ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${t.common.country}` : null
   const merchantLines = [
-    ['legal', MERCHANT.legalName || <MissingInfo>Raison sociale à renseigner</MissingInfo>],
-    ['address', address || <MissingInfo>Adresse postale à renseigner</MissingInfo>],
-    ['uid', MERCHANT.uid ? `IDE ${MERCHANT.uid}` : <MissingInfo>N° IDE à renseigner</MissingInfo>],
-    ['email', STORE.supportEmail || <MissingInfo>E-mail à renseigner</MissingInfo>],
+    ['legal', MERCHANT.legalName || <MissingInfo>{f.missingLegal}</MissingInfo>],
+    ['address', address || <MissingInfo>{f.missingAddress}</MissingInfo>],
+    ['uid', MERCHANT.uid ? f.uid(MERCHANT.uid) : <MissingInfo>{f.missingUid}</MissingInfo>],
+    ['email', STORE.supportEmail || <MissingInfo>{f.missingEmail}</MissingInfo>],
   ]
   return (
     <footer className={`bg-fr-deep font-jakarta text-fr-mint/80 ${stickyPad ? 'pb-28 lg:pb-0' : ''}`}>
@@ -163,11 +170,7 @@ export function FooterF({ stickyPad = false }) {
             ))}
           </address>
         </div>
-        {[
-          ['La boutique', [['Offres', '/#offres'], ['Pourquoi Ariel', '/#pourquoi'], ['Livraison', '/#livraison'], ['FAQ', '/#faq']]],
-          ['Service', [['Contact & suivi', '/contact'], ['Livraison', '/livraison'], ['Retours & remboursements', '/retours-remboursements']]],
-          ['Informations légales', [['Conditions générales', '/conditions-generales-de-vente'], ['Confidentialité', '/politique-de-confidentialite'], ['Mentions légales', '/mentions-legales']]],
-        ].map(([title, links]) => (
+        {f.columns.map(([title, links]) => (
           <div key={title}>
             <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-fr-mint/50">{title}</p>
             <ul className="mt-4 space-y-2.5 text-sm">
@@ -186,8 +189,8 @@ export function FooterF({ stickyPad = false }) {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-2 px-4 py-6 text-xs text-fr-mint/55 lg:flex-row lg:justify-between lg:px-8">
-          <p>Prix en CHF · Livraison offerte en Suisse · Retour sous {DELIVERY.returnWindowDays} jours</p>
-          <p>Ariel est une marque de The Procter &amp; Gamble Company. {storeRef(true)} n’est pas le site officiel de la marque.</p>
+          <p>{f.bottom(currency)}</p>
+          <p>{f.brand}</p>
         </div>
       </div>
     </footer>

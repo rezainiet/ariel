@@ -21,6 +21,7 @@ import { Announcement, HeaderF, FooterF } from './concepts/frais/ChromeF.jsx'
 import { trackPageView, trackViewContent } from './lib/pixel.js'
 import { PRODUCT } from './config/offers.js'
 import { trackAnalyticsPage } from './lib/analytics.js'
+import { useI18n } from './i18n/index.jsx'
 
 // Archives de conception (v1, concepts A/B/C, page de comparaison) : INTERNES uniquement.
 // Absentes du build public (VITE_DESIGN_PREVIEW=true seulement pour un environnement de recette).
@@ -37,10 +38,11 @@ const DesignCompare = DESIGN_PREVIEW ? lazy(() => import('./pages/DesignCompare.
 // Le pixel n'est chargé qu'après consentement (ConsentBanner) : avant, l'appel est sans effet.
 function RouteEffects() {
   const { pathname, hash } = useLocation()
+  const { currency } = useI18n()
   useEffect(() => {
     if (!hash) window.scrollTo(0, 0)
     trackPageView()
-    if (pathname === '/') trackViewContent({ item_ids: [PRODUCT.id], item_category: 'detergent', currency: 'CHF' })
+    if (pathname === '/') trackViewContent({ item_ids: [PRODUCT.id], item_category: 'detergent', currency })
     trackAnalyticsPage(pathname)
   }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
@@ -74,8 +76,9 @@ function V1Layout() {
 }
 
 function PageLoader() {
+  const { t } = useI18n()
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ivory" role="status" aria-label="Chargement">
+    <div className="flex min-h-screen items-center justify-center bg-ivory" role="status" aria-label={t.common.loading}>
       <span className="h-8 w-8 animate-spin rounded-full border-2 border-forest/20 border-t-forest" />
     </div>
   )

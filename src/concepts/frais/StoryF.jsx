@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { WashingMachine, Play, ArrowRight, Check } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
-import { OFFERS, formatCHF, getOffer, savingsFor, centsPerWash } from '../../config/store.js'
+import { centsPerWash } from '../../config/store.js'
+import { useI18n } from '../../i18n/index.jsx'
 import { IMAGES } from '../../config/assets.js'
 import { isSoldOut } from '../../lib/stock.js'
 import { Swap } from '../../lib/motion.js'
@@ -10,7 +11,7 @@ import { radioKeyHandler } from '../shared/hooks.js'
 import { IconTile, PodIcon, Chf } from './Icons.jsx'
 import { Rise, RevealFrame, useRevealed } from './motion.jsx'
 import { STORY } from './mediaF.js'
-import { COLD_HOTSPOTS, GESTURE } from './contentF.js'
+import { COLD_HOTSPOTS } from './contentF.js'
 import { Packs } from './HeroF.jsx'
 
 // ─────────────────────────────────────────────────────────────
@@ -21,7 +22,6 @@ import { Packs } from './HeroF.jsx'
 
 const W = 'mx-auto max-w-[1320px] px-4 lg:px-8'
 const cents = (o) => String(centsPerWash(o)).replace('.', ',')
-const sachets = (n) => `${n} sachet${n > 1 ? 's' : ''}`
 
 // Achat direct : l'offre est placée au panier (sans doublon) puis la commande s'ouvre.
 function useBuyNow() {
@@ -64,52 +64,53 @@ function Title({ id, children, className = '' }) {
 const GESTURE_ICONS = { pod: PodIcon, load: WashingMachine, run: Play }
 
 function Gesture() {
+  const g = useI18n().t.story.gesture
   const [ref, shown] = useRevealed({ threshold: 0.2 })
   return (
     <section id="pourquoi" data-analytics-section="story" aria-labelledby="geste-titre" className={`${W} scroll-mt-20 grid items-center gap-8 py-14 lg:grid-cols-[1.08fr_1fr] lg:gap-16 lg:py-24`}>
       <div className="relative">
         <RevealFrame className="aspect-[4/3.3] bg-fr-mint lg:aspect-[5/6]">
-          <Pic p={STORY.podHand} alt="Une capsule Ariel tenue au-dessus du tambour d’un lave-linge" className="h-full w-full object-cover object-[50%_38%]" sizes="(min-width:1024px) 640px, 100vw" />
+          <Pic p={STORY.podHand} alt={g.photoAlt} className="h-full w-full object-cover object-[50%_38%]" sizes="(min-width:1024px) 640px, 100vw" />
         </RevealFrame>
         <Rise from="scale" delay={380} className="absolute -bottom-5 right-4 w-[30%] max-w-[12rem] lg:-bottom-8 lg:-right-6">
           <div className="overflow-hidden rounded-full border-[5px] border-white shadow-[0_18px_40px_rgba(11,61,42,0.22)] lg:border-[7px]">
-            <img src={STORY.podWater.src} alt="La capsule en gros plan" loading="lazy" className="aspect-square w-full object-cover" />
+            <img src={STORY.podWater.src} alt={g.closeUpAlt} loading="lazy" className="aspect-square w-full object-cover" />
           </div>
         </Rise>
         <Rise delay={240} className="absolute left-4 top-4 lg:left-6 lg:top-6">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/95 py-1.5 pl-1.5 pr-3.5 font-jakarta text-[0.78rem] font-bold text-fr-ink shadow-md">
-            <IconTile icon={PodIcon} size="sm" round /> 1 capsule = 1 dose
+            <IconTile icon={PodIcon} size="sm" round /> {g.dose}
           </span>
         </Rise>
       </div>
 
       <div className="pt-2 lg:pt-0">
         <Rise>
-          <Kicker n="1">Le geste</Kicker>
+          <Kicker n="1">{g.kicker}</Kicker>
           <Title id="geste-titre">
-            Une capsule.
-            <span className="block text-fr-green">Un geste simple.</span>
+            {g.title[0]}
+            <span className="block text-fr-green">{g.title[1]}</span>
           </Title>
           <p className="mt-4 max-w-md font-jakarta text-[0.98rem] leading-relaxed text-fr-muted lg:mt-5 lg:text-[1.05rem]">
-            Chaque capsule contient une dose de lessive prête à l’emploi : rien à verser, rien à mesurer.
+            {g.intro}
           </p>
         </Rise>
         <ol ref={ref} className={`relative mt-6 space-y-4 lg:mt-8 lg:space-y-5 ${shown ? 'is-in' : ''}`}>
           <span className="reveal-line absolute bottom-5 left-[1.06rem] top-5 w-px bg-gradient-to-b from-fr-green/50 to-fr-line lg:left-[1.37rem]" aria-hidden="true" />
-          {GESTURE.map((g, k) => (
-            <Rise as="li" from="left" key={g.key} delay={160 + k * 110} className="relative flex items-start gap-3.5 font-jakarta">
-              <IconTile icon={GESTURE_ICONS[g.key]} size="sm" className="relative lg:!h-11 lg:!w-11 lg:!rounded-[14px]" />
+          {g.steps.map((s, k) => (
+            <Rise as="li" from="left" key={s.key} delay={160 + k * 110} className="relative flex items-start gap-3.5 font-jakarta">
+              <IconTile icon={GESTURE_ICONS[s.key]} size="sm" className="relative lg:!h-11 lg:!w-11 lg:!rounded-[14px]" />
               <span className="pt-0.5">
                 <span className="block text-[0.95rem] font-bold leading-snug text-fr-ink lg:text-[1.02rem]">
-                  <span className="sr-only">Étape {k + 1} : </span>
-                  {g.title}
+                  <span className="sr-only">{g.step(k + 1)}</span>
+                  {s.title}
                 </span>
-                <span className="block text-[0.84rem] leading-snug text-fr-muted lg:text-[0.9rem]">{g.body}</span>
+                <span className="block text-[0.84rem] leading-snug text-fr-muted lg:text-[0.9rem]">{s.body}</span>
               </span>
             </Rise>
           ))}
         </ol>
-        <p className="mt-5 font-jakarta text-[0.78rem] text-fr-muted">Jamais dans le bac à produits · d’après le mode d’emploi Ariel</p>
+        <p className="mt-5 font-jakarta text-[0.78rem] text-fr-muted">{g.note}</p>
       </div>
     </section>
   )
@@ -143,17 +144,20 @@ function CapsuleGrid({ packs, shown }) {
 
 function Quantity({ sel, setSel, stock, soldOut }) {
   const buyNow = useBuyNow()
+  const { t, money, offers: OFFERS, offer: getOffer, savings } = useI18n()
+  const q = t.story.quantity
+  const sachets = t.common.sachets
   const [ref, shown] = useRevealed({ threshold: 0.25 })
   const tiles = useRef([])
   const offer = getOffer(sel)
   const idx = OFFERS.findIndex((o) => o.id === sel)
-  const save = savingsFor(offer)
+  const save = savings(offer)
   return (
     <section id="f-quantite" data-analytics-section="quantity" aria-labelledby="quantite-titre" className="scroll-mt-20 bg-gradient-to-b from-fr-mint/70 to-fr-mint/20 py-14 lg:py-24">
       <div className={`${W} grid items-center gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-16`}>
         <div>
           <Rise from="right">
-            <Kicker n="2">La quantité</Kicker>
+            <Kicker n="2">{q.kicker}</Kicker>
           </Rise>
           <Rise from="right" delay={80} className="relative mt-2 flex items-end gap-4 lg:mt-0">
             <span className="bg-gradient-to-br from-fr-leaf via-fr-green to-fr-deep bg-clip-text font-jakarta text-[6rem] font-extrabold leading-[0.85] tracking-[-0.05em] text-transparent lg:text-[13.5rem]">
@@ -161,18 +165,17 @@ function Quantity({ sel, setSel, stock, soldOut }) {
             </span>
             <img
               src={IMAGES.packshotCutout}
-              alt="Le sachet Ariel All-in-1 PODS de 60 capsules"
+              alt={q.packAlt}
               loading="lazy"
               className="mb-1 w-[30%] max-w-[15rem] rotate-[5deg] drop-shadow-[0_24px_28px_rgba(11,61,42,0.25)] lg:mb-3 lg:w-[38%]"
             />
           </Rise>
           <Rise from="right" delay={150}>
             <Title id="quantite-titre" className="!mt-3">
-              capsules dans chaque sachet.
+              {q.title}
             </Title>
             <p className="mt-4 max-w-md font-jakarta text-[0.98rem] leading-relaxed text-fr-muted lg:text-[1.05rem]">
-              Un sachet refermable de 60 capsules, soit 60 lavages au dosage standard d’une capsule. Le nombre réel dépend de la
-              taille de la charge, du degré de salissure et de la dureté de l’eau.
+              {q.intro}
             </p>
           </Rise>
         </div>
@@ -180,7 +183,7 @@ function Quantity({ sel, setSel, stock, soldOut }) {
         <Rise from="scale" delay={100}>
           <div ref={ref} className="rounded-[1.75rem] bg-white p-4 shadow-[0_24px_60px_rgba(11,61,42,0.10)] ring-1 ring-fr-line lg:p-7">
             {/* Même sélection que « Choisir mon offre » : la pastille glisse d'une offre à l'autre */}
-            <div role="radiogroup" aria-label="Nombre de sachets" className="relative grid grid-cols-3 rounded-full bg-fr-soft p-1 font-jakarta">
+            <div role="radiogroup" aria-label={q.group} className="relative grid grid-cols-3 rounded-full bg-fr-soft p-1 font-jakarta">
               <span
                 aria-hidden="true"
                 className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-fr-deep shadow-md transition-transform duration-slow ease-out-soft"
@@ -204,7 +207,7 @@ function Quantity({ sel, setSel, stock, soldOut }) {
                     }`}
                   >
                     <span className="text-[0.82rem] font-bold">{sachets(o.packs)}</span>
-                    <span className={`text-[0.68rem] font-semibold ${on ? 'text-fr-mint' : ''}`}>{out ? 'Épuisé' : formatCHF(o.price)}</span>
+                    <span className={`text-[0.68rem] font-semibold ${on ? 'text-fr-mint' : ''}`}>{out ? t.common.soldOut : money(o.price)}</span>
                   </button>
                 )
               })}
@@ -214,23 +217,23 @@ function Quantity({ sel, setSel, stock, soldOut }) {
             </div>
             <dl className="mt-6 grid grid-cols-3 divide-x divide-fr-line border-y border-fr-line py-3 text-center font-jakarta">
               <div>
-                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Capsules</dt>
+                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.capsules}</dt>
                 <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">
                   <Swap value={offer.id}>{offer.washes}</Swap>
                 </dd>
               </div>
               <div>
-                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Prix total</dt>
+                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.total}</dt>
                 <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">
                   <Swap value={offer.id}>
-                    <Chf v={offer.price} format={formatCHF} />
+                    <Chf v={offer.price} format={money} />
                   </Swap>
                 </dd>
               </div>
               <div>
-                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">Par lavage*</dt>
+                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.perWash}</dt>
                 <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-green lg:text-[1.6rem]">
-                  <Swap value={offer.id}>{cents(offer)} ct</Swap>
+                  <Swap value={offer.id}>{q.cents(cents(offer))}</Swap>
                 </dd>
               </div>
             </dl>
@@ -238,10 +241,10 @@ function Quantity({ sel, setSel, stock, soldOut }) {
               <Swap value={offer.id} as="p" className="font-jakarta text-[0.8rem] text-fr-muted">
                 {save > 0 ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-fr-mint px-2.5 py-1 font-bold text-fr-green">
-                    <Check size={13} strokeWidth={3} /> {formatCHF(save)} de moins que {offer.packs} × {formatCHF(OFFERS[0].price)}
+                    <Check size={13} strokeWidth={3} /> {q.saveVs(money(save), offer.packs, money(OFFERS[0].price))}
                   </span>
                 ) : (
-                  'Le format découverte'
+                  q.discovery
                 )}
               </Swap>
               {/* Desktop : action directe ici. Mobile : la barre d'achat en bas d'écran suit déjà cette sélection. */}
@@ -252,20 +255,20 @@ function Quantity({ sel, setSel, stock, soldOut }) {
                 className="hidden h-11 items-center gap-2 rounded-full bg-fr-green px-5 font-jakarta text-[0.88rem] font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-fr-muted lg:inline-flex"
               >
                 {soldOut ? (
-                  'Offre épuisée'
+                  t.common.offerSoldOut
                 ) : (
                   <>
-                    Acheter {sachets(offer.packs)} · <Chf v={offer.price} format={formatCHF} /> <ArrowRight size={15} />
+                    {q.buy(offer.packs)}<Chf v={offer.price} format={money} /> <ArrowRight size={15} />
                   </>
                 )}
               </button>
             </div>
             {soldOut && (
               <p role="status" className="mt-3 animate-reveal-down rounded-xl bg-fr-soft px-3 py-2 font-jakarta text-[0.8rem] font-semibold text-fr-ink lg:hidden">
-                {sachets(offer.packs)} : épuisé pour le moment. Choisissez une autre quantité.
+                {q.soldOutNote(offer.packs)}
               </p>
             )}
-            <p className="mt-3 font-jakarta text-[0.7rem] text-fr-muted">* Au dosage standard d’une capsule par lavage.</p>
+            <p className="mt-3 font-jakarta text-[0.7rem] text-fr-muted">{q.footnote}</p>
           </div>
         </Rise>
       </div>
@@ -275,6 +278,9 @@ function Quantity({ sel, setSel, stock, soldOut }) {
 
 // ── 3 · Sur l'emballage : la photo se pose, puis les repères apparaissent un à un ──
 function OnPack() {
+  const p = useI18n().t.story.onPack
+  // Positions sur la photo + libellés de la langue affichée (quote = texte imprimé, absent en allemand).
+  const spots = COLD_HOTSPOTS.map((pos, k) => ({ ...pos, ...p.hotspots[k] }))
   const [active, setActiveRaw] = useState(null)
   const [explored, setExplored] = useState(false)
   const [photoRef, photoShown] = useRevealed({ threshold: 0.3 })
@@ -286,22 +292,21 @@ function OnPack() {
     <section id="f-froid" data-analytics-section="product" aria-labelledby="froid-titre" className={`${W} scroll-mt-20 grid items-center gap-7 py-14 lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:py-24`}>
       <div className="order-2 lg:order-1">
         <Rise from="left">
-          <Kicker n="3">Sur l’emballage</Kicker>
+          <Kicker n="3">{p.kicker}</Kicker>
           <Title id="froid-titre">
-            Pensé pour votre
-            <span className="block text-fr-green">routine de lavage.</span>
+            {p.title[0]}
+            <span className="block text-fr-green">{p.title[1]}</span>
           </Title>
           <p className="mt-4 max-w-md font-jakarta text-[0.98rem] leading-relaxed text-fr-muted lg:mt-5 lg:text-[1.05rem]">
-            Ce que promet l’emballage, traduit de l’allemand : une capsule qui se dissout rapidement et un détachage dès le premier
-            lavage, même à l’eau froide.
+            {p.intro}
           </p>
         </Rise>
         <ol className="mt-6 space-y-2" onMouseLeave={() => setActive(null)}>
-          {COLD_HOTSPOTS.map((h, k) => (
+          {spots.map((h, k) => (
             <Rise
               as="li"
               from="left"
-              key={h.de}
+              key={k}
               delay={120 + k * 90}
               onMouseEnter={() => setActive(k)}
               className={`flex cursor-default items-start gap-3.5 rounded-2xl p-3 font-jakarta lg:p-3.5 ${active === k ? 'bg-fr-mint' : 'bg-fr-soft lg:bg-transparent'}`}
@@ -314,32 +319,34 @@ function OnPack() {
                 {k + 1}
               </span>
               <span>
-                <span className="block text-[0.95rem] font-bold leading-snug text-fr-ink">{h.fr}</span>
-                <span lang="de" className="mt-0.5 block text-[0.78rem] italic text-fr-muted">
-                  « {h.de} »
-                </span>
+                <span lang={h.quote ? undefined : 'de'} className="block text-[0.95rem] font-bold leading-snug text-fr-ink">{h.label}</span>
+                {h.quote && (
+                  <span lang="de" className="mt-0.5 block text-[0.78rem] italic text-fr-muted">
+                    « {h.quote} »
+                  </span>
+                )}
               </span>
             </Rise>
           ))}
         </ol>
-        <p className="mt-4 font-jakarta text-[0.72rem] text-fr-muted">Mentions de la face avant du sachet. Allégations du fabricant.</p>
+        <p className="mt-4 font-jakarta text-[0.72rem] text-fr-muted">{p.note}</p>
       </div>
 
       {/* Photo avec repères posés à côté des mentions imprimées */}
       <div ref={photoRef} className={`relative order-1 lg:order-2 ${photoShown ? 'is-in' : ''}`}>
         {/* Cadre au format exact de la photo (4:5) : les repères, en % de l'image, restent sur le texte imprimé. */}
         <RevealFrame className="aspect-[4/5]">
-          <Pic p={STORY.cold} alt="Le sachet Ariel posé sur une tablette en bois, devant des serviettes blanches" className="h-full w-full object-cover" />
+          <Pic p={STORY.cold} alt={p.photoAlt} className="h-full w-full object-cover" />
         </RevealFrame>
-        {COLD_HOTSPOTS.map((h, k) => (
+        {spots.map((h, k) => (
           <button
-            key={h.de}
+            key={k}
             type="button"
             onClick={() => setActive(active === k ? null : k)}
             onMouseEnter={() => setActive(k)}
             onFocus={() => setActive(k)}
             onBlur={() => setActive(null)}
-            aria-label={`Repère ${k + 1} : ${h.fr}`}
+            aria-label={p.marker(k + 1, h.label)}
             aria-pressed={active === k}
             className="group absolute z-10 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
             style={{ left: `${h.x}%`, top: `${h.y}%` }}
@@ -366,15 +373,17 @@ function OnPack() {
         >
           {active !== null && (
             <>
-              <p className="text-[0.92rem] font-bold text-fr-ink">{COLD_HOTSPOTS[active].fr}</p>
-              <p lang="de" className="text-[0.76rem] italic text-fr-muted">
-                « {COLD_HOTSPOTS[active].de} »
-              </p>
+              <p lang={spots[active].quote ? undefined : 'de'} className="text-[0.92rem] font-bold text-fr-ink">{spots[active].label}</p>
+              {spots[active].quote && (
+                <p lang="de" className="text-[0.76rem] italic text-fr-muted">
+                  « {spots[active].quote} »
+                </p>
+              )}
             </>
           )}
         </div>
         <span className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 font-jakarta text-[0.72rem] font-semibold text-fr-ink shadow-md lg:bottom-5 lg:left-5">
-          <span className="h-1.5 w-1.5 rounded-full bg-fr-green" /> Touchez les repères
+          <span className="h-1.5 w-1.5 rounded-full bg-fr-green" /> {p.touch}
         </span>
       </div>
     </section>
@@ -396,9 +405,11 @@ export default function StoryF({ sel, setSel, stock, soldOut }) {
 // Sur mobile, la barre d'achat en bas d'écran tient ce rôle : pas de second appel concurrent. ──
 export function FinalCta({ sel, soldOut }) {
   const buyNow = useBuyNow()
+  const { t, money, offer: getOffer } = useI18n()
+  const f = t.story.final
   const offer = getOffer(sel)
   return (
-    <section data-analytics-section="final" aria-label="Commander" className="hidden bg-white pb-20 lg:block">
+    <section data-analytics-section="final" aria-label={f.label} className="hidden bg-white pb-20 lg:block">
       <div className={W}>
         <Rise from="scale" className="flex items-center gap-8 rounded-[2rem] bg-gradient-to-br from-fr-deep to-[#0E5A3A] px-10 py-8 font-jakarta text-white">
           <span className="flex h-24 w-32 flex-none items-end justify-center rounded-2xl bg-white/10 pb-2">
@@ -407,16 +418,16 @@ export function FinalCta({ sel, soldOut }) {
             </Swap>
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-leaf">Votre sélection</p>
+            <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-leaf">{f.kicker}</p>
             <p className="mt-1 text-[1.6rem] font-extrabold tracking-[-0.02em]">
               <Swap value={offer.id}>
-                {sachets(offer.packs)} · {offer.washes} capsules · <Chf v={offer.price} format={formatCHF} />
+                {f.line(offer.packs, offer.washes)}<Chf v={offer.price} format={money} />
               </Swap>
             </p>
             <p className="mt-1 text-[0.86rem] text-fr-mint/80">
-              Prix total, livraison offerte en Suisse ·{' '}
+              {f.note}
               <a href="#offres" className="font-semibold text-white underline-offset-2 hover:underline">
-                modifier l’offre
+                {f.change}
               </a>
             </p>
           </div>
@@ -426,7 +437,8 @@ export function FinalCta({ sel, soldOut }) {
             disabled={soldOut}
             className="flex h-14 flex-none items-center gap-2.5 rounded-full bg-white px-7 text-[1rem] font-extrabold text-fr-deep shadow-[0_14px_28px_rgba(0,0,0,0.18)] transition-[transform,background-color] duration-base ease-out-soft hover:bg-fr-mint can-hover:hover:-translate-y-px motion-safe:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {soldOut ? 'Offre épuisée' : 'Acheter maintenant'} {!soldOut && <ArrowRight size={18} />}
+            {soldOut ? t.common.offerSoldOut : f.buyNow} {!soldOut && <ArrowRight size={18} />}
+
           </button>
         </Rise>
       </div>

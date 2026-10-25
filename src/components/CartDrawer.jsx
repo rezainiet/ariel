@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, ShoppingBag, Truck, RotateCcw, ArrowRight, Minus, Plus, MapPin, CheckCircle2 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { OFFERS, PRODUCT, DELIVERY, MERCHANT, formatCHF, savingsFor } from '../config/store.js'
+import { PRODUCT, DELIVERY, MERCHANT } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 import { IMAGES } from '../config/assets.js'
 import ProductImage from './ui/ProductImage.jsx'
 import Button from './ui/Button.jsx'
@@ -74,6 +75,8 @@ const SKINS = {
 
 export default function CartDrawer() {
   const { drawerOpen, closeDrawer, offer, hasItems, washes, total, clear, changeOffer, skin, addedAt } = useCart()
+  const { t, money, offers: OFFERS, savings } = useI18n()
+  const c = t.cart
   // La boutique (Frais) est l'habillage par défaut ; les concepts de comparaison imposent le leur.
   const S = SKINS[skin] || SKINS.f
   const stock = useStock()
@@ -129,13 +132,13 @@ export default function CartDrawer() {
   }
 
   if (!mounted) return null
-  const saving = offer ? savingsFor(offer) : 0
+  const saving = offer ? savings(offer) : 0
   const soldOut = Boolean(offer) && isSoldOut(stock, offer.id)
 
   return (
-    <div className={`fixed inset-0 z-[60] ${leaving ? 'pointer-events-none' : ''}`} role="dialog" aria-modal="true" aria-label="Panier" inert={leaving ? '' : undefined}>
+    <div className={`fixed inset-0 z-[60] ${leaving ? 'pointer-events-none' : ''}`} role="dialog" aria-modal="true" aria-label={c.dialog} inert={leaving ? '' : undefined}>
       <button
-        aria-label="Fermer le panier"
+        aria-label={c.closeCart}
         tabIndex={-1}
         onClick={closeDrawer}
         className={`absolute inset-0 bg-ink/40 backdrop-blur-[2px] ${leaving ? 'animate-fade-out' : 'animate-fade-in'}`}
@@ -147,17 +150,17 @@ export default function CartDrawer() {
       >
         <div className={`flex items-center justify-between px-5 py-4 ${S.head}`}>
           <h2 className={`flex items-center gap-2 text-base tracking-tight ${S.title}`}>
-            <ShoppingBag size={18} className={S.icon} /> Votre panier
+            <ShoppingBag size={18} className={S.icon} /> {c.title}
             {hasItems && (
               <span className="rounded-full bg-sage px-2 py-0.5 font-sans text-[0.7rem] font-bold text-forest">
-                {offer.packs} sachet{offer.packs > 1 ? 's' : ''}
+                {t.common.sachets(offer.packs)}
               </span>
             )}
           </h2>
           <button
             ref={closeRef}
             onClick={closeDrawer}
-            aria-label="Fermer"
+            aria-label={c.close}
             className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${S.close}`}
           >
             <X size={20} />
@@ -170,8 +173,8 @@ export default function CartDrawer() {
               <ShoppingBag size={26} strokeWidth={1.6} />
             </span>
             <div>
-              <p className="font-semibold text-ink">Votre panier est vide</p>
-              <p className="mt-1 text-sm text-muted">Choisissez votre offre Ariel All‑in‑1 PODS pour commencer.</p>
+              <p className="font-semibold text-ink">{c.empty}</p>
+              <p className="mt-1 text-sm text-muted">{c.emptyText}</p>
             </div>
             <Button
               variant="outline"
@@ -182,7 +185,7 @@ export default function CartDrawer() {
                 else navigate('/#offres')
               }}
             >
-              Voir les offres
+              {c.seeOffers}
             </Button>
           </div>
         ) : (
@@ -191,7 +194,7 @@ export default function CartDrawer() {
               {justAdded && (
                 <p role="status" className="mb-3 flex animate-reveal-down items-center gap-2 rounded-xl bg-fr-mint px-3 py-2 text-[0.84rem] font-semibold text-fr-deep [animation-delay:180ms]">
                   <CheckCircle2 size={17} className="flex-none animate-pop text-fr-green [animation-delay:260ms]" aria-hidden="true" />
-                  Ajouté au panier
+                  {c.added}
                 </p>
               )}
               <div className={`rounded-2xl border p-4 ${S.card || 'border-line bg-surface'}`}>
@@ -201,7 +204,7 @@ export default function CartDrawer() {
                     <span
                       className={`flex h-24 w-24 flex-none items-end justify-center rounded-xl pb-2 ${S === SKINS.f ? 'bg-fr-mint' : 'bg-sand/70'}`}
                       role="img"
-                      aria-label={`${PRODUCT.name} — ${offer.label}`}
+                      aria-label={`${PRODUCT.name} — ${t.common.sachets(offer.packs)}`}
                     >
                       <Swap value={offer.id} anim="animate-fade-in" className={`flex ${justAdded ? 'animate-toast-in [animation-delay:120ms]' : ''}`}>
                         <PackStack packs={offer.packs} />
@@ -211,7 +214,7 @@ export default function CartDrawer() {
                     <ProductImage
                       src={offer.image || IMAGES.packshot}
                       fit="contain"
-                      alt={`${PRODUCT.name} — ${offer.label}`}
+                      alt={`${PRODUCT.name} — ${t.common.sachets(offer.packs)}`}
                       ratio="1 / 1"
                       className="h-24 w-24 flex-none bg-white"
                     />
@@ -219,19 +222,19 @@ export default function CartDrawer() {
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[0.98rem] font-bold leading-tight text-ink">{PRODUCT.name}</h3>
                     <p className="mt-0.5 text-sm text-muted">
-                      {offer.packs} × 60 capsules · {washes} lavages
+                      {c.line(offer.packs, washes)}
                     </p>
-                    <Swap value={offer.id} as="p" className={`mt-2 text-xl tabular-nums ${S.display}`}>{formatCHF(offer.price)}</Swap>
+                    <Swap value={offer.id} as="p" className={`mt-2 text-xl tabular-nums ${S.display}`}>{money(offer.price)}</Swap>
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
-                  <span className="text-sm font-medium text-ink">Nombre de sachets</span>
+                  <span className="text-sm font-medium text-ink">{c.count}</span>
                   <div className="flex items-center rounded-full border border-line bg-canvas">
                     <button
                       onClick={() => step(-1)}
                       disabled={idx <= 0}
-                      aria-label="Un sachet de moins"
+                      aria-label={c.less}
                       className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-[background-color,transform,opacity] duration-base ease-out-soft hover:bg-sage/60 motion-safe:active:scale-90 disabled:opacity-30"
                     >
                       <Minus size={16} />
@@ -242,7 +245,7 @@ export default function CartDrawer() {
                     <button
                       onClick={() => step(1)}
                       disabled={idx >= OFFERS.length - 1}
-                      aria-label="Un sachet de plus"
+                      aria-label={c.more}
                       className="flex h-10 w-10 items-center justify-center rounded-full text-forest transition-[background-color,transform,opacity] duration-base ease-out-soft hover:bg-sage/60 motion-safe:active:scale-90 disabled:opacity-30"
                     >
                       <Plus size={16} />
@@ -252,12 +255,12 @@ export default function CartDrawer() {
 
                 {soldOut && (
                   <p role="status" className="mt-3 animate-reveal-down rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
-                    Cette offre est épuisée pour le moment. Choisissez un autre nombre de sachets.
+                    {c.soldOut}
                   </p>
                 )}
                 {saving > 0 && !soldOut && (
                   <Swap value={offer.id} as="p" className="mt-3 rounded-lg bg-sage/50 px-3 py-2 text-xs font-medium text-forest">
-                    Vous économisez {formatCHF(saving)} par rapport à {offer.packs} sachets achetés séparément.
+                    {c.saving(money(saving), offer.packs)}
                   </Swap>
                 )}
               </div>
@@ -266,24 +269,23 @@ export default function CartDrawer() {
                 onClick={clear}
                 className="mt-3 text-xs font-medium text-muted underline-offset-2 hover:text-forest hover:underline"
               >
-                Retirer l’article
+                {c.remove}
               </button>
 
               {/* Uniquement des informations confirmées (délai et lieu d'expédition seulement si configurés) */}
               <ul className="mt-6 space-y-3 text-sm text-ink/80">
                 <li className="flex items-center gap-2.5">
-                  <Truck size={16} className="flex-none text-fr-green" /> Livraison offerte en Suisse
-                  {DELIVERY.estimateDays ? ` · estimée sous ${DELIVERY.estimateDays} jours ouvrables` : ''}
+                  <Truck size={16} className="flex-none text-fr-green" /> {c.delivery}
+                  {DELIVERY.estimateDays ? c.deliveryEta(DELIVERY.estimateDays) : ''}
                 </li>
                 {(MERCHANT.dispatchCity || DELIVERY.dispatchLocation) && (
                   <li className="flex items-center gap-2.5">
-                    <MapPin size={16} className="flex-none text-fr-green" /> Expédié depuis{' '}
-                    {MERCHANT.dispatchCity ? `${MERCHANT.dispatchCity} (Suisse)` : DELIVERY.dispatchLocation}
+                    <MapPin size={16} className="flex-none text-fr-green" /> {c.shippedFrom}
+                    {MERCHANT.dispatchCity ? t.common.inSwitzerland(MERCHANT.dispatchCity) : DELIVERY.dispatchLocation}
                   </li>
                 )}
                 <li className="flex items-center gap-2.5">
-                  <RotateCcw size={16} className="flex-none text-fr-green" /> Retour possible sous {DELIVERY.returnWindowDays} jours
-                  après réception
+                  <RotateCcw size={16} className="flex-none text-fr-green" /> {c.returns}
                 </li>
               </ul>
             </div>
@@ -291,16 +293,16 @@ export default function CartDrawer() {
             <div className={`border-t border-line px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 ${S.foot}`}>
               <dl className="space-y-1.5 text-sm">
                 <div className="flex justify-between text-muted">
-                  <dt>Sous-total</dt>
-                  <dd className="tabular-nums">{formatCHF(offer.price)}</dd>
+                  <dt>{c.subtotal}</dt>
+                  <dd className="tabular-nums">{money(offer.price)}</dd>
                 </div>
                 <div className="flex justify-between text-muted">
-                  <dt>Livraison</dt>
-                  <dd className="font-semibold text-forest">Offerte</dd>
+                  <dt>{c.shipping}</dt>
+                  <dd className="font-semibold text-forest">{t.common.free}</dd>
                 </div>
                 <div className="mt-2 flex items-baseline justify-between border-t border-line pt-3">
-                  <dt className="text-base font-bold text-ink">Total</dt>
-                  <Swap value={total} as="dd" className={`text-2xl tabular-nums ${S.display}`}>{formatCHF(total)}</Swap>
+                  <dt className="text-base font-bold text-ink">{c.total}</dt>
+                  <Swap value={total} as="dd" className={`text-2xl tabular-nums ${S.display}`}>{money(total)}</Swap>
                 </div>
               </dl>
 
@@ -309,14 +311,15 @@ export default function CartDrawer() {
                 disabled={soldOut}
                 className={`mt-4 flex h-14 disabled:cursor-not-allowed disabled:opacity-50 w-full items-center justify-center gap-2 text-base font-bold tracking-tight transition-[background-color,color,transform,box-shadow] duration-base ease-out-soft motion-safe:active:scale-[0.99] ${S.cta}`}
               >
-                {S.sentenceCta ? `Passer commande · ${formatCHF(total)}` : 'PASSER COMMANDE'}
+                {S.sentenceCta ? c.checkout(money(total)) : c.checkoutUpper}
                 <ArrowRight size={18} />
               </button>
               <button
                 onClick={closeDrawer}
                 className="mt-2 w-full py-2 text-center text-sm font-medium text-muted transition-colors duration-fast hover:text-forest"
               >
-                Continuer mes achats
+                {c.continue}
+
               </button>
             </div>
           </>

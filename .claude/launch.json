@@ -12,6 +12,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["--env-file=.env.server.local", "server/index.mjs"],
       "port": 8787
+    },
+    {
+      "name": "ariel-geo-test",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env.server.local", "--env-file=.env.geo-test.local", "server/index.mjs"],
+      "port": 8787
     }
   ]
 }

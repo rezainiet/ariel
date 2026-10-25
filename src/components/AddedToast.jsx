@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { formatCHF } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 import { usePresence } from '../lib/motion.js'
 
 // Confirmation discrète après un VRAI ajout au panier (quand le panier reste fermé).
 export default function AddedToast() {
   const { addedAt, drawerOpen, offer, openDrawer } = useCart()
+  const { t, money } = useI18n()
   const [visible, setVisible] = useState(false)
   const { pathname } = useLocation()
   const drawerRef = useRef(drawerOpen)
@@ -38,9 +39,9 @@ export default function AddedToast() {
     >
       <CheckCircle2 size={22} className="flex-none text-fr-green" />
       <p className="flex-1 text-sm text-fr-ink">
-        <span className="font-semibold">Ajouté au panier</span>
+        <span className="font-semibold">{t.toast.added}</span>
         <span className="block text-xs text-fr-muted">
-          {shownOffer.packs} sachet{shownOffer.packs > 1 ? 's' : ''} · {shownOffer.washes} capsules · {formatCHF(shownOffer.price)}
+          {t.toast.line(shownOffer.packs, shownOffer.washes, money(shownOffer.price))}
         </span>
       </p>
       <button
@@ -50,7 +51,8 @@ export default function AddedToast() {
         }}
         className="h-10 flex-none rounded-full bg-fr-green px-4 text-xs font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.97]"
       >
-        Voir le panier
+        {t.toast.view}
+
       </button>
     </div>
   )

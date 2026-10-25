@@ -1,45 +1,42 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
 import { DELIVERY, MERCHANT } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 
 // Conditions de livraison : uniquement des informations confirmées.
 // Délai, lieu d'expédition et transporteur n'apparaissent que s'ils sont configurés.
 export default function Shipping() {
-  const from = MERCHANT.dispatchCity ? `${MERCHANT.dispatchCity} (Suisse)` : DELIVERY.dispatchLocation
+  const { t, currency } = useI18n()
+  const p = t.pages.shipping
+  const from = MERCHANT.dispatchCity ? t.common.inSwitzerland(MERCHANT.dispatchCity) : DELIVERY.dispatchLocation
+  const strong = (text) => <strong key="s" className="text-fr-ink">{text}</strong>
+  const link = (text) => (
+    <Link key="l" to="/retours-remboursements" className="font-semibold text-fr-green underline">
+      {text}
+    </Link>
+  )
   return (
     <>
-      <PageHeader eyebrow="Service client" title="Livraison" intro="La livraison est offerte partout en Suisse, sur les trois offres." />
+      <PageHeader eyebrow={t.pages.service} title={p.title} intro={p.intro} />
       <Prose>
-        <Block title="Frais de livraison">
-          <p>
-            La livraison est <strong className="text-fr-ink">offerte</strong> en Suisse : le montant affiché avant l’achat est le
-            montant total à payer, en CHF.
-          </p>
+        <Block title={p.costTitle}>
+          <p>{p.cost(strong, currency)}</p>
         </Block>
-        <Block title="Zone de livraison">
-          <p>Nous livrons uniquement à des adresses en Suisse.</p>
+        <Block title={p.zoneTitle}>
+          <p>{p.zone}</p>
         </Block>
         {(DELIVERY.estimateDays || from || MERCHANT.carrier) && (
-          <Block title="Expédition">
-            {DELIVERY.estimateDays && <p>Délai de livraison estimé : {DELIVERY.estimateDays} jours ouvrables. Les délais sont indicatifs.</p>}
-            {from && <p>Expédition depuis {from}.</p>}
-            {MERCHANT.carrier && <p>Transporteur : {MERCHANT.carrier}.</p>}
+          <Block title={p.dispatchTitle}>
+            {DELIVERY.estimateDays && <p>{p.eta(DELIVERY.estimateDays)}</p>}
+            {from && <p>{p.from(from)}</p>}
+            {MERCHANT.carrier && <p>{p.carrier(MERCHANT.carrier)}</p>}
           </Block>
         )}
-        <Block title="Suivi de votre commande">
-          <p>
-            Vous recevez un e-mail de confirmation après votre commande, puis un e-mail lors de l’expédition, avec un lien de suivi
-            lorsqu’il est disponible.
-          </p>
+        <Block title={p.trackingTitle}>
+          <p>{p.tracking}</p>
         </Block>
-        <Block title="Colis endommagé ou incomplet">
-          <p>
-            Contactez-nous dès réception avec votre numéro de commande. Voir aussi{' '}
-            <Link to="/retours-remboursements" className="font-semibold text-fr-green underline">
-              Retours &amp; remboursements
-            </Link>
-            .
-          </p>
+        <Block title={p.damagedTitle}>
+          <p>{p.damaged(link)}</p>
         </Block>
       </Prose>
     </>

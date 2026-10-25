@@ -113,6 +113,8 @@ export {
   DEFAULT_OFFER_ID,
   getOffer,
   formatCHF,
+  formatMoney,
+  pricedOffer,
   SINGLE_PACK_PRICE,
   savingsFor,
   pricePerPack,

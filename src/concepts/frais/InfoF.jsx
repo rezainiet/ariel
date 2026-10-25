@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { BadgeCheck, Play, Pause, Truck, RotateCcw, LockKeyhole, Plus, ArrowUpRight, MessageCircleQuestion, Star, ShieldAlert } from 'lucide-react'
 import { DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, STORE, VIDEO, STOCK_VIDEO } from '../../config/store.js'
 import { summarize, formatReviewDate } from '../../data/reviews.js'
+import { useI18n } from '../../i18n/index.jsx'
 import { IconTile } from './Icons.jsx'
 import { Rise } from './motion.jsx'
-import { INFO_ITEMS, SAFETY_NOTE } from './contentF.js'
 
 const W = 'mx-auto max-w-[1320px] px-4 lg:px-8'
 
@@ -25,8 +25,9 @@ function SectionHead({ eyebrow, title, accent, aside }) {
 }
 
 function Stars({ value, size = 14 }) {
+  const { t } = useI18n()
   return (
-    <span className="inline-flex gap-0.5" aria-label={`${value} sur 5`}>
+    <span className="inline-flex gap-0.5" aria-label={t.common.rating(value)}>
       {[1, 2, 3, 4, 5].map((k) => (
         <span key={k} className={`flex h-5 w-5 items-center justify-center rounded-[2px] ${k <= Math.round(value) ? 'bg-fr-green text-white' : 'bg-fr-line text-white'}`}>
           <Star size={size} strokeWidth={1.4} fill="currentColor" aria-hidden="true" />
@@ -37,6 +38,8 @@ function Stars({ value, size = 14 }) {
 }
 
 export function ReviewsF({ reviewState }) {
+  const { t, lang } = useI18n()
+  const r9 = t.reviews
   const { status, reviews } = reviewState
   const [visibleCount, setVisibleCount] = useState(3)
   const [ratingFilter, setRatingFilter] = useState(null)
@@ -56,19 +59,19 @@ export function ReviewsF({ reviewState }) {
     <section id="avis" data-analytics-section="reviews" className="scroll-mt-20 bg-[#F7FAF8] py-12 lg:py-20">
       <div className={W}>
         <Rise>
-          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">{hasExternal ? 'Avis sur le produit' : 'Avis clients'}</p>
-          <h2 className="mt-2 font-jakarta text-[1.9rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink lg:text-[2.8rem]">Ce qu’en disent les utilisateurs.</h2>
+          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">{hasExternal ? r9.eyebrowExternal : r9.eyebrow}</p>
+          <h2 className="mt-2 font-jakarta text-[1.9rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink lg:text-[2.8rem]">{r9.title}</h2>
         </Rise>
         <div className="mt-6 grid gap-6 rounded-[1.5rem] border border-fr-line bg-white p-5 font-jakarta shadow-[0_12px_32px_rgba(11,61,42,0.04)] sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:max-w-[52rem] lg:p-7">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-3">
               <strong className="text-[3.4rem] font-extrabold leading-none tracking-[-0.05em] text-fr-ink">{sum.average.toFixed(1).replace('.', ',')}</strong>
-              <span className="text-sm font-semibold text-fr-muted">sur 5</span>
+              <span className="text-sm font-semibold text-fr-muted">{r9.outOf5}</span>
             </div>
             <div className="mt-2"><Stars value={sum.average} size={14} /></div>
-            <p className="mt-2 text-[0.8rem] text-fr-muted">Moyenne des {sum.count} avis publiés ici</p>
+            <p className="mt-2 text-[0.8rem] text-fr-muted">{r9.average(sum.count)}</p>
           </div>
-          <div className="space-y-1" aria-label="Répartition des notes">
+          <div className="space-y-1" aria-label={r9.distribution}>
             {sum.distribution.map(({ stars, n, pct }) => (
               <button key={stars} type="button" onClick={() => selectRating(ratingFilter === stars ? null : stars)} disabled={!n} aria-pressed={ratingFilter === stars} className="group flex w-full items-center gap-2 rounded-md py-0.5 text-xs text-fr-ink transition-colors hover:text-fr-green focus-visible:outline-2 focus-visible:outline-fr-green disabled:cursor-default disabled:opacity-45">
                 <span className="w-2 text-right font-bold">{stars}</span><Star size={12} className="fill-fr-green text-fr-green" aria-hidden="true" />
@@ -78,10 +81,10 @@ export function ReviewsF({ reviewState }) {
             ))}
           </div>
         </div>
-        {hasExternal && <p className="mt-4 max-w-3xl font-jakarta text-[0.78rem] leading-relaxed text-fr-muted">Avis externes sur Ariel All-in-1 PODS (REWE Produkttests et Testbericht.de), résumés et traduits. Certains concernent une autre contenance ; aucun ne provient d’un achat dans notre boutique.</p>}
+        {hasExternal && <p className="mt-4 max-w-3xl font-jakarta text-[0.78rem] leading-relaxed text-fr-muted">{r9.externalNote}</p>}
         <div className="mt-7 flex items-center justify-between gap-3 font-jakarta">
-          <p className="text-sm font-bold text-fr-ink">{ratingFilter ? `${filtered.length} avis à ${ratingFilter} étoiles` : `${sum.count} avis`}</p>
-          {ratingFilter && <button type="button" onClick={() => selectRating(null)} className="text-xs font-bold text-fr-green underline underline-offset-4">Toutes les notes</button>}
+          <p className="text-sm font-bold text-fr-ink">{ratingFilter ? r9.filtered(filtered.length, ratingFilter) : r9.count(sum.count)}</p>
+          {ratingFilter && <button type="button" onClick={() => selectRating(null)} className="text-xs font-bold text-fr-green underline underline-offset-4">{r9.allRatings}</button>}
         </div>
         <ul className="mt-3 grid gap-3 lg:grid-cols-3 lg:gap-5">
           {items.map((r, k) => (
@@ -90,16 +93,17 @@ export function ReviewsF({ reviewState }) {
                 <Stars value={r.rating} />
                 {r.verified && (
                   <span className="inline-flex items-center gap-1 text-[0.7rem] font-bold text-fr-green">
-                    <BadgeCheck size={14} strokeWidth={1.9} /> Achat vérifié
+                    <BadgeCheck size={14} strokeWidth={1.9} /> {r9.verified}
                   </span>
                 )}
               </div>
-              {r.title && <p className="mt-3 text-[1rem] font-bold text-fr-ink">{r.title}</p>}
-              <p className="mt-4 flex-1 text-[0.9rem] leading-relaxed text-fr-ink">{r.body}</p>
+              {/* Contenu de l'avis tel que publié (jamais traduit ni modifié) : marqué en français. */}
+              {r.title && <p lang="fr" className="mt-3 text-[1rem] font-bold text-fr-ink">{r.title}</p>}
+              <p lang="fr" className="mt-4 flex-1 text-[0.9rem] leading-relaxed text-fr-ink">{r.body}</p>
               {Array.isArray(r.photos) && r.photos.length > 0 && (
                 <div className="mt-3 flex gap-2">
                   {r.photos.slice(0, 3).map((src) => (
-                    <img key={src} src={src} alt={`Photo partagée par ${r.author}`} loading="lazy" className="h-20 w-20 rounded-xl object-cover ring-1 ring-fr-line" />
+                    <img key={src} src={src} alt={r9.photoBy(r.author)} loading="lazy" className="h-20 w-20 rounded-xl object-cover ring-1 ring-fr-line" />
                   ))}
                 </div>
               )}
@@ -107,7 +111,7 @@ export function ReviewsF({ reviewState }) {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fr-mint text-sm font-extrabold text-fr-green" aria-hidden="true">{r.author.charAt(0).toLocaleUpperCase()}</span>
                 <span className="min-w-0 text-[0.76rem] leading-snug">
                   <strong className="block truncate font-semibold text-fr-ink">{r.author}</strong>
-                  <span className="text-fr-muted">{r.source ? 'Avis externe · ' : r.location ? `${r.location} · ` : ''}{r.source ? r.source.originalDate : formatReviewDate(r.date)}</span>
+                  <span className="text-fr-muted">{r.source ? r9.external : r.location ? `${r.location} · ` : ''}{r.source ? r.source.originalDate : formatReviewDate(r.date, lang)}</span>
                 </span>
               </div>
             </Rise>
@@ -115,7 +119,7 @@ export function ReviewsF({ reviewState }) {
         </ul>
         {filtered.length > visibleCount && (
           <button onClick={() => setVisibleCount((count) => count + 9)} className="mt-5 h-11 rounded-full px-6 font-jakarta text-sm font-bold text-fr-green ring-1 ring-fr-green/40 transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint motion-safe:active:scale-[0.98]">
-            Voir plus d’avis ({filtered.length - visibleCount})
+            {r9.more(filtered.length - visibleCount)}
           </button>
         )}
       </div>
@@ -125,12 +129,14 @@ export function ReviewsF({ reviewState }) {
 
 // ── Vidéos fournies par le marchand. Sans fichier : la section n'existe pas. ──
 const videoTime = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+// Titres et légendes : t.video.product / t.video.stock.
 const VIDEO_CLIPS = [
-  { id: 'product', title: 'Les capsules de près', ...VIDEO },
-  { id: 'stock', title: 'Ariel en entrepôt', ...STOCK_VIDEO },
+  { id: 'product', ...VIDEO },
+  { id: 'stock', ...STOCK_VIDEO },
 ].filter((clip) => clip.src)
 
 function VideoCard({ clip, activeId, setActiveId }) {
+  const v = useI18n().t.video
   const ref = useRef(null)
   const playerRef = useRef(null)
   const inView = useRef(false)
@@ -198,7 +204,7 @@ function VideoCard({ clip, activeId, setActiveId }) {
             aria-label={clip.title}
           />
           {!playing && (
-            <button type="button" onClick={togglePlay} className="group absolute inset-0 flex items-center justify-center bg-fr-deep/10" aria-label={`Lire : ${clip.title}`}>
+            <button type="button" onClick={togglePlay} className="group absolute inset-0 flex items-center justify-center bg-fr-deep/10" aria-label={v.play(clip.title)}>
               <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-fr-green shadow-xl transition-transform duration-base ease-out-soft can-hover:group-hover:scale-105 motion-safe:active:scale-95">
                 <Play size={26} className="ml-1 fill-current" />
               </span>
@@ -206,10 +212,10 @@ function VideoCard({ clip, activeId, setActiveId }) {
           )}
         </div>
         <div className="flex h-14 items-center gap-2.5 px-3 font-jakarta text-fr-ink">
-          <button type="button" onClick={togglePlay} aria-label={playing ? `Mettre en pause : ${clip.title}` : `Lire : ${clip.title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fr-green text-white transition-colors hover:bg-fr-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fr-green">
+          <button type="button" onClick={togglePlay} aria-label={playing ? v.pause(clip.title) : v.play(clip.title)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fr-green text-white transition-colors hover:bg-fr-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fr-green">
             {playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5 fill-current" />}
           </button>
-          <input type="range" min="0" max={Math.max(1, Math.floor(duration))} value={current} onChange={(event) => { if (ref.current) ref.current.currentTime = Number(event.target.value); setCurrent(Number(event.target.value)) }} aria-label={`Position : ${clip.title}`} className="h-1 min-w-0 flex-1 cursor-pointer accent-fr-green" />
+          <input type="range" min="0" max={Math.max(1, Math.floor(duration))} value={current} onChange={(event) => { if (ref.current) ref.current.currentTime = Number(event.target.value); setCurrent(Number(event.target.value)) }} aria-label={v.position(clip.title)} className="h-1 min-w-0 flex-1 cursor-pointer accent-fr-green" />
           <span className="shrink-0 text-[0.65rem] font-semibold tabular-nums text-fr-muted">{videoTime(current)} / {videoTime(duration)}</span>
         </div>
       </div>
@@ -219,18 +225,20 @@ function VideoCard({ clip, activeId, setActiveId }) {
 }
 
 export function VideoF() {
+  const v = useI18n().t.video
   const [activeId, setActiveId] = useState(null)
   if (!VIDEO_CLIPS.length) return null
+  const clips = VIDEO_CLIPS.map((clip) => ({ ...clip, ...v[clip.id] }))
   return (
     <section id="video" data-analytics-section="video" aria-labelledby="video-title" className="scroll-mt-20 bg-white py-12 lg:py-20">
       <div className={W}>
         <Rise>
-          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">En images</p>
-          <h2 id="video-title" className="mt-3 max-w-xl font-jakarta text-[1.9rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink lg:text-[2.8rem]">Ariel en vidéo.</h2>
-          <p className="mt-4 max-w-2xl font-jakarta text-[0.92rem] leading-relaxed text-fr-muted">Découvrez les capsules et une vue de produits Ariel en entrepôt. Les variantes filmées diffèrent du sachet proposé ici.</p>
+          <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">{v.eyebrow}</p>
+          <h2 id="video-title" className="mt-3 max-w-xl font-jakarta text-[1.9rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink lg:text-[2.8rem]">{v.title}</h2>
+          <p className="mt-4 max-w-2xl font-jakarta text-[0.92rem] leading-relaxed text-fr-muted">{v.intro}</p>
         </Rise>
-        <div className={`mx-auto mt-8 grid max-w-[20rem] gap-8 ${VIDEO_CLIPS.length > 1 ? 'md:max-w-[48rem] md:grid-cols-2' : ''}`}>
-          {VIDEO_CLIPS.map((clip) => <VideoCard key={clip.id} clip={clip} activeId={activeId} setActiveId={setActiveId} />)}
+        <div className={`mx-auto mt-8 grid max-w-[20rem] gap-8 ${clips.length > 1 ? 'md:max-w-[48rem] md:grid-cols-2' : ''}`}>
+          {clips.map((clip) => <VideoCard key={clip.id} clip={clip} activeId={activeId} setActiveId={setActiveId} />)}
         </div>
       </div>
     </section>
@@ -240,13 +248,15 @@ export function VideoF() {
 // ── Livraison suisse & retours : uniquement des informations confirmées.
 // Trois cartes qui entrent par la droite, l'une après l'autre ; les e-mails de suivi sont résumés dans la carte livraison. ──
 export function ServiceF() {
-  const from = MERCHANT.dispatchCity ? `${MERCHANT.dispatchCity} (Suisse)` : DELIVERY.dispatchLocation
+  const { t, money, currency } = useI18n()
+  const sv = t.service
+  const from = MERCHANT.dispatchCity ? t.common.inSwitzerland(MERCHANT.dispatchCity) : DELIVERY.dispatchLocation
   const rows = [
-    ['Frais de port', <span key="f" className="font-bold text-fr-green">CHF 0.–</span>],
-    ['Zone', 'Toute la Suisse'],
-    DELIVERY.estimateDays && ['Délai estimé', `${DELIVERY.estimateDays} jours ouvrables`],
-    from && ['Expédition', `depuis ${from}`],
-    MERCHANT.carrier && ['Transporteur', MERCHANT.carrier],
+    [sv.shippingCost, <span key="f" className="font-bold text-fr-green">{money(0)}</span>],
+    [sv.zone, sv.zoneValue],
+    DELIVERY.estimateDays && [sv.eta, sv.etaValue(DELIVERY.estimateDays)],
+    from && [sv.dispatch, sv.dispatchFrom(from)],
+    MERCHANT.carrier && [sv.carrier, MERCHANT.carrier],
   ].filter(Boolean)
   const card = 'rounded-[1.5rem] bg-white p-5 font-jakarta lg:p-8'
   const head = (Icon, title) => (
@@ -263,10 +273,10 @@ export function ServiceF() {
   return (
     <section id="livraison" data-analytics-section="delivery" className="scroll-mt-20 bg-fr-mint/45 py-14 lg:py-24">
       <div className={W}>
-        <SectionHead eyebrow="Livraison & retours" title="Livré en Suisse," accent="sans frais." />
+        <SectionHead eyebrow={sv.eyebrow} title={sv.title} accent={sv.accent} />
         <div className="mt-8 grid gap-3 lg:mt-12 lg:grid-cols-3 lg:gap-5">
           <Rise from="right" className={card}>
-            {head(Truck, 'Livraison offerte')}
+            {head(Truck, sv.freeDelivery)}
             <dl className="mt-3 space-y-1.5 text-[0.88rem] text-fr-muted">
               {rows.map(([dt, dd]) => (
                 <div key={dt} className="flex justify-between gap-3">
@@ -276,30 +286,28 @@ export function ServiceF() {
               ))}
             </dl>
             <p className="mt-3 text-[0.84rem] leading-relaxed text-fr-muted">
-              Confirmation par e-mail, puis un e-mail d’expédition avec un lien de suivi lorsqu’il est disponible.
+              {sv.emails}
             </p>
-            {more('/livraison', 'Conditions de livraison')}
+            {more('/livraison', sv.deliveryTerms)}
           </Rise>
           <Rise from="right" delay={90} className={card}>
-            {head(RotateCcw, `Retour sous ${DELIVERY.returnWindowDays} jours`)}
+            {head(RotateCcw, sv.returnTitle)}
             <p className="mt-3 text-[0.88rem] leading-relaxed text-fr-muted">
-              Vous pouvez demander un retour dans les {DELIVERY.returnWindowDays} jours suivant la réception. C’est un engagement de
-              notre boutique : la loi suisse ne prévoit pas de droit de rétractation en ligne.
+              {sv.returnText}
             </p>
-            {more('/retours-remboursements', 'Conditions de retour')}
+            {more('/retours-remboursements', sv.returnTerms)}
           </Rise>
           <Rise from="right" delay={180} className={card}>
-            {head(LockKeyhole, 'Paiement sécurisé')}
+            {head(LockKeyhole, sv.payTitle)}
             {PAYMENT_METHODS.length > 0 && (
               <ul className="mt-3 flex flex-wrap gap-1.5">
                 {PAYMENT_METHODS.map((m) => (
-                  <li key={m} className="rounded-lg bg-fr-soft px-2.5 py-1 text-xs font-bold text-fr-ink ring-1 ring-fr-line">{PAYMENT_LABELS[m] || m}</li>
+                  <li key={m} className="rounded-lg bg-fr-soft px-2.5 py-1 text-xs font-bold text-fr-ink ring-1 ring-fr-line">{t.payment[m] || PAYMENT_LABELS[m] || m}</li>
                 ))}
               </ul>
             )}
             <p className="mt-3 text-[0.88rem] leading-relaxed text-fr-muted">
-              Montant total en CHF affiché avant l’achat. Le paiement est traité sur la page sécurisée d’un prestataire
-              spécialisé : aucune donnée de carte ne transite par notre boutique.
+              {sv.payText(currency)}
             </p>
           </Rise>
         </div>
@@ -311,40 +319,42 @@ export function ServiceF() {
 // ── Bon à savoir : informations produit et questions dans une seule liste dépliable ;
 // la mention de sécurité reste toujours visible. ──
 export function FaqF() {
+  const fq = useI18n().t.faq
   const [open, setOpen] = useState(null)
   return (
     <section id="faq" data-analytics-section="faq" aria-labelledby="faq-titre" className="scroll-mt-20 bg-white py-14 lg:py-24">
       <div className={`${W} grid gap-8 lg:grid-cols-[0.8fr_1.4fr] lg:gap-16`}>
         <div>
           <Rise>
-            <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">Produit, sécurité &amp; questions</p>
+            <p className="font-jakarta text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-green">{fq.eyebrow}</p>
             <h2 id="faq-titre" className="mt-3 font-jakarta text-[1.9rem] font-extrabold leading-[1.04] tracking-[-0.022em] text-fr-ink lg:text-[2.8rem]">
-              Bon à savoir.
+              {fq.title}
             </h2>
           </Rise>
-          <Rise delay={90} role="note" aria-label="Sécurité" className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 font-jakarta">
+          <Rise delay={90} role="note" aria-label={fq.safety} className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 font-jakarta">
             <ShieldAlert size={20} strokeWidth={1.8} className="mt-0.5 flex-none text-amber-700" aria-hidden="true" />
             <p className="text-[0.86rem] leading-relaxed text-amber-950">
-              <strong className="font-bold">Sécurité.</strong> {SAFETY_NOTE}
+              <strong className="font-bold">{fq.safety}.</strong> {fq.safetyNote}
             </p>
           </Rise>
           <Rise delay={160} className="mt-3 flex items-start gap-3 rounded-2xl bg-fr-soft p-4 font-jakarta">
             <IconTile icon={MessageCircleQuestion} size="md" tone="white" />
             <p className="text-[0.88rem] text-fr-muted">
-              Une autre question&nbsp;?
+              {fq.other}
               {STORE.supportEmail && (
                 <a href={`mailto:${STORE.supportEmail}`} className="mt-0.5 block font-bold text-fr-green underline">
                   {STORE.supportEmail}
                 </a>
               )}
               <Link to="/contact" className="mt-1 flex items-center gap-1 font-bold text-fr-green hover:underline">
-                Contact &amp; suivi de commande <ArrowUpRight size={14} />
+                {fq.contact} <ArrowUpRight size={14} />
               </Link>
             </p>
           </Rise>
         </div>
         <ul className="divide-y divide-fr-line border-y border-fr-line font-jakarta">
-          {INFO_ITEMS.map((f, k) => {
+          {fq.items.map((f, k) => {
+
             const isOpen = open === f.id
             return (
               <Rise as="li" key={f.id} delay={Math.min(k, 6) * 45}>

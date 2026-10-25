@@ -2,30 +2,29 @@ import { Mail, Phone, MapPin, PackageSearch } from 'lucide-react'
 import { PageHeader, Prose } from '../components/ui/Prose.jsx'
 import MissingInfo from '../components/ui/MissingInfo.jsx'
 import { STORE, MERCHANT, DELIVERY } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 import { IconTile } from '../concepts/frais/Icons.jsx'
 
 // Contact : uniquement les canaux réellement configurés.
 export default function Contact() {
+  const { t } = useI18n()
+  const p = t.pages.contact
   const address = [MERCHANT.legalName, MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
-    ? `${MERCHANT.legalName}, ${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${MERCHANT.country}` : null
+    ? `${MERCHANT.legalName}, ${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${t.common.country}` : null
   const cards = [
     [
       Mail,
-      'E-mail',
+      p.email,
       STORE.supportEmail
         ? <a key="e" href={`mailto:${STORE.supportEmail}`} className="font-semibold text-fr-green underline">{STORE.supportEmail}</a>
         : <MissingInfo key="missing-email" />,
     ],
-    STORE.supportPhone && [Phone, 'Téléphone', STORE.supportPhone],
-    [MapPin, 'Adresse postale', address || <MissingInfo key="missing-address" />],
+    STORE.supportPhone && [Phone, p.phone, STORE.supportPhone],
+    [MapPin, p.address, address || <MissingInfo key="missing-address" />],
   ].filter(Boolean)
   return (
     <>
-      <PageHeader
-        eyebrow="Service client"
-        title="Contact & suivi de commande"
-        intro="Une question sur une commande, un suivi ou un retour ? Indiquez votre numéro de commande dans votre message."
-      />
+      <PageHeader eyebrow={t.pages.service} title={p.title} intro={p.intro} />
       <Prose>
         {cards.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-3">
@@ -41,11 +40,10 @@ export default function Contact() {
         <div className="flex gap-4 rounded-[1.4rem] bg-white p-5 ring-1 ring-fr-line">
           <IconTile icon={PackageSearch} size="md" />
           <div>
-            <h2 className="text-base font-bold text-fr-ink">Suivi de commande</h2>
+            <h2 className="text-base font-bold text-fr-ink">{p.tracking}</h2>
             <p className="mt-1 text-sm text-fr-muted">
-              Après l’achat, vous recevez une confirmation de commande, puis une confirmation d’expédition avec un lien de suivi
-              lorsqu’il est disponible.
-              {DELIVERY.estimateDays ? ` Livraison estimée sous ${DELIVERY.estimateDays} jours ouvrables.` : ''}
+              {p.trackingText}
+              {DELIVERY.estimateDays ? p.eta(DELIVERY.estimateDays) : ''}
             </p>
           </div>
         </div>

@@ -5,7 +5,24 @@
 // Le montant n'est jamais lu depuis le client : il est recalculé à partir de l'offre.
 // Les messages ne contiennent jamais la valeur saisie (aucune donnée personnelle).
 // ─────────────────────────────────────────────────────────────
-import { getOffer } from '../config/offers.js'
+import { getOffer, pricedOffer, BASE_CURRENCY } from '../config/offers.js'
+import { isLang, DEFAULT_LANG } from '../i18n/detect.js'
+
+// Messages en français (serveur et langue par défaut) ; le navigateur passe ceux de la langue affichée.
+export const DEFAULT_MESSAGES = {
+  prenom: 'Veuillez indiquer votre prénom.',
+  nom: 'Veuillez indiquer votre nom.',
+  email: 'Veuillez indiquer votre adresse e-mail.',
+  emailInvalid: 'Adresse e-mail invalide (ex. nom@exemple.ch).',
+  tel: 'Veuillez indiquer votre numéro de téléphone.',
+  telInvalid: 'Numéro suisse invalide (ex. 079 123 45 67).',
+  adresse: 'Veuillez indiquer la rue et le numéro.',
+  npa: 'Veuillez indiquer le code postal.',
+  npaInvalid: 'Le code postal suisse comporte 4 chiffres (ex. 1003).',
+  ville: 'Veuillez indiquer la ville.',
+  terms: 'Veuillez accepter les conditions générales de vente.',
+  invalid: 'Veuillez vérifier ce champ.',
+}
 
 export const FIELDS = ['prenom', 'nom', 'email', 'tel', 'adresse', 'complement', 'npa', 'ville']
 const MAX = { prenom: 60, nom: 60, email: 120, tel: 20, adresse: 120, complement: 120, npa: 4, ville: 60 }
@@ -40,29 +57,32 @@ export function clean(values = {}) {
 }
 
 // Retourne { champ: message } — vide si tout est valide.
-export function validateCustomer(values = {}, { terms } = {}) {
+export function validateCustomer(values = {}, { terms, messages = DEFAULT_MESSAGES } = {}) {
+  const m = messages
   const v = clean(values)
   const e = {}
-  if (!v.prenom) e.prenom = 'Veuillez indiquer votre prénom.'
-  if (!v.nom) e.nom = 'Veuillez indiquer votre nom.'
-  if (!v.email) e.email = 'Veuillez indiquer votre adresse e-mail.'
-  else if (!EMAIL_RE.test(v.email)) e.email = 'Adresse e-mail invalide (ex. nom@exemple.ch).'
-  if (!v.tel) e.tel = 'Veuillez indiquer votre numéro de téléphone.'
-  else if (!PHONE_RE.test(normalizePhone(v.tel))) e.tel = 'Numéro suisse invalide (ex. 079 123 45 67).'
-  if (!v.adresse) e.adresse = 'Veuillez indiquer la rue et le numéro.'
-  if (!v.npa) e.npa = 'Veuillez indiquer le code postal.'
-  else if (!NPA_RE.test(v.npa)) e.npa = 'Le code postal suisse comporte 4 chiffres (ex. 1003).'
-  if (!v.ville) e.ville = 'Veuillez indiquer la ville.'
-  if (terms !== undefined && !terms) e.terms = 'Veuillez accepter les conditions générales de vente.'
+  if (!v.prenom) e.prenom = m.prenom
+  if (!v.nom) e.nom = m.nom
+  if (!v.email) e.email = m.email
+  else if (!EMAIL_RE.test(v.email)) e.email = m.emailInvalid
+  if (!v.tel) e.tel = m.tel
+  else if (!PHONE_RE.test(normalizePhone(v.tel))) e.tel = m.telInvalid
+  if (!v.adresse) e.adresse = m.adresse
+  if (!v.npa) e.npa = m.npa
+  else if (!NPA_RE.test(v.npa)) e.npa = m.npaInvalid
+  if (!v.ville) e.ville = m.ville
+  if (terms !== undefined && !terms) e.terms = m.terms
   return e
 }
 
 // Validation complète d'une commande reçue par le serveur.
-// payload = { offerId, customer, termsAccepted, method }
-export function validateOrder(payload = {}, { enabledMethods = [] } = {}) {
+// payload = { offerId, customer, termsAccepted, method, lang }
+// currency = devise déterminée par le SERVEUR pour ce visiteur (jamais lue depuis le navigateur).
+export function validateOrder(payload = {}, { enabledMethods = [], currency = BASE_CURRENCY } = {}) {
   const errors = {}
-  const offer = getOffer(payload.offerId)
-  if (!offer) errors.offerId = 'Offre inconnue.'
+  const offer = pricedOffer(getOffer(payload.offerId), currency)
+  if (!getOffer(payload.offerId)) errors.offerId = 'Offre inconnue.'
+  else if (!offer) errors.currency = 'Devise non disponible.'
   Object.assign(errors, validateCustomer(payload.customer, { terms: payload.termsAccepted === true }))
   if (enabledMethods.length && !enabledMethods.includes(payload.method)) errors.method = 'Moyen de paiement non disponible.'
   if (Object.keys(errors).length) return { ok: false, errors }
@@ -72,9 +92,10 @@ export function validateOrder(payload = {}, { enabledMethods = [] } = {}) {
       offerId: offer.id,
       packs: offer.packs,
       capsules: offer.washes,
-      total: offer.price, // recalculé : jamais le montant envoyé par le navigateur
-      currency: 'CHF',
+      total: offer.price, // recalculé dans la devise du visiteur : jamais le montant envoyé par le navigateur
+      currency,
       country: 'CH',
+      lang: isLang(payload.lang) ? payload.lang : DEFAULT_LANG,
       method: payload.method || null,
       customer: clean(payload.customer),
     },

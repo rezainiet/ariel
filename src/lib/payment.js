@@ -116,11 +116,12 @@ export async function startRedirectPayment(order, provider = 'external') {
     if (res.status === 422) return { status: 'invalid', errors: data.errors || {} }
     if (res.status === 409 && data.error === 'out_of_stock') return { status: 'sold_out' }
     if (res.status === 409 && data.error === 'recent_order' && data.orderId) return { status: 'existing', orderId: data.orderId }
+    if (res.status === 409 && data.error === 'currency_mismatch') return { status: 'currency_changed', currency: data.currency }
     if (res.status === 409) return { status: 'unavailable' }
     const redirectUrl = cleanCheckoutUrl(data.redirectUrl)
     if (res.ok && /^[0-9a-f-]{36}$/i.test(data.orderId || '') && redirectUrl) {
       if (!data.duplicate) {
-        trackCheckoutRedirect(data.orderId, order.offerId)
+        trackCheckoutRedirect(data.orderId, order.offerId, { currency: order.currency, price: order.total })
         trackAnalyticsEvent('paymentRedirect')
       }
       return { status: 'ready', orderId: data.orderId, redirectUrl, duplicate: Boolean(data.duplicate) }

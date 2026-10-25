@@ -1,66 +1,58 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
 import MissingInfo from '../components/ui/MissingInfo.jsx'
-import { DELIVERY, STORE, MERCHANT, POLICIES } from '../config/store.js'
+import { STORE, MERCHANT, POLICIES } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 
 // Politique de retour : uniquement les engagements confirmés + les rubriques renseignées par le marchand.
 export default function Returns() {
+  const { t } = useI18n()
+  const p = t.pages.returns
+  const policy = t.pages.policies
   const contact = STORE.supportEmail ? (
-    <a href={`mailto:${STORE.supportEmail}`} className="font-semibold text-fr-green underline">
+    <a key="c" href={`mailto:${STORE.supportEmail}`} className="font-semibold text-fr-green underline">
       {STORE.supportEmail}
     </a>
   ) : (
-    <Link to="/contact" className="font-semibold text-fr-green underline">
-      notre service client
+    <Link key="c" to="/contact" className="font-semibold text-fr-green underline">
+      {p.contactLink}
     </Link>
   )
+  const strong = (text) => <strong key="s" className="text-fr-ink">{text}</strong>
   return (
     <>
-      <PageHeader
-        eyebrow="Service client"
-        title="Retours & remboursements"
-        intro={`Vous disposez de ${DELIVERY.returnWindowDays} jours après réception pour demander un retour.`}
-      />
+      <PageHeader eyebrow={t.pages.service} title={p.title} intro={p.intro} />
       <Prose>
-        <Block title={`Un engagement de ${DELIVERY.returnWindowDays} jours`}>
-          <p>
-            Vous pouvez demander un retour dans les {DELIVERY.returnWindowDays} jours qui suivent la réception de votre colis. Il
-            s’agit d’un engagement volontaire de notre boutique : en Suisse, la loi ne prévoit pas de droit de rétractation pour
-            les achats en ligne.
-          </p>
-          <p>État des produits acceptés : {POLICIES.returnCondition || <MissingInfo />}</p>
+        <Block title={p.commitmentTitle}>
+          <p>{p.commitment}</p>
+          <p>{p.condition}{policy.returnCondition || <MissingInfo />}</p>
         </Block>
 
-        <Block title="Comment faire">
+        <Block title={p.howTitle}>
           <ol className="list-decimal space-y-1 pl-5">
-            <li>
-              Contactez {contact} en indiquant votre <strong className="text-fr-ink">numéro de commande</strong>.
-            </li>
-            <li>Nous vous transmettons les instructions de retour.</li>
-            <li>Dès réception et contrôle du colis, nous procédons au remboursement.</li>
+            {p.how(contact, strong).map((parts, k) => (
+              <li key={k}>{parts}</li>
+            ))}
           </ol>
-          <p>Adresse de retour : <span className="text-fr-ink">{POLICIES.returnAddress || <MissingInfo />}</span></p>
+          <p>{p.address}<span className="text-fr-ink">{POLICIES.returnAddress || <MissingInfo />}</span></p>
         </Block>
 
-        <Block title="Frais de retour">
-          <p>{POLICIES.returnCosts || <MissingInfo />}</p>
+        <Block title={p.costsTitle}>
+          <p>{policy.returnCosts || <MissingInfo />}</p>
         </Block>
 
-        <Block title="Remboursement">
-          <p>{POLICIES.refundTerms || <MissingInfo />}</p>
+        <Block title={p.refundTitle}>
+          <p>{policy.refundTerms || <MissingInfo />}</p>
         </Block>
 
-        <Block title="Produit endommagé, défectueux ou erroné">
-          <p>
-            Contactez-nous dès réception, avec votre numéro de commande et si possible une photo. Indépendamment du délai de retour,
-            la garantie légale pour les défauts s’applique (deux ans en droit suisse).
-          </p>
+        <Block title={p.damagedTitle}>
+          <p>{p.damaged}</p>
         </Block>
 
         {(STORE.supportEmail || STORE.supportPhone || MERCHANT.legalName) && (
-          <Block title="Contact">
+          <Block title={p.contactTitle}>
             {STORE.supportEmail && <p>{contact}</p>}
-            {STORE.supportPhone && <p>Téléphone : {STORE.supportPhone}</p>}
+            {STORE.supportPhone && <p>{p.phone(STORE.supportPhone)}</p>}
             {MERCHANT.legalName && <p>{MERCHANT.legalName}</p>}
           </Block>
         )}

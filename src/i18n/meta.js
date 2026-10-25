@@ -1,0 +1,19 @@
+// Métadonnées SEO par langue — module pur : le serveur les écrit dans la page servie (server/geo.mjs),
+// le navigateur les met à jour quand le visiteur change de langue (src/i18n/index.jsx).
+// `from` = prix d'entrée déjà formaté dans la devise du visiteur.
+export const META = {
+  fr: {
+    htmlLang: 'fr-CH',
+    ogLocale: 'fr_CH',
+    title: 'Ariel All-in-1 PODS · Déstockage en Suisse',
+    description: (from) => `Déstockage en Suisse : Ariel All-in-1 PODS, sachets de 60 capsules dès ${from}. Livraison offerte en Suisse, retour possible sous 15 jours.`,
+    ogDescription: (from) => `Ariel All-in-1 PODS, sachets de 60 capsules dès ${from}. Livraison offerte en Suisse.`,
+  },
+  de: {
+    htmlLang: 'de',
+    ogLocale: 'de_DE',
+    title: 'Ariel All-in-1 PODS · Lagerabverkauf in der Schweiz',
+    description: (from) => `Lagerabverkauf in der Schweiz: Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in der Schweiz, Rückgabe innerhalb von 15 Tagen möglich.`,
+    ogDescription: (from) => `Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in der Schweiz.`,
+  },
+}

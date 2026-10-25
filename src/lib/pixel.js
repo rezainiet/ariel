@@ -186,13 +186,15 @@ export function trackStartCheckout(payload = {}, offerId = '') {
 // A successful pending order is a checkout redirect, not a paid order.
 // Only catalog values reach the pixels; customer names, contact details and the
 // customer-bearing hosted URL are deliberately excluded.
-export function trackCheckoutRedirect(orderId, offerId) {
+// Currency and total of the order as the browser displayed and the server accepted them of the order as the server accepted them (CHF by default).
+export function trackCheckoutRedirect(orderId, offerId, { currency = 'CHF', price } = {}) {
   const offer = getOffer(offerId)
   if (!anyPixel() || !offer || !firstEvent('checkout_redirect', orderId)) return false
-  const values = { currency: 'CHF', value: offer.price, content_ids: [PRODUCT.id], content_type: 'product', num_items: offer.packs }
+  const value = price ?? offer.price
+  const values = { currency, value, content_ids: [PRODUCT.id], content_type: 'product', num_items: offer.packs }
   fbq('track', 'AddPaymentInfo', values, { eventID: `order-${orderId}` })
-  gtag('event', 'add_payment_info', googleCommerce({ price: offer.price, number_items: offer.packs }))
-  if (GOOGLE_ADS_SEND_TO) gtag('event', 'conversion', { send_to: GOOGLE_ADS_SEND_TO, value: offer.price, currency: 'CHF', transaction_id: orderId })
+  gtag('event', 'add_payment_info', googleCommerce({ price: value, currency, number_items: offer.packs }))
+  if (GOOGLE_ADS_SEND_TO) gtag('event', 'conversion', { send_to: GOOGLE_ADS_SEND_TO, value, currency, transaction_id: orderId })
   return true
 }
 

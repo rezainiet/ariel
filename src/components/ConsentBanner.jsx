@@ -4,6 +4,7 @@ import { initPixel, isPixelEnabled, trackPageView, trackViewContent } from '../l
 import { initAnalytics } from '../lib/analytics.js'
 import { PRODUCT } from '../config/offers.js'
 import { commitMetaClickId, commitSnapClickId } from '../lib/trafficSource.js'
+import { useI18n } from '../i18n/index.jsx'
 
 // Consentement avant tout pixel publicitaire (nLPD) — deux choix de même poids.
 // N'apparaît que si un pixel Meta/Snap ou une attribution Everflow est configuré.
@@ -33,6 +34,7 @@ function readChoice() {
 }
 
 export default function ConsentBanner() {
+  const { t, currency } = useI18n()
   const [choice, setChoice] = useState(() => readChoice())
   const [everflowAttribution, setEverflowAttribution] = useState(false)
 
@@ -49,9 +51,9 @@ export default function ConsentBanner() {
       initPixel()
       initAnalytics()
       trackPageView()
-      if (window.location.pathname === '/') trackViewContent({ item_ids: [PRODUCT.id], item_category: 'detergent', currency: 'CHF' })
+      if (window.location.pathname === '/') trackViewContent({ item_ids: [PRODUCT.id], item_category: 'detergent', currency })
     }
-  }, [choice])
+  }, [choice]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const visible = (isPixelEnabled() || everflowAttribution) && !choice
   useEffect(() => {
@@ -75,19 +77,20 @@ export default function ConsentBanner() {
   }
 
   return (
-    <div role="dialog" aria-label="Cookies et mesure d’audience" className="fixed inset-x-3 bottom-3 z-[65] mx-auto max-w-xl animate-fade-up rounded-2xl border border-fr-line bg-white p-4 font-jakarta shadow-2xl sm:p-5">
+    <div role="dialog" aria-label={t.consent.dialog} className="fixed inset-x-3 bottom-3 z-[65] mx-auto max-w-xl animate-fade-up rounded-2xl border border-fr-line bg-white p-4 font-jakarta shadow-2xl sm:p-5">
       <p className="text-sm leading-relaxed text-fr-ink/80">
-        Nous aimerions mesurer l’efficacité de nos publicités, le temps passé et les sections consultées. Ce suivi est facultatif.{' '}
+        {t.consent.text}{' '}
         <Link to="/politique-de-confidentialite" className="font-semibold text-fr-green underline">
-          En savoir plus
+          {t.consent.more}
         </Link>
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button onClick={() => decide('denied')} className="h-11 rounded-full border-2 border-fr-green text-sm font-bold text-fr-green transition-[background-color,transform] duration-base ease-out-soft hover:bg-fr-mint motion-safe:active:scale-[0.98]">
-          Uniquement nécessaires
+          {t.consent.deny}
         </button>
         <button onClick={() => decide('granted')} className="h-11 rounded-full border-2 border-fr-green bg-fr-green text-sm font-bold text-white transition-[background-color,transform] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.98]">
-          Tout accepter
+          {t.consent.accept}
+
         </button>
       </div>
     </div>

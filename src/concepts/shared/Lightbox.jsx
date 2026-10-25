@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useI18n } from '../../i18n/index.jsx'
 
 // Visionneuse plein écran accessible : Échap, flèches, clic hors image.
 export default function Lightbox({ images, index, onClose, onIndex }) {
   const closeRef = useRef(null)
+  const l = useI18n().t.lightbox
   const open = index !== null && index !== undefined
 
   useEffect(() => {
@@ -31,13 +33,13 @@ export default function Lightbox({ images, index, onClose, onIndex }) {
       className="fixed inset-0 z-[70] flex animate-fade-in items-center justify-center bg-[#0b120e]/[0.92] p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-label="Galerie produit"
+      aria-label={l.label}
       onClick={onClose}
     >
       <button
         ref={closeRef}
         onClick={onClose}
-        aria-label="Fermer la galerie"
+        aria-label={l.close}
         className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
       >
         <X size={22} />
@@ -50,7 +52,7 @@ export default function Lightbox({ images, index, onClose, onIndex }) {
               e.stopPropagation()
               onIndex((index - 1 + images.length) % images.length)
             }}
-            aria-label="Image précédente"
+            aria-label={l.prev}
             className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
             <ChevronLeft size={22} />
@@ -60,7 +62,7 @@ export default function Lightbox({ images, index, onClose, onIndex }) {
               e.stopPropagation()
               onIndex((index + 1) % images.length)
             }}
-            aria-label="Image suivante"
+            aria-label={l.next}
             className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
             <ChevronRight size={22} />

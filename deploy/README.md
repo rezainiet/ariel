@@ -20,3 +20,24 @@ The former VPS at `85.11.182.76` is unreachable. Its `/var/lib/ariel` data has *
 The `production` environment contains `VPS_HOST`, `VPS_USER`, `VPS_PORT`, `VPS_SSH_KEY`, and the pinned `VPS_KNOWN_HOSTS`. For a configured build, add the secret `VITE_ENV_FILE` with a production dotenv file containing only public `VITE_` variables. The workflow requires the merchant identity, support email, and return terms listed in `scripts/check-deploy-env.mjs`. The file is used only to compile the storefront and is not sent to the VPS. Any `VITE_` value is public in the browser bundle; never put credentials there.
 
 Run the `preview` workflow to inspect the public site with payment disabled. The `incomplete` mode builds with the missing merchant and returns fields visibly marked in red; it does not need `VITE_ENV_FILE`. It is a temporary state requested for this store and does not satisfy the seller disclosure requirements for launch. Once the values are supplied, add `VITE_ENV_FILE` and use `configured`. The deploy script refuses a future `preview` release while Everflow is enabled, so an empty preview build cannot silently replace the live checkout storefront. After the product images are approved, set `EVERFLOW_IMAGES_APPROVED=true` and `EVERFLOW_ENABLED=true` in the root-owned environment file and restart `ariel.service`. Verify the public homepage, `/api/stock`, and all three checkout offer URLs using synthetic customer data. External provider prefill needs separate browser inspection; an outgoing redirect does not prove payment.
+
+## Visitor country (language and currency)
+
+The storefront picks German for Germany and Austria, French for France, and the browser language for
+Switzerland and other countries (`server/geo.mjs`). The country comes only from the `X-Geo-Country` header that
+this Nginx site writes itself; until GeoIP2 is set up the header is empty and visitors fall back to their browser
+language, with CHF prices. To enable it on the VPS:
+
+1. `sudo apt install libnginx-mod-http-geoip2`
+2. Put a country `.mmdb` database at `/var/lib/GeoIP/country.mmdb` and refresh it monthly, either MaxMind
+   GeoLite2-Country (free account, `geoipupdate`) or DB-IP "IP to Country Lite" (CC BY 4.0). Both licenses
+   require an attribution line on the site; add it to the footer before going live.
+3. Copy [ariel.nginx.geoip2.conf](ariel.nginx.geoip2.conf) to `/etc/nginx/conf.d/ariel-geoip2.conf`.
+4. In the HTTPS site, change `proxy_set_header X-Geo-Country "";` to `proxy_set_header X-Geo-Country $geoip2_country_code;`.
+5. Add `GEO_COUNTRY_HEADER=x-geo-country` to `/etc/ariel/ariel.env`, then `sudo nginx -t && sudo systemctl reload nginx`
+   and `sudo systemctl restart ariel.service`.
+6. Check: `curl -s https://destockage-suisse.store/api/locale` returns the server's own country.
+
+EUR is shown to Germany, Austria and France only once approved EUR prices (`PRICES.EUR` in
+`src/config/offers.js`) and three EUR Everflow links (`EUR_TRACKING_LINKS` in `server/everflow.mjs`) exist;
+until then every visitor sees and pays CHF.

@@ -20,6 +20,7 @@ export const STORY = {
 }
 
 // Galerie du héros : packshot d'abord (le produit exact), puis situations réelles.
+// Textes alternatifs et légendes traduits : t.gallery (même ordre).
 export const GALLERY_F = [
   { kind: 'cutout', src: IMAGES.packshotCutout, alt: 'Sachet Ariel All-in-1 PODS Universal+, 60 capsules', caption: 'Le sachet de 60 capsules' },
   { kind: 'photo', src: '/images/hero/hero-desktop-1300.webp', picture: HERO.desktop, alt: 'Le sachet posé dans une buanderie, devant des serviettes blanches', caption: 'En situation' },

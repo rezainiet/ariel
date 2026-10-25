@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useReducer, useCallback, useEffect 
 import { getOffer, PRODUCT } from '../config/store'
 import { trackAddCart } from '../lib/pixel'
 import { trackAnalyticsEvent } from '../lib/analytics.js'
+import { useI18n } from '../i18n/index.jsx'
 
 // ─────────────────────────────────────────────────────────────
 // État du panier centralisé.
@@ -52,8 +53,10 @@ function reducer(state, action) {
 
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
+  // Prix dans la devise du visiteur ; le panier ne garde que l'identifiant de l'offre.
+  const { offer: priced, currency } = useI18n()
 
-  const offer = state.offerId ? getOffer(state.offerId) : null
+  const offer = state.offerId ? priced(state.offerId) : null
 
   useEffect(() => {
     try {
@@ -67,20 +70,20 @@ export function CartProvider({ children }) {
   // Sélectionne une offre (remplace), ouvre le drawer, déclenche ADD_CART
   // uniquement lors d'une vraie sélection utilisateur.
   const selectOffer = useCallback((offerId, { openDrawer = true, feedback = true } = {}) => {
-    const o = getOffer(offerId)
+    const o = priced(offerId)
     if (!o) return
     dispatch({ type: 'SELECT_OFFER', offerId })
     if (feedback) dispatch({ type: 'MARK_ADDED', at: Date.now() })
     if (openDrawer) dispatch({ type: 'OPEN_DRAWER' })
     trackAddCart({
-      currency: 'CHF',
+      currency,
       price: o.price,
       item_ids: [PRODUCT.id],
       item_category: 'detergent',
       number_items: o.packs,
     })
     trackAnalyticsEvent('addToCart')
-  }, [])
+  }, [priced, currency])
 
   // Change le bundle déjà présent dans le panier (stepper du panier).
   // Pas d'événement ADD_CART : ce n'est pas un nouvel ajout.

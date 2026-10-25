@@ -1,66 +1,45 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
 import MissingInfo from '../components/ui/MissingInfo.jsx'
-import { DELIVERY, MERCHANT, POLICIES, OFFERS, formatCHF } from '../config/store.js'
+import { MERCHANT, POLICIES } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 
 // Conditions générales : uniquement des engagements confirmés ; les clauses propres au vendeur
 // (identité, for juridique) n'apparaissent qu'une fois renseignées.
+// Prix listés dans la devise du visiteur, celle qui sera encaissée.
 export default function Terms() {
+  const { t, currency, offers, money } = useI18n()
+  const p = t.pages.terms
+  const link = (to) => (text) => (
+    <Link key={to} to={to} className="font-semibold text-fr-green underline">
+      {text}
+    </Link>
+  )
+  const list = offers.map((o) => p.offerItem(o.packs, money(o.price))).join(' · ')
   return (
     <>
-      <PageHeader
-        eyebrow="Conditions générales"
-        title="Conditions générales de vente"
-        intro="Les présentes conditions encadrent la vente des produits proposés sur la boutique."
-      />
+      <PageHeader eyebrow={p.eyebrow} title={p.title} intro={p.intro} />
       <Prose>
-        <Block title="Vendeur">
-          <p>
-            {MERCHANT.legalName || <MissingInfo />} · IDE {MERCHANT.uid || <MissingInfo />}. Coordonnées complètes dans les{' '}
-            <Link to="/mentions-legales" className="font-semibold text-fr-green underline">
-              mentions légales
-            </Link>.
-          </p>
+        <Block title={p.sellerTitle}>
+          <p>{p.seller(MERCHANT.legalName || <MissingInfo key="legal" />, MERCHANT.uid || <MissingInfo key="uid" />, link('/mentions-legales'))}</p>
         </Block>
-        <Block title="Produits et prix">
-          <p>
-            Ariel All-in-1 PODS, sachets de 60 capsules, proposés dans la limite des stocks disponibles. Prix en francs suisses
-            (CHF), livraison en Suisse incluse : {OFFERS.map((o) => `${o.packs} sachet${o.packs > 1 ? 's' : ''} ${formatCHF(o.price)}`).join(' · ')}.
-          </p>
+        <Block title={p.productsTitle}>
+          <p>{p.products(p.currencyNames[currency] || currency, list)}</p>
         </Block>
-        <Block title="Commande">
-          <p>
-            La commande est conclue par un clic sur « Acheter », qui engage à payer le montant affiché. Une confirmation est envoyée
-            par e-mail. Nous pouvons annuler une commande en cas d’erreur manifeste de prix ou de rupture de stock ; tout montant
-            déjà payé est alors remboursé.
-          </p>
+        <Block title={p.orderTitle}>
+          <p>{p.order}</p>
         </Block>
-        <Block title="Paiement">
-          <p>
-            Le paiement s’effectue sur la page sécurisée d’un prestataire spécialisé. Aucune donnée de carte n’est saisie ni
-            conservée par la boutique. La commande n’est confirmée qu’après vérification du paiement.
-          </p>
+        <Block title={p.paymentTitle}>
+          <p>{p.payment}</p>
         </Block>
-        <Block title="Livraison">
-          <p>
-            Livraison offerte, uniquement en Suisse. Détails sur la page{' '}
-            <Link to="/livraison" className="font-semibold text-fr-green underline">
-              Livraison
-            </Link>
-            .
-          </p>
+        <Block title={p.deliveryTitle}>
+          <p>{p.delivery(link('/livraison'))}</p>
         </Block>
-        <Block title="Retours">
-          <p>
-            Retour possible sous {DELIVERY.returnWindowDays} jours après réception, selon la page{' '}
-            <Link to="/retours-remboursements" className="font-semibold text-fr-green underline">
-              Retours &amp; remboursements
-            </Link>
-            . La garantie légale pour les défauts s’applique.
-          </p>
+        <Block title={p.returnsTitle}>
+          <p>{p.returns(link('/retours-remboursements'))}</p>
         </Block>
-        <Block title="Droit applicable">
-          <p>Les présentes conditions sont soumises au droit suisse. For juridique : {POLICIES.jurisdiction || <MissingInfo />}</p>
+        <Block title={p.lawTitle}>
+          <p>{p.law}{POLICIES.jurisdiction || <MissingInfo />}</p>
         </Block>
       </Prose>
     </>

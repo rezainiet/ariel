@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../context/CartContext.jsx'
 import { useConsentBannerOpen } from '../../components/ConsentBanner.jsx'
-import { formatCHF, getOffer } from '../../config/store.js'
+import { useI18n } from '../../i18n/index.jsx'
 import { Packs } from './HeroF.jsx'
 import { Chf } from './Icons.jsx'
 import { Swap } from '../../lib/motion.js'
@@ -26,6 +26,7 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
     io.observe(el)
     return () => io.disconnect()
   }, [ctaRef])
+  const { t, money, offer: getOffer } = useI18n()
   const offer = getOffer(sel)
   const consentOpen = useConsentBannerOpen()
   const shown = past && !drawerOpen && !disabled && !consentOpen
@@ -39,7 +40,7 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
     >
       <div className="border-t border-fr-line bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_rgba(11,61,42,0.10)]">
         <div className="mx-auto flex max-w-lg items-center gap-3">
-          <a href="#offres" tabIndex={shown ? 0 : -1} className="flex min-w-0 flex-1 items-center gap-2.5" aria-label="Changer d’offre">
+          <a href="#offres" tabIndex={shown ? 0 : -1} className="flex min-w-0 flex-1 items-center gap-2.5" aria-label={t.sticky.change}>
             <span className="flex h-10 w-11 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1 max-[359px]:hidden">
               <Swap value={offer.id} anim="animate-fade-in" className="flex">
                 <Packs n={offer.packs} size="sm" />
@@ -47,9 +48,9 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
             </span>
             <span className="min-w-0 leading-tight">
               <span className="block truncate text-[0.82rem] font-bold text-fr-ink">
-                {offer.packs} sachet{offer.packs > 1 ? 's' : ''}
+                {t.common.sachets(offer.packs)}
               </span>
-              <Swap value={offer.id} className="block text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green"><Chf v={offer.price} format={formatCHF} /></Swap>
+              <Swap value={offer.id} className="block text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green"><Chf v={offer.price} format={money} /></Swap>
             </span>
           </a>
           <button
@@ -57,7 +58,8 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
             tabIndex={shown ? 0 : -1}
             className="flex h-12 flex-none items-center gap-2 rounded-full bg-fr-green px-5 text-[0.92rem] font-extrabold text-white shadow-[0_10px_22px_rgba(14,122,71,0.3)] transition-[transform,background-color] duration-base ease-out-soft hover:bg-[#0C6B3E] motion-safe:active:scale-[0.98]"
           >
-            Acheter maintenant <ArrowRight size={17} strokeWidth={2.2} />
+            {t.sticky.buyNow} <ArrowRight size={17} strokeWidth={2.2} />
+
           </button>
         </div>
       </div>

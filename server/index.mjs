@@ -7,6 +7,7 @@
 // Démarrage :  ADMIN_PASSWORD="…au moins 12 caractères…" node server/index.mjs
 // Variables :  HOST (127.0.0.1 en production), PORT (8787), ADMIN_PASSWORD, DATA_DIR (server/data),
 //              PUBLIC_ORIGIN (ex. https://boutique.ch — pour l'URL absolue de la photo produit)
+//              GEO_COUNTRY_HEADER (en-tête pays écrit par notre proxy/CDN, ex. x-geo-country — voir server/geo.mjs)
 // ─────────────────────────────────────────────────────────────
 import { createServer } from 'node:http'
 import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises'
@@ -15,9 +16,10 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { join, extname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validateOrder } from '../src/lib/orderValidation.js'
-import { getOffer } from '../src/config/offers.js'
+import { getOffer, BASE_CURRENCY } from '../src/config/offers.js'
 import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redirectPayment.js'
-import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder, buildEverflowUrl, usesApprovedEverflowLinks } from './everflow.mjs'
+import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder, buildEverflowUrl, usesApprovedEverflowLinks, currencyReady } from './everflow.mjs'
+import { localeOf, injectLocale, devCookieHeader } from './geo.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
 import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder, isOrderKey } from './orders.mjs'
 import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
@@ -104,6 +106,15 @@ const originOf = (req) => process.env.PUBLIC_ORIGIN || (req.headers.origin && /^
 const localCheckoutRequest = (req) => /^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(req.headers.host || '') &&
   /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || '')
 
+// Pays, langue et devise du visiteur (server/geo.mjs). Une devise autre que CHF n'est attribuée que si
+// le paiement actif peut l'encaisser avec les liens approuvés.
+function visitorLocale(req) {
+  const local = localCheckoutRequest(req)
+  const canCharge = (currency) => currencyReady(currency) &&
+    (everflowSettings(process.env, local).enabled || usesApprovedEverflowLinks(config.externalRedirect))
+  return localeOf(req, { local, canCharge })
+}
+
 // Vue stock de l'administration : réservations complétées par le nom du client (fiche commande).
 async function adminStock() {
   const summary = stockSummary(await loadStock(DATA_DIR))
@@ -119,6 +130,9 @@ const STOCK_ERRORS = { not_found: 404, already_closed: 409, insufficient_stock: 
 // ── Routes API ──
 async function api(req, res, path) {
   const method = req.method
+
+  // Public : pays, devise et langue proposée (repli si la page n'a pas été servie par ce serveur).
+  if (path === '/api/locale' && method === 'GET') return send(res, 200, visitorLocale(req))
 
   if (path === '/api/reviews' && method === 'GET') return send(res, 200, await listReviews(DATA_DIR))
 
@@ -156,10 +170,10 @@ async function api(req, res, path) {
   if (path === '/api/checkout/everflow' && method === 'POST') {
     let body
     try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
-    const result = await createPendingOrder(body, everflowSettings(process.env, localCheckoutRequest(req)), DATA_DIR)
+    const result = await createPendingOrder(body, everflowSettings(process.env, localCheckoutRequest(req)), DATA_DIR, { currency: visitorLocale(req).currency })
     if (result.status !== 200) {
       if (result.error === 'out_of_stock') console.info('[commande] refusée — stock insuffisant pour', body?.offerId)
-      return send(res, result.status, { error: result.error, ...(result.errors ? { errors: result.errors } : {}), ...(result.orderId ? { orderId: result.orderId } : {}) })
+      return send(res, result.status, { error: result.error, ...(result.errors ? { errors: result.errors } : {}), ...(result.orderId ? { orderId: result.orderId } : {}), ...(result.currency ? { currency: result.currency } : {}) })
     }
     console.info(`[commande] Everflow en attente — identifiant ${result.orderId}${result.duplicate ? ' (doublon fusionné)' : ''}`)
     return send(res, 200, { orderId: result.orderId, status: 'pending', redirectUrl: result.redirectUrl, duplicate: Boolean(result.duplicate) })
@@ -176,7 +190,11 @@ async function api(req, res, path) {
       return send(res, 400, { error: 'bad_request' })
     }
     if (!isOrderKey(body.idempotencyKey)) return send(res, 400, { error: 'invalid_idempotency_key' })
-    const result = validateOrder(body)
+    // Montant encaissé = montant affiché : la devise est celle que le serveur attribue à ce visiteur.
+    const { currency } = visitorLocale(req)
+    if (body.currency !== undefined && body.currency !== currency) return send(res, 409, { error: 'currency_mismatch', currency })
+    if (currency !== BASE_CURRENCY && !usesApprovedEverflowLinks(r)) return send(res, 409, { error: 'payment_unavailable' })
+    const result = validateOrder(body, { currency })
     if (!result.ok) {
       console.warn('[commande] refusée — champs :', Object.keys(result.errors).join(', ')) // jamais les valeurs
       return send(res, 422, { error: 'invalid', errors: result.errors })
@@ -192,7 +210,8 @@ async function api(req, res, path) {
     const actualOffer = getOffer(recorded.order.offerId)
     const redirectUrl = usesApprovedEverflowLinks(r)
       ? buildEverflowUrl(actualOffer.id, recorded.order.customer, everflowSettings(process.env).images[actualOffer.id] || r.packages[actualOffer.id]?.photoUrl || '',
-        body.marketingConsent === true ? body.fbclid : '', body.marketingConsent === true ? body.sccid : '')
+        body.marketingConsent === true ? body.fbclid : '', body.marketingConsent === true ? body.sccid : '',
+        { currency: recorded.order.currency || BASE_CURRENCY, lang: recorded.order.lang || 'fr' })
       : buildRedirectUrl(config, actualOffer, recorded.order.customer, { origin: originOf(req),
           fbclid: body.marketingConsent === true ? body.fbclid : '', sccid: body.marketingConsent === true ? body.sccid : '' })
     console.info(`[commande] redirection paiement — offre ${offer.id}, identifiant ${recorded.orderId}${recorded.duplicate ? ' (doublon fusionné)' : ''}`)
@@ -345,11 +364,17 @@ async function serveStatic(req, res, path) {
       createReadStream(file, { start, end }).on('error', () => res.destroy()).pipe(res)
       return
     }
-    const data = await readFile(file)
+    let data = await readFile(file)
     const ext = extname(file)
+    // Page de l'application : langue, métadonnées et devise du visiteur écrites avant l'envoi.
+    const page = file === join(DIST, 'index.html')
+    const devCookie = page ? devCookieHeader(req, process.env, localCheckoutRequest(req)) : null
+    if (page) data = injectLocale(data.toString('utf8'), visitorLocale(req), process.env.PUBLIC_ORIGIN || '')
     res.writeHead(200, {
       'Content-Type': TYPES[ext] || 'application/octet-stream',
-      'Cache-Control': file.includes(`${join('dist', 'assets')}`) ? 'public, max-age=31536000, immutable' : 'no-cache',
+      'Cache-Control': file.includes(`${join('dist', 'assets')}`) ? 'public, max-age=31536000, immutable' : page ? 'private, no-cache' : 'no-cache',
+      ...(page ? { Vary: 'Accept-Language, Cookie' } : {}),
+      ...(devCookie ? { 'Set-Cookie': devCookie } : {}),
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
     })

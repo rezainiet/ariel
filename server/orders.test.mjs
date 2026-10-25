@@ -141,7 +141,7 @@ test('public order status exposes processing and confirmation without customer d
   const body = click('pack-1')
   const created = await createPendingOrder(body, config, dir)
   const pending = await publicOrderStatus(dir, created.orderId)
-  assert.deepEqual(Object.keys(pending).sort(), ['createdAt', 'offerId', 'orderId', 'packs', 'status', 'total'])
+  assert.deepEqual(Object.keys(pending).sort(), ['createdAt', 'currency', 'offerId', 'orderId', 'packs', 'status', 'total'])
   assert.equal(pending.status, 'processing')
   assert.equal(pending.total, 4)
   assert.equal(await publicOrderStatus(dir, crypto.randomUUID()), null)

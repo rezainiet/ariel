@@ -180,8 +180,8 @@ export function useReviews({ pageSize = 3, allowSample = true } = {}) {
   }
 }
 
-export function formatReviewDate(iso) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('fr-CH', {
+export function formatReviewDate(iso, lang = 'fr') {
+  return new Date(iso + 'T12:00:00').toLocaleDateString(lang === 'de' ? 'de-CH' : 'fr-CH', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

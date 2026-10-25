@@ -3,13 +3,17 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, Clock3, Copy, Loader2, LockKeyhole, XCircle } from 'lucide-react'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
-import { formatCHF, getOffer, PRODUCT } from '../config/store.js'
+import LanguageSwitcher from '../components/LanguageSwitcher.jsx'
+
+import { formatMoney, getOffer, PRODUCT } from '../config/store.js'
 import { trackPurchase } from '../lib/pixel.js'
 import { cleanCheckoutUrl } from '../lib/checkoutUrl.js'
+import { useI18n } from '../i18n/index.jsx'
 
-const dateLabel = new Intl.DateTimeFormat('fr-CH', {
+const dateLabels = {}
+const dateLabel = (lang) => (dateLabels[lang] ||= new Intl.DateTimeFormat(lang === 'de' ? 'de-CH' : 'fr-CH', {
   timeZone: 'Europe/Zurich', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-})
+}))
 
 function paymentLink(orderId, routeUrl) {
   try {
@@ -34,6 +38,8 @@ function Step({ n, label, current, done }) {
 export default function OrderStatus() {
   const { orderId } = useParams()
   const location = useLocation()
+  const { t, lang } = useI18n()
+  const st = t.status
   const [state, setState] = useState({ loading: true, order: null, error: false })
   const [opening, setOpening] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -67,10 +73,14 @@ export default function OrderStatus() {
   const confirmed = order?.status === 'confirmed'
   const cancelled = order?.status === 'cancelled'
   const offer = order ? getOffer(order.offerId) : null
+  // Montant dans la devise ENREGISTRÉE avec la commande (jamais celle du visiteur aujourd'hui).
+  const orderCurrency = order?.currency || 'CHF'
+  const amount = (v) => formatMoney(v, orderCurrency, lang)
+  const phase = confirmed ? 'confirmed' : cancelled ? 'cancelled' : 'pending'
 
   useEffect(() => {
     if (confirmed) trackPurchase({
-      transaction_id: order.orderId, price: order.total, currency: 'CHF',
+      transaction_id: order.orderId, price: order.total, currency: order.currency || 'CHF',
       item_ids: [PRODUCT.id], number_items: order.packs,
     })
   }, [confirmed, order?.orderId, order?.total, order?.packs])
@@ -100,27 +110,30 @@ export default function OrderStatus() {
       <header className="border-b border-fr-line bg-white">
         <div className="mx-auto flex h-16 max-w-[760px] items-center justify-between px-4 sm:px-6">
           <Logo />
-          <span className="hidden text-[0.68rem] font-bold uppercase tracking-[0.18em] text-fr-muted min-[380px]:block">Suivi sécurisé</span>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-[0.68rem] font-bold uppercase tracking-[0.18em] text-fr-muted sm:block">{st.secure}</span>
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-[680px] px-3 pb-12 pt-5 sm:px-5 sm:pt-9">
         {loading ? (
           <div role="status" className="flex items-center justify-center gap-2 rounded-[1.5rem] bg-white px-5 py-20 text-fr-muted ring-1 ring-fr-line">
-            <Loader2 size={20} className="animate-spin" /> Chargement du bon de commande…
+            <Loader2 size={20} className="animate-spin" /> {st.loading}
           </div>
         ) : error ? (
           <div className="rounded-[1.5rem] bg-white p-6 ring-1 ring-fr-line sm:p-8">
-            <h1 className="font-grotesk text-2xl font-bold">Commande introuvable</h1>
-            <p className="mt-2 text-sm leading-relaxed text-fr-muted">Vérifiez le lien de suivi ou contactez-nous avec votre référence de commande.</p>
+            <h1 className="font-grotesk text-2xl font-bold">{st.notFound}</h1>
+            <p className="mt-2 text-sm leading-relaxed text-fr-muted">{st.notFoundText}</p>
           </div>
         ) : (
-          <article className="overflow-hidden rounded-[1.5rem] bg-white shadow-[0_20px_70px_rgba(11,61,42,0.09)] ring-1 ring-fr-line animate-fade-up" aria-label="Bon de commande">
+          <article className="overflow-hidden rounded-[1.5rem] bg-white shadow-[0_20px_70px_rgba(11,61,42,0.09)] ring-1 ring-fr-line animate-fade-up" aria-label={st.voucher}>
             <div className="bg-fr-deep px-5 pb-6 pt-5 text-white sm:px-8 sm:pt-7">
               <div className="flex items-center justify-between gap-3">
-                <p className="font-grotesk text-[0.68rem] font-bold uppercase tracking-[0.2em] text-white/65">Bon de commande</p>
+                <p className="font-grotesk text-[0.68rem] font-bold uppercase tracking-[0.2em] text-white/65">{st.voucher}</p>
                 <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.08em]">
-                  {confirmed ? 'Confirmée' : cancelled ? 'Annulée' : 'Paiement en attente'}
+                  {st.badge[phase]}
                 </span>
               </div>
               <div className="mt-5 flex items-start gap-3">
@@ -129,42 +142,42 @@ export default function OrderStatus() {
                 </span>
                 <div>
                   <h1 className="font-grotesk text-[1.48rem] font-bold leading-[1.12] tracking-[-0.035em] sm:text-[1.8rem]">
-                    {confirmed ? 'Commande confirmée' : cancelled ? 'Commande annulée' : 'Commande en cours'}
+                    {st.heading[phase]}
                   </h1>
                   <p className="mt-1 text-[0.81rem] text-white/72">
-                    {confirmed ? 'Paiement vérifié par notre équipe.' : cancelled ? 'Cette commande a été clôturée.' : 'Finalisez le paiement dans l’onglet sécurisé.'}
+                    {st.sub[phase]}
                   </p>
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-1 border-t border-white/15 pt-3 text-[0.72rem] text-white/65">
-                <span>Réf. <strong className="font-grotesk tracking-[0.06em] text-white">{order.orderId.slice(0, 8).toUpperCase()}</strong></span>
-                <time dateTime={order.createdAt}>{dateLabel.format(new Date(order.createdAt))}</time>
+                <span>{st.ref} <strong className="font-grotesk tracking-[0.06em] text-white">{order.orderId.slice(0, 8).toUpperCase()}</strong></span>
+                <time dateTime={order.createdAt}>{dateLabel(lang).format(new Date(order.createdAt))}</time>
               </div>
             </div>
 
             <div className="px-5 pb-6 pt-5 sm:px-8 sm:pb-8">
-              <ol className="grid grid-cols-3 gap-1 rounded-xl bg-fr-soft px-2.5 py-3 sm:px-4" aria-label="Progression de la commande">
-                <Step n="1" label="Informations" done />
-                <Step n="2" label="Paiement" current={processing} done={confirmed} />
-                <Step n="3" label="Confirmation" current={confirmed} />
+              <ol className="grid grid-cols-3 gap-1 rounded-xl bg-fr-soft px-2.5 py-3 sm:px-4" aria-label={st.progress}>
+                <Step n="1" label={st.steps[0]} done />
+                <Step n="2" label={st.steps[1]} current={processing} done={confirmed} />
+                <Step n="3" label={st.steps[2]} current={confirmed} />
               </ol>
 
               <div className="mt-5 flex items-center gap-3">
                 {offer && <img src={offer.image} alt="" className="h-14 w-14 flex-none rounded-xl bg-fr-soft object-contain p-1" />}
                 <div className="min-w-0 flex-1">
                   <p className="text-[0.84rem] font-bold">Ariel All-in-1 PODS</p>
-                  <p className="text-[0.74rem] text-fr-muted">{order.packs} sachet{order.packs > 1 ? 's' : ''} · {offer?.washes || order.packs * 60} capsules</p>
+                  <p className="text-[0.74rem] text-fr-muted">{st.line(order.packs, offer?.washes || order.packs * 60)}</p>
                 </div>
-                <strong className="font-grotesk text-[0.94rem] tabular-nums">{formatCHF(order.total)}</strong>
+                <strong className="font-grotesk text-[0.94rem] tabular-nums">{amount(order.total)}</strong>
               </div>
 
               <div className="mt-4 border-t border-dashed border-fr-line pt-4">
                 <div className="flex items-end justify-between gap-2">
                   <div>
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.1em] text-fr-muted">{confirmed ? 'Total payé' : cancelled ? 'Montant de la commande' : 'Total à régler'}</p>
-                    <p className="mt-0.5 text-[0.72rem] text-fr-muted">Livraison offerte en Suisse</p>
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.1em] text-fr-muted">{st.totalLabel[phase]}</p>
+                    <p className="mt-0.5 text-[0.72rem] text-fr-muted">{st.delivery}</p>
                   </div>
-                  <strong className="font-grotesk text-[1.68rem] font-bold leading-none tabular-nums tracking-[-0.045em] text-fr-deep">{formatCHF(order.total)}</strong>
+                  <strong className="font-grotesk text-[1.68rem] font-bold leading-none tabular-nums tracking-[-0.045em] text-fr-deep">{amount(order.total)}</strong>
                 </div>
               </div>
 
@@ -172,36 +185,36 @@ export default function OrderStatus() {
                 <div className="mt-5 rounded-xl border border-fr-mint2 bg-fr-mint px-3.5 py-3.5 animate-fade-up [animation-delay:90ms]">
                   <p className="flex items-start gap-2.5 text-[0.79rem] leading-[1.5] text-fr-deep">
                     <LockKeyhole size={17} className="mt-0.5 flex-none" />
-                    <span><strong>Étape suivante :</strong> vérifiez vos coordonnées et terminez le paiement sur la page externe. Ce bon ne confirme pas encore un paiement.</span>
+                    <span><strong>{st.nextTitle}</strong>{st.nextText}</span>
                   </p>
                 </div>
               )}
 
               {processing && checkoutUrl && (
                 <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" onClick={openPayment} aria-disabled={opening} className={`mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-fr-green px-4 text-[0.87rem] font-bold text-white shadow-[0_9px_18px_rgba(14,122,71,0.18)] transition duration-base hover:bg-[#0B6A3D] ${opening ? 'cursor-wait opacity-70' : ''}`}>
-                  {opening ? 'Page de paiement ouverte' : 'Finaliser le paiement'} <ArrowUpRight size={17} />
+                  {opening ? st.opened : st.pay} <ArrowUpRight size={17} />
                 </a>
               )}
               {processing && !checkoutUrl && (
                 <Link to="/checkout" className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-fr-green px-4 text-[0.87rem] font-bold text-white">
-                  Reprendre le paiement
+                  {st.resume}
                 </Link>
               )}
-              {cancelled && <p className="mt-5 rounded-xl bg-fr-soft p-3 text-[0.8rem] text-fr-muted">Aucun paiement n’est confirmé pour cette commande.</p>}
+              {cancelled && <p className="mt-5 rounded-xl bg-fr-soft p-3 text-[0.8rem] text-fr-muted">{st.cancelledNote}</p>}
 
               <div className="mt-5 flex items-center justify-between gap-2 border-t border-fr-line pt-4">
                 <div className="min-w-0">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-fr-muted">Référence complète</p>
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-fr-muted">{st.fullRef}</p>
                   <p className="mt-0.5 break-all font-grotesk text-[0.74rem] font-medium tabular-nums text-fr-ink">{order.orderId}</p>
                 </div>
-                <button type="button" onClick={copyReference} aria-label="Copier la référence" className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-fr-line text-fr-green transition hover:bg-fr-mint">
+                <button type="button" onClick={copyReference} aria-label={st.copy} className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-fr-line text-fr-green transition hover:bg-fr-mint">
                   {copied ? <Check size={16} /> : <Copy size={16} />}
                 </button>
               </div>
             </div>
           </article>
         )}
-        <Link to="/" className="mt-5 inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-fr-muted hover:text-fr-green"><ArrowLeft size={15} /> Retour à la boutique</Link>
+        <Link to="/" className="mt-5 inline-flex items-center gap-1.5 text-[0.78rem] font-semibold text-fr-muted hover:text-fr-green"><ArrowLeft size={15} /> {t.common.backToShop}</Link>
       </main>
     </div>
   )

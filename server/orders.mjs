@@ -257,6 +257,7 @@ export async function publicOrderStatus(dataDir, orderId) {
       offerId: record.order.offerId,
       packs: record.order.packs,
       total: record.order.total,
+      currency: record.order.currency || 'CHF',
       createdAt: record.createdAt,
     }
   }

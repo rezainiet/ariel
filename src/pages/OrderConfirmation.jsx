@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Clock, Loader2 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { PRODUCT, storeRef } from '../config/store.js'
+import { PRODUCT } from '../config/store.js'
+import { useI18n } from '../i18n/index.jsx'
 import { verifyOrder } from '../lib/payment.js'
 import { trackPurchase } from '../lib/pixel.js'
 import { trackAnalyticsEvent } from '../lib/analytics.js'
@@ -15,6 +16,8 @@ export default function OrderConfirmation() {
   const session = params.get('session')
   const [state, setState] = useState({ status: 'loading', order: null })
   const { clear } = useCart()
+  const { t } = useI18n()
+  const cf = t.confirmation
   const fired = useRef(false)
 
   useEffect(() => {
@@ -50,30 +53,29 @@ export default function OrderConfirmation() {
       <Logo />
       {state.status === 'loading' && (
         <p className="mt-10 flex items-center gap-2 text-fr-ink/75" role="status">
-          <Loader2 size={18} className="animate-spin" /> Vérification de votre paiement…
+          <Loader2 size={18} className="animate-spin" /> {cf.verifying}
         </p>
       )}
       {state.status === 'verified' && (
         <div className="mt-10 max-w-md">
           <CheckCircle2 size={44} className="mx-auto text-fr-green" />
-          <h1 className="mt-4 font-extrabold tracking-[-0.03em] text-3xl text-fr-ink">Merci pour votre commande</h1>
+          <h1 className="mt-4 font-extrabold tracking-[-0.03em] text-3xl text-fr-ink">{cf.thanks}</h1>
           <p className="mt-2 text-fr-ink/75">
-            Commande n° <strong>{state.order.orderId}</strong>. Une confirmation a été envoyée par e-mail. Vous serez averti dès
-            l’expédition.
+            {cf.text(<strong key="id">{state.order.orderId}</strong>)}
           </p>
         </div>
       )}
       {state.status === 'unverified' && (
         <div className="mt-10 max-w-md">
           <Clock size={40} className="mx-auto text-fr-muted" />
-          <h1 className="mt-4 font-extrabold tracking-[-0.03em] text-3xl text-fr-ink">Paiement non confirmé</h1>
+          <h1 className="mt-4 font-extrabold tracking-[-0.03em] text-3xl text-fr-ink">{cf.unverified}</h1>
           <p className="mt-2 text-fr-ink/75">
-            Nous n’avons pas pu confirmer de paiement pour cette page. Si vous avez été débité, contactez {storeRef()} avec la
-            référence de votre paiement.
+            {cf.unverifiedText}
           </p>
         </div>
       )}
-      <Link to="/" className="mt-8 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white">Retour à la boutique</Link>
+      <Link to="/" className="mt-8 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white">{t.common.backToShop}</Link>
+
     </div>
   )
 }
