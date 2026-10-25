@@ -10,14 +10,14 @@ import { Swap } from '../../lib/motion.js'
 
 const ICONS = [Tag, Truck, RotateCcw]
 
-// Prix d'entrée (offre la moins chère) dans la devise du visiteur.
-const entryPrice = (offers, money) => money(Math.min(...offers.map((o) => o.price)))
+// Prix d'entrée (offre la moins chère) en monnaie locale (estimation « ≈ ») ou débitée.
+const entryPrice = (offers, local) => local(Math.min(...offers.map((o) => o.price)))
 
 // Bandeau d'annonce : desktop = les trois messages côte à côte ; mobile = fondu enchaîné lent
 // (pas de défilement), en pause au survol/focus et figé si l'utilisateur réduit les animations.
 export function Announcement() {
-  const { t, offers, money } = useI18n()
-  const from = entryPrice(offers, money)
+  const { t, offers, local } = useI18n()
+  const from = entryPrice(offers, local)
   const ANNOUNCEMENTS = [t.announce.clearance(from), t.announce.freeDelivery, t.announce.returns]
   const [i, setI] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -147,7 +147,7 @@ export function HeaderF() {
 }
 
 export function FooterF({ stickyPad = false }) {
-  const { t, currency } = useI18n()
+  const { t, currency, display, estimated } = useI18n()
   const f = t.footer
   const address = [MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
     ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${t.common.country}` : null
@@ -189,7 +189,7 @@ export function FooterF({ stickyPad = false }) {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-2 px-4 py-6 text-xs text-fr-mint/55 lg:flex-row lg:justify-between lg:px-8">
-          <p>{f.bottom(currency)}</p>
+          <p>{f.bottom(currency, estimated ? display.currency : null)}</p>
           <p>
             {f.brand}{' '}
             {/* Mention exigée par la licence CC BY 4.0 de la base pays (server/update-geoip.mjs). */}

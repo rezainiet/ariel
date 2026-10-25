@@ -2,25 +2,36 @@
 // Langue et devise de la boutique.
 //  · Langue : choix manuel (localStorage + cookie, toujours prioritaire) › pays › navigateur › français.
 //    Changer de langue est instantané (aucun rechargement) et ne touche jamais à la devise.
-//  · Pays et devise : fournis par NOTRE serveur dans la page (window.__GEO__, server/geo.mjs).
-//    Le navigateur ne choisit pas de devise : il n'affiche que celle que le serveur encaissera.
+//  · Pays et devises : fournis par NOTRE serveur dans la page (window.__GEO__, server/geo.mjs).
+//    `currency` = devise ENCAISSÉE (CHF, liens approuvés) ; `display` = monnaie du pays du visiteur, au
+//    taux BCE. Quand elles diffèrent, chaque montant local est une estimation (« ≈ ») et le montant
+//    débité en CHF est toujours affiché à côté. Le navigateur ne choisit aucune devise lui-même.
 // ─────────────────────────────────────────────────────────────
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import fr from './fr.js'
 import de from './de.js'
 import { META } from './meta.js'
 import { detectLang, isLang, normalizeCountry, LANG_STORAGE_KEY, LANG_COOKIE, DEFAULT_LANG } from './detect.js'
-import { OFFERS, BASE_CURRENCY, getOffer, hasPrices, pricedOffer, formatMoney, savingsFor } from '../config/offers.js'
+import { OFFERS, BASE_CURRENCY, getOffer, hasPrices, pricedOffer, formatMoney, moneyParts, savingsFor } from '../config/offers.js'
+import { ECB_CURRENCIES, convert } from '../config/currencies.js'
 
 export const MESSAGES = { fr, de }
 
+// Devise affichée envoyée par le serveur ; toute valeur inattendue retombe sur la devise encaissée.
+function readDisplay(d, currency) {
+  const ok = d && d.estimated === true && ECB_CURRENCIES.includes(d.currency) && d.currency !== currency &&
+    Number.isFinite(d.rate) && d.rate > 0 && /^\d{4}-\d{2}-\d{2}$/.test(d.date || '')
+  return ok ? { currency: d.currency, rate: d.rate, date: d.date, estimated: true } : { currency, rate: 1, date: null, estimated: false }
+}
+
+function fromServer(g) {
+  const currency = hasPrices(g?.currency) ? g.currency : BASE_CURRENCY
+  return { country: normalizeCountry(g?.country), currency, display: readDisplay(g?.display, currency) }
+}
+
 function readGeo() {
   const g = typeof window !== 'undefined' ? window.__GEO__ : null
-  return {
-    known: Boolean(g),
-    country: normalizeCountry(g?.country),
-    currency: hasPrices(g?.currency) ? g.currency : BASE_CURRENCY,
-  }
+  return { known: Boolean(g), ...fromServer(g) }
 }
 
 function readStoredLang() {
@@ -126,26 +137,51 @@ export function I18nProvider({ children }) {
   // Le serveur a refusé une commande dans une devise périmée : on reprend la sienne.
   const syncCurrency = useCallback(async () => {
     const geo = await refreshLocale()
-    if (geo) setState((s) => ({ ...s, country: geo.country, currency: geo.currency }))
+    if (geo) setState((s) => ({ ...s, country: geo.country, currency: geo.currency, display: geo.display }))
     return geo
   }, [])
 
   const value = useMemo(() => {
-    const { lang, currency, country } = state
+    const { lang, currency, country, display } = state
     const money = (amount) => formatMoney(amount, currency, lang)
     const offers = OFFERS.map((o) => pricedOffer(o, currency))
+    const estimated = display.estimated
+    // Valeur locale arrondie aux décimales de la devise : base unique de tous les montants locaux affichés.
+    const localValue = (amount) => (estimated ? convert(amount, display.rate, display.currency) : amount)
+    const local = (amount) => (estimated ? `≈ ${formatMoney(localValue(amount), display.currency, lang)}` : money(amount))
+    const single = offers[0]
     return {
       lang,
       t: MESSAGES[lang],
       country,
+      // Devise encaissée (validation serveur, suivi publicitaire, total du bouton d'achat).
       currency,
+      // Devise affichée ; `estimated` : montants locaux indicatifs, débit en `currency`.
+      display,
+      estimated,
       setLang,
       syncCurrency,
+      // Montant réellement débité.
       money,
+      // Montant pour le visiteur : estimation locale « ≈ 4,24 € », ou le montant débité s'il n'y a pas de conversion.
+      local,
+      localParts: (amount) => moneyParts(localValue(amount), display.currency, lang),
+      localPlain: (amount) => formatMoney(localValue(amount), display.currency, lang),
+      // Montant DÉJÀ en monnaie locale (ex. économie issue de localSavings) : mise en forme seulement.
+      localAmount: (value) => (estimated ? `≈ ${formatMoney(value, display.currency, lang)}` : money(value)),
+      // Mention complète (taux, date, devise débitée) à placer près des totaux estimés.
+      priceNote: estimated
+        ? MESSAGES[lang].price.note(display.currency, currency, `1 ${currency} = ${formatMoney(display.rate, display.currency, lang)}`,
+          new Date(`${display.date}T12:00:00Z`).toLocaleDateString(lang === 'de' ? 'de-CH' : 'fr-CH', { day: 'numeric', month: 'long', year: 'numeric' }))
+        : '',
       offers,
-      // Offre avec les prix de la devise du visiteur (prix barré inclus).
+      // Offre avec les prix de la devise encaissée (prix barré inclus).
       offer: (id) => pricedOffer(getOffer(id), currency),
       savings: (o) => savingsFor(o),
+      // Économie en monnaie locale, calculée sur les montants locaux arrondis : l'affichage reste exact.
+      localSavings: (o) => (estimated
+        ? convert(o.packs * localValue(single.price) - localValue(o.price), 1, display.currency)
+        : savingsFor(o)),
     }
   }, [state, setLang, syncCurrency])
 
@@ -157,11 +193,8 @@ async function refreshLocale() {
     const res = await fetch('/api/locale', { headers: { Accept: 'application/json' }, cache: 'no-store' })
     if (!res.ok) return null
     const data = await res.json()
-    return {
-      known: true,
-      country: normalizeCountry(data?.country),
-      currency: hasPrices(data?.currency) ? data.currency : BASE_CURRENCY,
-    }
+    return { known: true, ...fromServer(data) }
+
   } catch {
     return null
   }

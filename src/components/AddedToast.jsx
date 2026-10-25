@@ -8,7 +8,7 @@ import { usePresence } from '../lib/motion.js'
 // Confirmation discrète après un VRAI ajout au panier (quand le panier reste fermé).
 export default function AddedToast() {
   const { addedAt, drawerOpen, offer, openDrawer } = useCart()
-  const { t, money } = useI18n()
+  const { t, local } = useI18n()
   const [visible, setVisible] = useState(false)
   const { pathname } = useLocation()
   const drawerRef = useRef(drawerOpen)
@@ -41,7 +41,7 @@ export default function AddedToast() {
       <p className="flex-1 text-sm text-fr-ink">
         <span className="font-semibold">{t.toast.added}</span>
         <span className="block text-xs text-fr-muted">
-          {t.toast.line(shownOffer.packs, shownOffer.washes, money(shownOffer.price))}
+          {t.toast.line(shownOffer.packs, shownOffer.washes, local(shownOffer.price))}
         </span>
       </p>
       <button

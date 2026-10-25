@@ -26,7 +26,7 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
     io.observe(el)
     return () => io.disconnect()
   }, [ctaRef])
-  const { t, money, offer: getOffer } = useI18n()
+  const { t, money, local, estimated, offer: getOffer } = useI18n()
   const offer = getOffer(sel)
   const consentOpen = useConsentBannerOpen()
   const shown = past && !drawerOpen && !disabled && !consentOpen
@@ -50,7 +50,10 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
               <span className="block truncate text-[0.82rem] font-bold text-fr-ink">
                 {t.common.sachets(offer.packs)}
               </span>
-              <Swap value={offer.id} className="block text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green"><Chf v={offer.price} format={money} /></Swap>
+              <Swap value={offer.id} className="block text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green">
+                <Chf v={offer.price} format={local} />
+                {estimated && <span className="ml-1.5 text-[0.7rem] font-semibold tracking-normal text-fr-muted">{money(offer.price)}</span>}
+              </Swap>
             </span>
           </a>
           <button

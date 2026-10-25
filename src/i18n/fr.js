@@ -88,6 +88,15 @@ const fr = {
     rating: (value) => `${value} sur 5`,
     decimal: (v) => String(v).replace('.', ','),
   },
+  // Prix en monnaie locale : estimations au taux BCE, le paiement restant débité dans la devise encaissée.
+  price: {
+    charged: (amount) => `${amount} facturés`,
+    chargedCard: (amount) => `${amount} facturés`,
+    chargedLabel: 'Montant débité',
+    estimatedTotal: 'Total estimé',
+    note: (currency, charge, rate, date) => `Montants en ${currency} indicatifs, au taux de référence BCE du ${date} (${rate}). Le paiement est débité en ${charge} : le montant final est confirmé par le prestataire de paiement, votre banque peut appliquer son propre taux.`,
+    short: (charge) => `Paiement débité en ${charge} · montant final confirmé par le prestataire de paiement.`,
+  },
   announce: {
     clearance: (from) => `Déstockage en cours · offres dès ${from}`,
     clearanceShort: (from) => `Déstockage · dès ${from}`,
@@ -113,7 +122,7 @@ const fr = {
       ['Service', [['Contact & suivi', '/contact'], ['Livraison', '/livraison'], ['Retours & remboursements', '/retours-remboursements']]],
       ['Informations légales', [['Conditions générales', '/conditions-generales-de-vente'], ['Confidentialité', '/politique-de-confidentialite'], ['Mentions légales', '/mentions-legales']]],
     ],
-    bottom: (currency) => `Prix en ${currency} · Livraison offerte en Suisse · Retour sous ${days} jours`,
+    bottom: (currency, shown) => `${shown ? `Prix facturés en ${currency} · montants en ${shown} indicatifs` : `Prix en ${currency}`} · Livraison offerte en Suisse · Retour sous ${days} jours`,
     brand: `Ariel est une marque de The Procter & Gamble Company. ${store(true)} n’est pas le site officiel de la marque.`,
     geoCredit: 'Géolocalisation IP par DB-IP',
   },
@@ -523,6 +532,7 @@ const fr = {
       productsTitle: 'Produits et prix',
       products: (currencyName, list) => `Ariel All-in-1 PODS, sachets de 60 capsules, proposés dans la limite des stocks disponibles. Prix en ${currencyName}, livraison en Suisse incluse : ${list}.`,
       currencyNames: { CHF: 'francs suisses (CHF)', EUR: 'euros (EUR)' },
+      estimates: (currency) => ` Les montants affichés en ${currency} sont des estimations indicatives ; seul le montant en francs suisses est facturé.`,
       offerItem: (packs, price) => `${sachets(packs)} ${price}`,
       orderTitle: 'Commande',
       order: 'La commande est conclue par un clic sur « Acheter », qui engage à payer le montant affiché. Une confirmation est envoyée par e-mail. Nous pouvons annuler une commande en cas d’erreur manifeste de prix ou de rupture de stock ; tout montant déjà payé est alors remboursé.',

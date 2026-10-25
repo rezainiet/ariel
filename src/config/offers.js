@@ -7,6 +7,8 @@
 // PBV art. 16 — prix pratiqué auparavant ou par la concurrence). Retirer la clé = plus de prix barré.
 // ─────────────────────────────────────────────────────────────
 
+import { currencyDigits } from './currencies.js'
+
 export const PRODUCT = {
   id: 'ariel-all-in-1-pods',
   name: 'Ariel All-in-1 PODS',
@@ -91,11 +93,27 @@ export function formatCHF(amount) {
   return `CHF ${value}`
 }
 
-// CHF garde la convention suisse dans les deux langues ; EUR suit l'usage du pays de la langue (« 4,00 € »).
-const EUR_LOCALES = { fr: 'fr-FR', de: 'de-DE' }
+// CHF garde la convention suisse dans les deux langues ; les autres devises suivent l'usage de la langue
+// affichée (« 4,00 € », « 3,77 £GB », « 4,52 $ », « 745 ¥ »), avec les décimales usuelles de la devise.
+const LOCALES = { fr: 'fr-FR', de: 'de-DE' }
 export function formatMoney(amount, currency = BASE_CURRENCY, lang = 'fr') {
   if (currency === 'CHF') return formatCHF(amount)
-  return new Intl.NumberFormat(EUR_LOCALES[lang] || 'fr-FR', { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount)
+  return new Intl.NumberFormat(LOCALES[lang] || 'fr-FR', moneyOptions(currency)).format(amount)
+}
+
+const moneyOptions = (currency) => {
+  const digits = currencyDigits(currency)
+  return { style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits }
+}
+
+// Montant découpé pour l'affiche des offres : chiffres et symbole séparés (« 4,24 » + « € »).
+export function moneyParts(amount, currency = BASE_CURRENCY, lang = 'fr') {
+  if (currency === 'CHF') return { number: Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace('.', ','), unit: 'CHF' }
+  const parts = new Intl.NumberFormat(LOCALES[lang] || 'fr-FR', moneyOptions(currency)).formatToParts(amount)
+  return {
+    number: parts.filter((p) => p.type !== 'currency' && p.type !== 'literal').map((p) => p.value).join(''),
+    unit: parts.find((p) => p.type === 'currency')?.value || currency,
+  }
 }
 
 // ── Comparaisons de prix (calculées, jamais de prix de référence inventé) ──
