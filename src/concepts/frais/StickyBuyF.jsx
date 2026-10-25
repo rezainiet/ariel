@@ -49,12 +49,12 @@ export default function StickyBuyF({ ctaRef, sel, disabled }) {
             <span className="min-w-0 leading-tight">
               <span className="block truncate text-[0.82rem] font-bold text-fr-ink">
                 {t.common.sachets(offer.packs)}
-                {/* Montant débité à côté du nombre de sachets quand le prix affiché est une estimation */}
-                {estimated && <span className="font-semibold text-fr-muted"> · {money(offer.price)}</span>}
               </span>
               <Swap value={offer.id} className="block whitespace-nowrap text-[1.05rem] font-extrabold tracking-[-0.02em] text-fr-green">
                 <Chf v={offer.price} format={local} />
               </Swap>
+              {/* Montant débité, sur sa propre ligne : jamais tronqué quand le prix affiché est une estimation */}
+              {estimated && <span className="block whitespace-nowrap text-[0.66rem] font-semibold text-fr-muted">{t.price.chargedCard(money(offer.price))}</span>}
             </span>
           </a>
           <button
