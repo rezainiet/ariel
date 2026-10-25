@@ -77,7 +77,7 @@ export default function LanguageSwitcher({ className = '' }) {
         }`}
       >
         <Flag lang={lang} />
-        <span className="tracking-[0.04em] lg:hidden">{t.lang.short}</span>
+        <span className="tracking-[0.04em] max-[359px]:hidden lg:hidden">{t.lang.short}</span>
         <span className="hidden lg:inline">{t.lang.name}</span>
         <ChevronDown size={15} strokeWidth={2.2} className={`text-fr-muted transition-transform duration-base ease-out-soft ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>

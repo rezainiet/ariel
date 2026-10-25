@@ -109,7 +109,7 @@ export function HeaderF() {
         scrolled ? 'border-fr-line shadow-[0_6px_24px_rgba(11,61,42,0.06)]' : 'border-transparent'
       }`}
     >
-      <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-10 px-4 lg:h-[4.5rem] lg:px-8">
+      <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-3 px-4 max-[359px]:px-3 lg:h-[4.5rem] lg:gap-10 lg:px-8">
         <Logo />
         <nav aria-label={t.nav.label} className="hidden gap-8 font-jakarta text-[0.9rem] font-semibold text-fr-ink/80 lg:flex">
           {t.nav.items.map(([label, href]) => (

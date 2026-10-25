@@ -200,7 +200,7 @@ export function PromoBanner({ className = '' }) {
     <div className={`font-jakarta ${className}`}>
       <div className="relative mx-auto w-fit -rotate-[2deg]">
         <span className="absolute inset-x-[-0.9rem] inset-y-[-0.15rem] -skew-x-[10deg] rounded-[0.4rem] shadow-[0_10px_22px_rgba(227,6,19,0.3)]" style={{ background: `linear-gradient(180deg,#FF2A2A 0%,${RED} 60%,#B8000F 100%)` }} aria-hidden="true" />
-        <p className="relative whitespace-nowrap px-1 py-1 text-[2.15rem] font-extrabold uppercase italic leading-none tracking-[-0.03em] [text-shadow:0_2px_0_rgba(90,0,8,0.35)] min-[380px]:text-[2.4rem] lg:text-[2.9rem]">
+        <p className="relative whitespace-nowrap px-1 py-1 text-[2.15rem] font-extrabold uppercase italic leading-none tracking-[-0.03em] [text-shadow:0_2px_0_rgba(90,0,8,0.35)] max-[359px]:text-[1.85rem] min-[380px]:text-[2.4rem] lg:text-[2.9rem]">
           <span className="text-white">{promo.first}</span>
           <span style={{ color: YELLOW }}>{promo.second}</span>
         </p>
