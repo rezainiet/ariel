@@ -25,6 +25,7 @@ import { getFeaturedOffer } from './featured-offer.mjs'
 import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder, isOrderKey } from './orders.mjs'
 import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
 import { listReviews, addReview, deleteReview, saveReviewImage, reviewImageFile } from './reviews.mjs'
+import { withTranslations, listTranslations, removeTranslations, translateMissing, deeplTranslator } from './review-translations.mjs'
 import { loadStock, publicStock, stockSummary, checkAvailable, setStock, adjustStock, commitReservation, cancelReservation } from './stock.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -36,6 +37,9 @@ const DIST = join(ROOT, 'dist')
 const PASSWORD = process.env.ADMIN_PASSWORD || ''
 const SESSION_MS = 8 * 60 * 60 * 1000
 const IS_PROD = process.env.NODE_ENV === 'production'
+// Traduction automatique des nouveaux avis (DeepL) ; sans clé, les avis restent affichés dans leur langue d'origine.
+const TRANSLATOR = deeplTranslator(process.env)
+const publishedReviews = async (meta = false) => withTranslations(await listReviews(DATA_DIR), await listTranslations(DATA_DIR), { meta })
 
 if (PASSWORD && PASSWORD.length < 12) {
   console.error('ADMIN_PASSWORD doit contenir au moins 12 caractères.')
@@ -138,7 +142,7 @@ async function api(req, res, path) {
   // Public : pays, devise et langue proposée (repli si la page n'a pas été servie par ce serveur).
   if (path === '/api/locale' && method === 'GET') return send(res, 200, visitorLocale(req))
 
-  if (path === '/api/reviews' && method === 'GET') return send(res, 200, await listReviews(DATA_DIR))
+  if (path === '/api/reviews' && method === 'GET') return send(res, 200, await publishedReviews())
 
   // Public : disponibilité par offre, sans quantité.
   if (path === '/api/stock' && method === 'GET') return send(res, 200, publicStock(await loadStock(DATA_DIR)))
@@ -255,12 +259,21 @@ async function api(req, res, path) {
 
   if (path.startsWith('/api/admin/')) {
     if (!isAdmin(req)) return send(res, 401, { error: 'unauthorized' })
-    if (path === '/api/admin/reviews' && method === 'GET') return send(res, 200, await listReviews(DATA_DIR))
+    if (path === '/api/admin/reviews' && method === 'GET') return send(res, 200, await publishedReviews(true))
+    if (path === '/api/admin/review-translator' && method === 'GET') return send(res, 200, { provider: TRANSLATOR?.name || null })
+    if (path === '/api/admin/reviews/translate' && method === 'POST') {
+      if (!TRANSLATOR) return send(res, 409, { error: 'no_translator' })
+      const result = await translateMissing(DATA_DIR, await listReviews(DATA_DIR), TRANSLATOR)
+      return send(res, 200, { provider: TRANSLATOR.name, ...result })
+    }
     if (path === '/api/admin/reviews' && method === 'POST') {
       let body
       try { body = await readJson(req) } catch { return send(res, 400, { error: 'bad_request' }) }
       const result = await addReview(DATA_DIR, body)
-      return result.ok ? send(res, 201, result.review) : send(res, 422, { error: 'invalid', errors: result.errors })
+      if (!result.ok) return send(res, 422, { error: 'invalid', errors: result.errors })
+      // Traduction en arrière-plan : la publication n'attend pas le service de traduction.
+      translateMissing(DATA_DIR, [result.review], TRANSLATOR).catch((error) => console.error(`[reviews] ${error.message}`))
+      return send(res, 201, withTranslations([result.review], {}, { meta: true })[0])
     }
     if (path === '/api/admin/review-images' && method === 'POST') {
       let body
@@ -269,7 +282,9 @@ async function api(req, res, path) {
       return result.ok ? send(res, 201, { url: result.url }) : send(res, 422, { error: result.error })
     }
     if (path.startsWith('/api/admin/reviews/') && method === 'DELETE') {
-      const removed = await deleteReview(DATA_DIR, path.slice('/api/admin/reviews/'.length))
+      const id = path.slice('/api/admin/reviews/'.length)
+      const removed = await deleteReview(DATA_DIR, id)
+      if (removed) await removeTranslations(DATA_DIR, id)
       return send(res, removed ? 200 : 404, { removed })
     }
     if (path === '/api/admin/stock' && method === 'GET') return send(res, 200, await adminStock())

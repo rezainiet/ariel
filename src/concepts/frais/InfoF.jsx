@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, Play, Pause, Truck, RotateCcw, LockKeyhole, Plus, ArrowUpRight, MessageCircleQuestion, Star, ShieldAlert } from 'lucide-react'
+import { BadgeCheck, Play, Pause, Truck, RotateCcw, LockKeyhole, Plus, ArrowUpRight, MessageCircleQuestion, Star, ShieldAlert, Languages } from 'lucide-react'
 import { DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, STORE, VIDEO, STOCK_VIDEO } from '../../config/store.js'
 import { summarize, formatReviewDate } from '../../data/reviews.js'
+import { reviewText } from '../../lib/reviewText.js'
 import { useI18n } from '../../i18n/index.jsx'
 import { IconTile } from './Icons.jsx'
 import { Rise } from './motion.jsx'
@@ -37,13 +38,44 @@ function Stars({ value, size = 14 }) {
   )
 }
 
+// Titre et texte dans la langue affichée. Une traduction est signalée, avec l'original à un clic ;
+// sans traduction enregistrée, l'avis s'affiche tel que publié.
+function ReviewContent({ review, original, onToggle }) {
+  const { t, lang } = useI18n()
+  const r9 = t.reviews
+  const text = reviewText(review, lang, { original })
+  return (
+    <>
+      {text.title && <p lang={text.lang} className="mt-3 text-[1rem] font-bold text-fr-ink">{text.title}</p>}
+      <p lang={text.lang} className="mt-4 flex-1 text-[0.9rem] leading-relaxed text-fr-ink">{text.body}</p>
+      {text.canToggle && (
+        <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.72rem] text-fr-muted">
+          <Languages size={13} strokeWidth={1.9} className="flex-none" aria-hidden="true" />
+          <span>{text.translated ? r9.translatedFrom(text.source) : r9.original(text.source)}</span>
+          <span aria-hidden="true" className="hidden sm:inline">·</span>
+          <button type="button" onClick={onToggle} className="basis-full rounded text-left font-semibold sm:basis-auto text-fr-green underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fr-green">
+            {text.translated ? r9.showOriginal : r9.showTranslation}
+          </button>
+        </p>
+      )}
+    </>
+  )
+}
+
 export function ReviewsF({ reviewState }) {
   const { t, lang } = useI18n()
   const r9 = t.reviews
   const { status, reviews } = reviewState
   const [visibleCount, setVisibleCount] = useState(3)
   const [ratingFilter, setRatingFilter] = useState(null)
+  // Avis affichés en version originale à la demande du visiteur (remis à zéro à chaque changement de langue).
+  const [originals, setOriginals] = useState({ lang, ids: [] })
   if (status !== 'live') return null
+  const showsOriginal = (id) => originals.lang === lang && originals.ids.includes(id)
+  const toggleOriginal = (id) => setOriginals((current) => {
+    const ids = current.lang === lang ? current.ids : []
+    return { lang, ids: ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id] }
+  })
   const sum = summarize(reviews)
   const hasExternal = reviews.some((review) => review.source)
   const filtered = ratingFilter ? reviews.filter((review) => review.rating === ratingFilter) : reviews
@@ -97,9 +129,7 @@ export function ReviewsF({ reviewState }) {
                   </span>
                 )}
               </div>
-              {/* Contenu de l'avis tel que publié (jamais traduit ni modifié) : marqué en français. */}
-              {r.title && <p lang="fr" className="mt-3 text-[1rem] font-bold text-fr-ink">{r.title}</p>}
-              <p lang="fr" className="mt-4 flex-1 text-[0.9rem] leading-relaxed text-fr-ink">{r.body}</p>
+              <ReviewContent review={r} original={showsOriginal(r.id)} onToggle={() => toggleOriginal(r.id)} />
               {Array.isArray(r.photos) && r.photos.length > 0 && (
                 <div className="mt-3 flex gap-2">
                   {r.photos.slice(0, 3).map((src) => (

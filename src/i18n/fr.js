@@ -246,6 +246,10 @@ const fr = {
     photoBy: (author) => `Photo partagée par ${author}`,
     external: 'Avis externe · ',
     more: (n) => `Voir plus d’avis (${n})`,
+    translatedFrom: (l) => `Traduit ${{ fr: 'du français', de: 'de l’allemand', en: 'de l’anglais' }[l] || ''}`,
+    original: (l) => `Avis original en ${{ fr: 'français', de: 'allemand', en: 'anglais' }[l] || ''}`,
+    showOriginal: 'Voir l’original',
+    showTranslation: 'Voir la traduction',
   },
   video: {
     eyebrow: 'En images',

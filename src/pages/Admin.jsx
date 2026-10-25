@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   LockKeyhole, LogOut, Plus, Trash2, Loader2, Check, AlertCircle, ExternalLink, RotateCcw, RefreshCw,
-  Boxes, Star, CreditCard, Clock, ArrowUpRight, PackageCheck, History, Info, ShoppingBag, Download, Mail, Phone, MapPin, BarChart3,
+  Boxes, Star, Languages, CreditCard, Clock, ArrowUpRight, PackageCheck, History, Info, ShoppingBag, Download, Mail, Phone, MapPin, BarChart3,
 } from 'lucide-react'
 import { OFFERS, PRODUCT, formatCHF } from '../config/offers.js'
 import { FIELDS, DEFAULT_PARAMS, validateConfig, buildRedirectUrl, normalizeDomain } from '../lib/redirectPayment.js'
@@ -9,6 +9,7 @@ import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
 import { Swap } from '../lib/motion.js'
 import { CHANNELS, CHANNEL_LABELS } from '../lib/trafficSource.js'
+import { LANGS } from '../i18n/detect.js'
 
 // ─────────────────────────────────────────────────────────────
 // Administration — trafic, stock, avis clients, paiement.
@@ -709,13 +710,21 @@ function StockPanel({ stock, error, onStock, onReload, onLogout, focusRef }) {
 }
 
 // ── Avis clients ──
-const emptyReview = { author: '', location: '', rating: 5, title: '', body: '', photos: [] }
+const emptyReview = { author: '', location: '', rating: 5, title: '', body: '', photos: [], lang: LANGS[0] }
+const LANG_NAMES = { fr: 'Français', de: 'Allemand', en: 'Anglais' }
+const TRANSLATED_BY = { deepl: 'DeepL', claude: 'Claude (IA)', reviewed: 'relue', manual: 'manuelle' }
 
 function ReviewManager({ reviews, setReviews, onLogout }) {
   const [form, setForm] = useState(emptyReview)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [translator, setTranslator] = useState(undefined)
+
+  useEffect(() => {
+    call('/api/admin/review-translator').then((r) => setTranslator(r.status === 200 ? r.data.provider : null))
+  }, [])
+  const missing = (reviews || []).reduce((n, review) => n + LANGS.filter((l) => l !== review.lang && !review.translations?.[l]).length, 0)
 
   const set = (name, value) => setForm((current) => ({ ...current, [name]: value }))
   const upload = async (event) => {
@@ -756,9 +765,23 @@ function ReviewManager({ reviews, setReviews, onLogout }) {
     if (r.status === 201) {
       setReviews((current) => [r.data, ...(current || [])])
       setForm(emptyReview)
-      setMessage('Avis publié sur la boutique.')
+      setMessage(translator ? 'Avis publié. Traduction automatique en cours : actualisez la liste dans un instant.' : 'Avis publié. Sans service de traduction, il s’affiche dans sa langue d’origine.')
     } else if (r.status === 401) onLogout()
     else setError(Object.values(r.data.errors || {})[0] || 'Publication impossible.')
+    setBusy(false)
+  }
+
+  const translateAll = async () => {
+    setBusy(true)
+    setError('')
+    setMessage('')
+    const r = await call('/api/admin/reviews/translate', { method: 'POST' })
+    if (r.status === 401) return onLogout()
+    if (r.status === 200) {
+      const list = await call('/api/admin/reviews')
+      if (list.status === 200) setReviews(list.data)
+      setMessage(`${r.data.translated} traduction${r.data.translated > 1 ? 's' : ''} ajoutée${r.data.translated > 1 ? 's' : ''}${r.data.failed ? ` · ${r.data.failed} échec${r.data.failed > 1 ? 's' : ''}` : ''}.`)
+    } else setError('Traduction impossible pour le moment.')
     setBusy(false)
   }
 
@@ -791,7 +814,12 @@ function ReviewManager({ reviews, setReviews, onLogout }) {
                 {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} / 5</option>)}
               </select>
             </label>
-            <label className={label}>Titre <span className="font-normal text-fr-muted">(facultatif)</span>
+            <label className={label}>Langue de l’avis *
+              <select value={form.lang} onChange={(e) => set('lang', e.target.value)} className={`${input} mt-1 font-normal`}>
+                {LANGS.map((l) => <option key={l} value={l}>{LANG_NAMES[l] || l}</option>)}
+              </select>
+            </label>
+            <label className={`${label} sm:col-span-2`}>Titre <span className="font-normal text-fr-muted">(facultatif)</span>
               <input maxLength={100} value={form.title} onChange={(e) => set('title', e.target.value)} className={`${input} mt-1 font-normal`} />
             </label>
           </div>
@@ -838,6 +866,14 @@ function ReviewManager({ reviews, setReviews, onLogout }) {
                   </p>
                   {review.title && <p className="mt-0.5 font-semibold">{review.title}</p>}
                   <p className="mt-0.5 line-clamp-3 text-[0.82rem] text-fr-muted">{review.body}</p>
+                  <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[0.7rem] font-semibold">
+                    <span className="rounded-full bg-white px-2 py-0.5 text-fr-deep ring-1 ring-fr-line">Original : {LANG_NAMES[review.lang] || review.lang}</span>
+                    {LANGS.filter((l) => l !== review.lang).map((l) => review.translations?.[l] ? (
+                      <span key={l} className="rounded-full bg-fr-mint px-2 py-0.5 text-fr-green">{l.toUpperCase()} ✓ {TRANSLATED_BY[review.translations[l].by] || 'traduit'}</span>
+                    ) : (
+                      <span key={l} className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-900">{l.toUpperCase()} : original affiché</span>
+                    ))}
+                  </p>
                   {review.source && <a href={review.source.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[0.74rem] font-semibold text-fr-green underline">Source externe : {review.source.label} · {review.source.variant}</a>}
                   {review.photos.length > 0 && (
                     <div className="mt-2 flex gap-1.5">
@@ -849,6 +885,17 @@ function ReviewManager({ reviews, setReviews, onLogout }) {
               </li>
             ))}
           </ul>
+        )}
+        {reviews?.length > 0 && translator !== undefined && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-fr-soft px-3 py-2.5 text-[0.78rem] text-fr-muted">
+            <span className="flex items-center gap-2"><Languages size={15} className="flex-none text-fr-green" />
+              {translator ? `Traduction automatique : ${TRANSLATED_BY[translator] || translator}` : 'Traduction automatique désactivée (DEEPL_API_KEY absente)'}
+              {` · ${missing ? `${missing} traduction${missing > 1 ? 's' : ''} manquante${missing > 1 ? 's' : ''}` : 'tout est traduit'}`}
+            </span>
+            {translator && missing > 0 && (
+              <button type="button" onClick={translateAll} disabled={busy} className={`${btnSecondary} h-9 px-3 text-[0.78rem]`}>Traduire les avis manquants</button>
+            )}
+          </div>
         )}
       </Card>
     </div>

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile, rename, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
+import { isLang } from '../src/i18n/detect.js'
 
 const IMAGE_RE = /^\/review-images\/([0-9a-f-]{36})\.(png|jpg|webp)$/
 const MAX_IMAGE = 2 * 1024 * 1024
@@ -36,16 +37,18 @@ export function validateReview(input) {
   const rating = Number(input?.rating)
   const photos = input?.photos ?? []
   const source = input?.source ?? null
+  const lang = input?.lang ?? null
   if (!author || author.length > 80) errors.author = 'Nom requis (80 caractères maximum).'
   if (!body || body.length > 1200) errors.body = 'Avis requis (1 200 caractères maximum).'
   if (title.length > 100) errors.title = 'Titre trop long.'
   if (location.length > 80) errors.location = 'Localité trop longue.'
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) errors.rating = 'Choisissez une note de 1 à 5.'
+  if (lang !== null && !isLang(lang)) errors.lang = 'Langue de l’avis non prise en charge.'
   if (!Array.isArray(photos) || photos.length > 3 || photos.some((photo) => typeof photo !== 'string' || !IMAGE_RE.test(photo))) errors.photos = 'Trois images téléversées au maximum.'
   if (source !== null && (!source || typeof source !== 'object' || typeof source.label !== 'string' || source.label.length > 80 || !source.label.trim() || typeof source.variant !== 'string' || source.variant.length > 120 || !source.variant.trim() || typeof source.originalDate !== 'string' || source.originalDate.length > 40 || !source.originalDate.trim() || typeof source.url !== 'string' || !/^https:\/\/[^\s]+$/i.test(source.url))) errors.source = 'Source externe invalide.'
   if (Object.keys(errors).length) return { ok: false, errors }
   return { ok: true, review: { id: randomUUID(), author, title, body, location, rating,
-    photos, date: new Date().toISOString().slice(0, 10), verified: false,
+    photos, date: new Date().toISOString().slice(0, 10), verified: false, ...(lang ? { lang } : {}),
     ...(source ? { source: { label: source.label.trim(), url: source.url, variant: source.variant.trim(), originalDate: source.originalDate.trim() } } : {}) } }
 }
 
