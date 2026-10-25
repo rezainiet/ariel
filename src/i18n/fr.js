@@ -119,10 +119,10 @@ const fr = {
   },
   gallery: [
     { alt: 'Sachet Ariel All-in-1 PODS Universal+, 60 capsules', caption: 'Le sachet de 60 capsules' },
-    { alt: 'Le sachet posé dans une buanderie, devant des serviettes blanches', caption: 'En situation' },
-    { alt: 'Une capsule Ariel tenue au-dessus du tambour', caption: 'La capsule, prête à l’emploi' },
-    { alt: 'Capsule Ariel en gros plan dans l’eau', caption: 'La capsule en gros plan' },
-    { alt: 'Trois sachets Ariel sur une tablette en bois', caption: 'L’offre 3 sachets' },
+    { alt: 'Sachet Ariel All-in-1 PODS ouvert, rempli de capsules, posé sur un lave-linge', caption: 'Le sachet ouvert' },
+    { alt: 'Trois sachets Ariel All-in-1 PODS dans un carton', caption: 'L’offre 3 sachets' },
+    { alt: 'Trois sachets Ariel et des capsules sur une table en bois', caption: 'Trois sachets et leurs capsules' },
+    { alt: 'Un sachet Ariel et trois capsules sur une tablette, près de serviettes blanches', caption: 'Le sachet et ses capsules' },
   ],
   lightbox: { label: 'Galerie produit', close: 'Fermer la galerie', prev: 'Image précédente', next: 'Image suivante' },
   hero: {

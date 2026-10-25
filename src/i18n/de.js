@@ -119,10 +119,10 @@ const de = {
   },
   gallery: [
     { alt: 'Beutel Ariel All-in-1 PODS Universal+, 60 Kapseln', caption: 'Der Beutel mit 60 Kapseln' },
-    { alt: 'Der Beutel in einer Waschküche vor weißen Handtüchern', caption: 'Im Einsatz' },
-    { alt: 'Eine Ariel-Kapsel über der Trommel', caption: 'Die Kapsel, gebrauchsfertig' },
-    { alt: 'Ariel-Kapsel in Nahaufnahme im Wasser', caption: 'Die Kapsel in Nahaufnahme' },
-    { alt: 'Drei Ariel-Beutel auf einem Holzregal', caption: 'Das Angebot mit 3 Beuteln' },
+    { alt: 'Geöffneter Beutel Ariel All-in-1 PODS voller Kapseln auf einer Waschmaschine', caption: 'Der geöffnete Beutel' },
+    { alt: 'Drei Beutel Ariel All-in-1 PODS in einem Karton', caption: 'Das Angebot mit 3 Beuteln' },
+    { alt: 'Drei Ariel-Beutel und Kapseln auf einem Holztisch', caption: 'Drei Beutel und Kapseln' },
+    { alt: 'Ein Ariel-Beutel und drei Kapseln auf einem Regal neben weißen Handtüchern', caption: 'Der Beutel mit Kapseln' },
   ],
   lightbox: { label: 'Produktgalerie', close: 'Galerie schließen', prev: 'Vorheriges Bild', next: 'Nächstes Bild' },
   hero: {

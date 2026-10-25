@@ -34,14 +34,15 @@ export function Packs({ n, size = 'md' }) {
 }
 
 function Picture({ item, className, eager }) {
+  const style = item.position ? { objectPosition: item.position } : undefined
   if (!item.picture)
-    return <img src={item.src} alt={item.alt} loading={eager ? 'eager' : 'lazy'} className={className} />
+    return <img src={item.src} alt={item.alt} loading={eager ? 'eager' : 'lazy'} className={className} style={style} />
   const p = item.picture
   return (
-    <picture>
+    <picture className="block h-full w-full">
       {p.avif && <source type="image/avif" srcSet={p.avif} sizes="(min-width:1024px) 640px, 100vw" />}
       {p.webp && <source type="image/webp" srcSet={p.webp} sizes="(min-width:1024px) 640px, 100vw" />}
-      <img src={p.src} alt={item.alt} width={p.width} height={p.height} loading={eager ? 'eager' : 'lazy'} className={className} />
+      <img src={p.src} alt={item.alt} width={p.width} height={p.height} loading={eager ? 'eager' : 'lazy'} className={className} style={style} />
     </picture>
   )
 }
@@ -165,7 +166,7 @@ function Stage({ packs }) {
               k === i ? 'ring-2 ring-fr-green ring-offset-2' : 'opacity-70 hover:opacity-100'
             }`}
           >
-            <img src={g.kind === 'cutout' ? g.src : g.picture?.src || g.src} alt="" loading="lazy" className={`h-full w-full ${g.kind === 'cutout' ? 'object-contain p-1.5' : 'object-cover'}`} />
+            <img src={g.kind === 'cutout' ? g.src : g.thumb || g.picture?.src || g.src} alt="" loading="lazy" className={`h-full w-full ${g.kind === 'cutout' ? 'object-contain p-1.5' : 'object-cover'}`} />
           </button>
         ))}
       </div>

@@ -1,7 +1,6 @@
-// Visuels de la boutique Frais. Packshot réel non retouché ; scènes = vraie photo de buanderie
-// (Unsplash License, assets-src/stock/CREDITS.md) + packshot réel ; capsules = photos fournies.
+// Visuels de la boutique Frais. Packshot réel non retouché ; récit (geste, capsules, emballage) = photos
+// fournies ; galerie du héros = photos fournies par le marchand (public/images/gallery).
 import { IMAGES } from '../../config/assets.js'
-import { HERO } from '../c/media.js'
 
 const set = (dir, name, widths, fmt) => widths.map((w) => `/images/${dir}/${name}-${w}.${fmt} ${w}w`).join(', ')
 const pic = (name, widths, w, h, dir = 'frais', fmts = ['avif', 'webp']) => ({
@@ -19,12 +18,27 @@ export const STORY = {
   podWater: pic('pod-water', [560, 900], 900, 1044, 'frais', ['webp']),
 }
 
-// Galerie du héros : packshot d'abord (le produit exact), puis situations réelles.
+// Photos de la galerie fournies par le marchand (public/images/gallery, WebP 560 px + taille d'origine).
+// position : point de cadrage quand le cadre (paysage sur mobile) rogne une photo portrait ou carrée.
+const galleryPhoto = (name, width, height, position) => ({
+  kind: 'photo',
+  src: `/images/gallery/${name}-${width}.webp`,
+  thumb: `/images/gallery/${name}-560.webp`,
+  position,
+  picture: {
+    webp: `/images/gallery/${name}-560.webp 560w, /images/gallery/${name}-${width}.webp ${width}w`,
+    src: `/images/gallery/${name}-${width}.webp`,
+    width,
+    height,
+  },
+})
+
+// Galerie du héros : packshot d'abord (le produit exact, qui suit l'offre choisie), puis les photos fournies.
 // Textes alternatifs et légendes traduits : t.gallery (même ordre).
 export const GALLERY_F = [
-  { kind: 'cutout', src: IMAGES.packshotCutout, alt: 'Sachet Ariel All-in-1 PODS Universal+, 60 capsules', caption: 'Le sachet de 60 capsules' },
-  { kind: 'photo', src: '/images/hero/hero-desktop-1300.webp', picture: HERO.desktop, alt: 'Le sachet posé dans une buanderie, devant des serviettes blanches', caption: 'En situation' },
-  { kind: 'photo', src: STORY.podHand.src, picture: STORY.podHand, alt: 'Une capsule Ariel tenue au-dessus du tambour', caption: 'La capsule, prête à l’emploi' },
-  { kind: 'photo', src: STORY.podWater.src, picture: STORY.podWater, alt: 'Capsule Ariel en gros plan dans l’eau', caption: 'La capsule en gros plan' },
-  { kind: 'photo', src: '/images/scene/trio-wide-1300.webp', alt: 'Trois sachets Ariel sur une tablette en bois', caption: 'L’offre 3 sachets' },
+  { kind: 'cutout', src: IMAGES.packshotCutout },
+  galleryPhoto('pouch-open', 637, 800, '50% 42%'),
+  galleryPhoto('box-trio', 800, 800, '50% 68%'),
+  galleryPhoto('trio-pods', 800, 800, '50% 52%'),
+  galleryPhoto('pouch-pods', 637, 800, '50% 77%'),
 ]
