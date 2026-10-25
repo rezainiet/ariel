@@ -174,21 +174,6 @@ const de = {
     trust: [[`${days} Tage Rückgabe`, 'nach Erhalt'], ['Sichere Zahlung', 'spezialisierter Anbieter']],
     footnote: '* Bei Standarddosierung von einer Kapsel pro Waschgang. Die Anzahl der Waschladungen hängt von der Beladung und der Wasserhärte ab.',
   },
-  urgency: {
-    units: ['Tage', 'Std.', 'Min.', 'Sek.'],
-    campaignEnd: 'Ende der Aktion',
-    until: (date) => `bis ${date}`,
-    remaining: 'Verbleibende Zeit',
-    onlyLeft: (n) => `Nur noch ${n} Beutel`,
-    available: ' verfügbar',
-    inStock: 'Auf Lager',
-    inStockCount: (n) => ` · ${n} Beutel verfügbar`,
-    clearance: 'Lagerabverkauf läuft',
-    featured: (packs, price) => `Im Fokus: ${beutel(packs)} für ${price}`,
-    nextPick: (time) => `Nächste Auswahl in ${time}`,
-    limited: 'Begrenzte Stückzahl',
-    limitedNote: ' · Angebot gilt nur, solange der Vorrat reicht',
-  },
   sticky: { change: 'Angebot ändern', buyNow: 'Jetzt kaufen' },
   story: {
     gesture: {

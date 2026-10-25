@@ -8,7 +8,6 @@ import { IMAGES } from '../../config/assets.js'
 import { useFlash, radioKeyHandler, useSwipe } from '../shared/hooks.js'
 import Lightbox from '../shared/Lightbox.jsx'
 import { IconTile, PodIcon, Chf } from './Icons.jsx'
-import UrgencyPanel from './Urgency.jsx'
 import { GALLERY_F } from './mediaF.js'
 import { useStock, isSoldOut } from '../../lib/stock.js'
 import { Swap } from '../../lib/motion.js'
@@ -485,8 +484,6 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
           </button>
         )}
       </div>
-
-      <UrgencyPanel status={status} offer={offer} />
 
       <ul className="mt-4 grid grid-cols-2 gap-2 lg:mt-5 lg:gap-3">
         {h.trust.map(([title, s], k) => [[RotateCcw, LockKeyhole][k], title, s]).map(([Icon, t, s]) => (

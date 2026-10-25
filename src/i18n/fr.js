@@ -174,21 +174,6 @@ const fr = {
     trust: [[`Retour ${days} jours`, 'après réception'], ['Paiement sécurisé', 'prestataire spécialisé']],
     footnote: '* Au dosage standard d’une capsule par lavage. Le nombre de lavages dépend de la charge et de la dureté de l’eau.',
   },
-  urgency: {
-    units: ['jours', 'heures', 'min', 's'],
-    campaignEnd: 'Fin de l’opération',
-    until: (date) => `jusqu’au ${date}`,
-    remaining: 'Temps restant',
-    onlyLeft: (n) => `Plus que ${n} sachets`,
-    available: ' disponibles',
-    inStock: 'En stock',
-    inStockCount: (n) => ` · ${n} sachets disponibles`,
-    clearance: 'Déstockage en cours',
-    featured: (packs, price) => `À la une : ${sachets(packs)} à ${price}`,
-    nextPick: (time) => `Prochaine sélection dans ${time}`,
-    limited: 'Quantités limitées',
-    limitedNote: ' · offre valable jusqu’à épuisement du stock',
-  },
   sticky: { change: 'Changer d’offre', buyNow: 'Acheter maintenant' },
   story: {
     gesture: {

@@ -25,8 +25,6 @@ import { validateCustomer, clean, swissNational } from '../lib/orderValidation.j
 import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
-import UrgencyPanel from '../concepts/frais/Urgency.jsx'
-import { useStoreStatus } from '../lib/storeStatus.js'
 import { useStock, isSoldOut, refreshStock } from '../lib/stock.js'
 import { Chf } from '../concepts/frais/Icons.jsx'
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx'
@@ -325,7 +323,6 @@ export default function Checkout() {
   const { t, lang, money, currency, syncCurrency } = useI18n()
   const c = t.checkout
   const messages = t.validation
-  const storeStatus = useStoreStatus()
   const stock = useStock()
   const soldOut = Boolean(offer) && isSoldOut(stock, offer.id)
   const [params] = useSearchParams()
@@ -767,8 +764,6 @@ export default function Checkout() {
                 </p>
               )}
             </div>
-
-            <UrgencyPanel status={storeStatus} offer={offer} />
 
             <button
               type="submit"
