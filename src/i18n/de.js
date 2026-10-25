@@ -115,6 +115,7 @@ const de = {
     ],
     bottom: (currency) => `Preise in ${currency} · Kostenlose Lieferung in der Schweiz · Rückgabe innerhalb von ${days} Tagen`,
     brand: `Ariel ist eine Marke von The Procter & Gamble Company. ${store(true)} ist nicht die offizielle Website der Marke.`,
+    geoCredit: 'IP-Geolokalisierung von DB-IP',
   },
   gallery: [
     { alt: 'Beutel Ariel All-in-1 PODS Universal+, 60 Kapseln', caption: 'Der Beutel mit 60 Kapseln' },

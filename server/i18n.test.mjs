@@ -168,3 +168,24 @@ test('German and French translation files have the same keys and no French left 
     await vite.close()
   }
 })
+
+test('GeoIP uses the address written by the local Nginx, never one a remote client sends', async () => {
+  const { clientIp, countryForIp } = await import('./geoip.mjs')
+  const viaNginx = (xff) => ({ socket: { remoteAddress: '127.0.0.1' }, headers: { 'x-forwarded-for': xff } })
+  assert.equal(clientIp(viaNginx('81.169.145.105')), '81.169.145.105')
+  // If a proxy ever appends instead of overwriting, only its own (last) value counts.
+  assert.equal(clientIp(viaNginx('5.5.5.5, 81.169.145.105')), '81.169.145.105')
+  assert.equal(clientIp({ socket: { remoteAddress: '::ffff:127.0.0.1' }, headers: { 'x-forwarded-for': '2a02:2e0::1' } }), '2a02:2e0::1')
+  // A direct (non-local) connection: its X-Forwarded-For is ignored.
+  assert.equal(clientIp({ socket: { remoteAddress: '::ffff:203.0.113.9' }, headers: { 'x-forwarded-for': '81.169.145.105' } }), '203.0.113.9')
+  assert.equal(clientIp(viaNginx('not-an-ip')), '')
+  const reader = { get: (ip) => ({ '81.169.145.105': { country: { iso_code: 'DE' } }, '1.2.3.4': { registered_country: { iso_code: 'FR' } } })[ip] || null }
+  assert.equal(countryForIp(reader, '81.169.145.105'), 'DE')
+  assert.equal(countryForIp(reader, '1.2.3.4'), 'FR')
+  assert.equal(countryForIp(reader, '9.9.9.9'), '')
+  assert.equal(countryForIp(null, '81.169.145.105'), '')
+  // Without a configured header the database decides; spoofed country headers are still ignored.
+  const req = { socket: { remoteAddress: '127.0.0.1' }, headers: { 'x-forwarded-for': '81.169.145.105', 'cf-ipcountry': 'FR', 'x-geo-country': 'FR' }, url: '/' }
+  assert.equal(countryOf(req, {}, false, (r) => countryForIp(reader, clientIp(r))), 'DE')
+  assert.deepEqual(localeOf(req, { env: {}, lookup: (r) => countryForIp(reader, clientIp(r)) }), { country: 'DE', currency: 'CHF', lang: 'de' })
+})

@@ -190,7 +190,11 @@ export function FooterF({ stickyPad = false }) {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-2 px-4 py-6 text-xs text-fr-mint/55 lg:flex-row lg:justify-between lg:px-8">
           <p>{f.bottom(currency)}</p>
-          <p>{f.brand}</p>
+          <p>
+            {f.brand}{' '}
+            {/* Mention exigée par la licence CC BY 4.0 de la base pays (server/update-geoip.mjs). */}
+            <a href="https://db-ip.com" target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-white hover:underline">{f.geoCredit}</a>
+          </p>
         </div>
       </div>
     </footer>

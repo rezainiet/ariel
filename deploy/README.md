@@ -24,19 +24,26 @@ Run the `preview` workflow to inspect the public site with payment disabled. The
 ## Visitor country (language and currency)
 
 The storefront picks German for Germany and Austria, French for France, and the browser language for
-Switzerland and other countries (`server/geo.mjs`). The country comes only from the `X-Geo-Country` header that
-this Nginx site writes itself; until GeoIP2 is set up the header is empty and visitors fall back to their browser
-language, with CHF prices. To enable it on the VPS:
+Switzerland and other countries; a language chosen in the header switcher always wins (`server/geo.mjs`).
 
-1. `sudo apt install libnginx-mod-http-geoip2`
-2. Put a country `.mmdb` database at `/var/lib/GeoIP/country.mmdb` and refresh it monthly, either MaxMind
-   GeoLite2-Country (free account, `geoipupdate`) or DB-IP "IP to Country Lite" (CC BY 4.0). Both licenses
-   require an attribution line on the site; add it to the footer before going live.
-3. Copy [ariel.nginx.geoip2.conf](ariel.nginx.geoip2.conf) to `/etc/nginx/conf.d/ariel-geoip2.conf`.
-4. In the HTTPS site, change `proxy_set_header X-Geo-Country "";` to `proxy_set_header X-Geo-Country $geoip2_country_code;`.
-5. Add `GEO_COUNTRY_HEADER=x-geo-country` to `/etc/ariel/ariel.env`, then `sudo nginx -t && sudo systemctl reload nginx`
-   and `sudo systemctl restart ariel.service`.
-6. Check: `curl -s https://destockage-suisse.store/api/locale` returns the server's own country.
+The Node server looks the country up itself (`server/geoip.mjs`), so no root access or Nginx module is needed:
+
+- Client address: the live Nginx site sets `X-Forwarded-For $remote_addr` (overwrites, never appends). The server
+  only reads it on connections from localhost and keeps the last value, so a visitor cannot choose their country.
+- Database: `/var/lib/ariel/geoip/country.mmdb`, DB-IP "IP to Country Lite" (CC BY 4.0; the required credit is
+  in the footer). Without the file, the country is unknown and visitors get their browser language.
+- Refresh: `ariel`'s crontab runs `server/update-geoip.mjs` monthly. It verifies the download before an atomic
+  swap; the running server reloads a changed file within 6 hours.
+
+  ```sh
+  17 4 3 * * /usr/local/bin/node /opt/ariel/current/server/update-geoip.mjs /var/lib/ariel >> /var/lib/ariel/geoip/update.log 2>&1
+  ```
+
+- Check: `curl -s https://destockage-suisse.store/api/locale` returns the caller's country.
+
+Alternative with root access: GeoIP2 in Nginx ([ariel.nginx.geoip2.conf](ariel.nginx.geoip2.conf),
+`libnginx-mod-http-geoip2`), `proxy_set_header X-Geo-Country $geoip2_country_code;` in the HTTPS site and
+`GEO_COUNTRY_HEADER=x-geo-country` in `/etc/ariel/ariel.env`. A configured header takes precedence over the lookup.
 
 EUR is shown to Germany, Austria and France only once approved EUR prices (`PRICES.EUR` in
 `src/config/offers.js`) and three EUR Everflow links (`EUR_TRACKING_LINKS` in `server/everflow.mjs`) exist;

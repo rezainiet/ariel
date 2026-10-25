@@ -20,6 +20,7 @@ import { getOffer, BASE_CURRENCY } from '../src/config/offers.js'
 import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redirectPayment.js'
 import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder, buildEverflowUrl, usesApprovedEverflowLinks, currencyReady } from './everflow.mjs'
 import { localeOf, injectLocale, devCookieHeader } from './geo.mjs'
+import { createGeoip, geoipPath } from './geoip.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
 import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder, isOrderKey } from './orders.mjs'
 import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
@@ -106,13 +107,16 @@ const originOf = (req) => process.env.PUBLIC_ORIGIN || (req.headers.origin && /^
 const localCheckoutRequest = (req) => /^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(req.headers.host || '') &&
   /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || '')
 
+// Base pays GeoIP2 (DATA_DIR/geoip/country.mmdb) : rechargée quand server/update-geoip.mjs la remplace.
+const geoip = createGeoip(geoipPath(DATA_DIR))
+
 // Pays, langue et devise du visiteur (server/geo.mjs). Une devise autre que CHF n'est attribuée que si
 // le paiement actif peut l'encaisser avec les liens approuvés.
 function visitorLocale(req) {
   const local = localCheckoutRequest(req)
   const canCharge = (currency) => currencyReady(currency) &&
     (everflowSettings(process.env, local).enabled || usesApprovedEverflowLinks(config.externalRedirect))
-  return localeOf(req, { local, canCharge })
+  return localeOf(req, { local, canCharge, lookup: geoip.lookup })
 }
 
 // Vue stock de l'administration : réservations complétées par le nom du client (fiche commande).

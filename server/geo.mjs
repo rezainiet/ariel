@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────
 // Pays, langue et devise du visiteur — déterminés CÔTÉ SERVEUR.
-//  · Pays : uniquement l'en-tête écrit par notre propre proxy (nginx + GeoIP2) ou par le CDN, nommé dans
-//    GEO_COUNTRY_HEADER (ex. « x-geo-country », « cf-ipcountry »). Le proxy écrase toute valeur envoyée
-//    par le client ; sans GEO_COUNTRY_HEADER, aucun en-tête n'est lu et le pays reste inconnu.
+//  · Pays : base GeoIP2 lue par ce serveur à partir de l'adresse écrite par notre Nginx (server/geoip.mjs).
+//    Ou, si GEO_COUNTRY_HEADER est défini, l'en-tête pays écrit par notre propre proxy ou CDN
+//    (ex. « x-geo-country », « cf-ipcountry ») ; aucun autre en-tête client n'est jamais lu.
 //  · Langue initiale : choix enregistré (cookie « lang »), sinon pays, sinon Accept-Language, sinon français.
 //    Le navigateur applique ensuite le choix enregistré dans localStorage, toujours prioritaire.
 //  · Devise : selon le pays, seulement si elle est configurée de bout en bout (prix + liens de paiement) ;
@@ -35,18 +35,19 @@ export function devCountry(req, env = process.env, local = false) {
   return { country: normalizeCountry(cookie(req, DEV_COOKIE)), set: false }
 }
 
-export function countryOf(req, env = process.env, local = false) {
+// lookup(req) : pays issu de la base GeoIP2 (server/geoip.mjs), utilisé sans en-tête configuré.
+export function countryOf(req, env = process.env, local = false, lookup = null) {
   const dev = devCountry(req, env, local)
   if (dev) return dev.country
   const header = String(env.GEO_COUNTRY_HEADER || '').trim().toLowerCase()
-  if (!header) return ''
+  if (!header) return normalizeCountry(lookup ? lookup(req) : '')
   const value = req.headers[header]
   return normalizeCountry(Array.isArray(value) ? value[0] : value)
 }
 
 // canCharge(currency) : prix et liens approuvés existent ET le paiement actif peut encaisser cette devise.
-export function localeOf(req, { env = process.env, local = false, canCharge = currencyReady } = {}) {
-  const country = countryOf(req, env, local)
+export function localeOf(req, { env = process.env, local = false, canCharge = currencyReady, lookup = null } = {}) {
+  const country = countryOf(req, env, local, lookup)
   const wanted = currencyForCountry(country)
   const currency = wanted !== BASE_CURRENCY && canCharge(wanted) ? wanted : BASE_CURRENCY
   const stored = cookie(req, LANG_COOKIE)
