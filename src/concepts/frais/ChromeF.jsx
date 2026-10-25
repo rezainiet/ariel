@@ -155,7 +155,9 @@ export function FooterF({ stickyPad = false }) {
     ['legal', MERCHANT.legalName || <MissingInfo>{f.missingLegal}</MissingInfo>],
     ['address', address || <MissingInfo>{f.missingAddress}</MissingInfo>],
     ['uid', MERCHANT.uid ? f.uid(MERCHANT.uid) : <MissingInfo>{f.missingUid}</MissingInfo>],
-    ['email', STORE.supportEmail || <MissingInfo>{f.missingEmail}</MissingInfo>],
+    ['email', STORE.supportEmail
+      ? <a href={`mailto:${STORE.supportEmail}`} className="underline-offset-4 transition-colors hover:text-white hover:underline">{STORE.supportEmail}</a>
+      : <MissingInfo>{f.missingEmail}</MissingInfo>],
   ]
   return (
     <footer className={`bg-fr-deep font-jakarta text-fr-mint/80 ${stickyPad ? 'pb-28 lg:pb-0' : ''}`}>

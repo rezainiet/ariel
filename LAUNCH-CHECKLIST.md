@@ -15,7 +15,7 @@ Chaque valeur se règle dans `.env.local` (modèle : `.env.example`). Justificat
 | Adresse postale (rue, NPA, localité) | `VITE_MERCHANT_STREET`, `_ZIP`, `_CITY` | Route du Moulin 50, 3977 Granges fourni par défaut |
 | Numéro IDE (CHE-…) | `VITE_MERCHANT_UID` | CHE-109.911.687 fourni par défaut |
 | Registre du commerce et gérant | `VITE_MERCHANT_REGISTER_NUMBER`, `VITE_MERCHANT_MANAGER` | CH-626.4.007.970-5 et Zika Cikiric fournis par défaut |
-| E-mail du service client | `VITE_SUPPORT_EMAIL` | Page Contact sans e-mail ; FAQ et retours renvoient vers /contact |
+| E-mail du service client | `VITE_SUPPORT_EMAIL` | sales@destockage-suisse.store fourni par défaut |
 | Téléphone (recommandé) | `VITE_SUPPORT_PHONE` | Masqué |
 | Hébergeur du site | `VITE_HOSTING_PROVIDER` | Rubrique « Hébergement » masquée |
 | Mention TVA (ex. « TVA incluse ») | `VITE_MERCHANT_VAT_NOTE` | Absente du récapitulatif de commande |

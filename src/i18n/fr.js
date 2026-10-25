@@ -144,7 +144,13 @@ const fr = {
       ['Efficace', () => 'même à froid'],
       ['Plus propre', () => 'pour un avenir plus vert'],
     ],
-    badges: [['Livraison', 'offerte'], ['Livraison', `en ${eta} jours`]],
+    delivery: {
+      locale: 'fr-CH',
+      arrives: 'Chez vous entre',
+      label: 'Livraison',
+      free: 'Offerte',
+      aria: (range) => `Livraison offerte en Suisse. Arrivée estimée : ${range}.`,
+    },
     offerAria: ({ packs, washes, price, compareAt, featured, soldOut }) =>
       `${packs} pack${packs > 1 ? 's' : ''}, ${washes} lavages, ${price}${compareAt ? ` au lieu de ${compareAt}` : ''}${featured ? ', le plus populaire' : ''}${soldOut ? ', épuisé' : ''}`,
     popularShort: 'Populaire',

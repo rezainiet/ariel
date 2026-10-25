@@ -1,8 +1,8 @@
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ShoppingBag, ArrowRight, Truck, RotateCcw, LockKeyhole, ThermometerSnowflake, Expand, ChevronLeft, ChevronRight, Star, Crown, Shirt, Snowflake, Leaf, Package } from 'lucide-react'
+import { Check, ShoppingBag, ArrowRight, Truck, RotateCcw, LockKeyhole, ThermometerSnowflake, Expand, ChevronLeft, ChevronRight, Star, Crown, Shirt, Snowflake, Leaf } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
-import { OFFERS as BASE_OFFERS } from '../../config/store.js'
+import { OFFERS as BASE_OFFERS, DELIVERY } from '../../config/store.js'
 import { useI18n } from '../../i18n/index.jsx'
 import { IMAGES } from '../../config/assets.js'
 import { useFlash, radioKeyHandler, useSwipe } from '../shared/hooks.js'
@@ -13,6 +13,7 @@ import { GALLERY_F } from './mediaF.js'
 import { useStock, isSoldOut } from '../../lib/stock.js'
 import { Swap } from '../../lib/motion.js'
 import { summarize } from '../../data/reviews.js'
+import { deliveryWindow, formatDeliveryWindow } from '../../lib/deliveryWindow.js'
 
 // Petite pile de sachets réels (même visuel que le panier).
 export function Packs({ n, size = 'md' }) {
@@ -249,25 +250,32 @@ function Benefits() {
   )
 }
 
-// Deux repères utiles, dans le même vert que l'emballage.
-const BADGE_ICONS = [Truck, Package]
-function PosterBadges() {
-  const { badges } = useI18n().t.hero
+// Livraison en une carte : à gauche la fenêtre d'arrivée estimée (délai annoncé, jours ouvrables suisses),
+// à droite la gratuité. Les dates sont calculées une fois, à l'heure de Zurich.
+function DeliveryEta() {
+  const d = useI18n().t.hero.delivery
+  const win = useMemo(() => deliveryWindow(new Date(), DELIVERY.estimateDays), [])
+  if (!win) return null
   return (
-    <ul className="mt-3 grid grid-cols-2 gap-2">
-      {badges.map(([t, s], k) => [BADGE_ICONS[k], t, s]).map(([Icon, t, s]) => (
-        <li key={s} className="flex min-w-0 items-center gap-2 rounded-xl border border-fr-green/10 bg-white/85 px-2.5 py-2.5 lg:gap-2.5 lg:px-3">
-          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-fr-mint text-fr-green lg:h-9 lg:w-9">
-            <Icon size={16} strokeWidth={2} />
-          </span>
-          <span className="text-[0.63rem] font-bold uppercase leading-[1.15] text-fr-deep min-[380px]:text-[0.7rem] lg:text-[0.75rem]">
-            {t}
-            <br />
-            <span className="font-extrabold text-fr-green">{s}</span>
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="mt-3 grid grid-cols-[1.12fr_1fr] divide-x divide-fr-line rounded-2xl border border-fr-green/10 bg-white/90 shadow-[0_6px_18px_rgba(11,61,42,0.05)]">
+      <p className="sr-only">{d.aria(formatDeliveryWindow(win, d.locale, { long: true }))}</p>
+      <div className="min-w-0 px-3 py-2.5 lg:px-4 lg:py-3" aria-hidden="true">
+        <span className="flex items-center gap-1.5 text-[0.68rem] font-semibold text-fr-muted min-[380px]:text-[0.72rem] lg:text-[0.78rem]">
+          <span className="h-2 w-2 flex-none rounded-full bg-fr-leaf shadow-[0_0_0_3px_rgba(25,164,99,0.18)]" />
+          {d.arrives}
+        </span>
+        <span className="mt-0.5 block whitespace-nowrap text-[0.9rem] font-extrabold tabular-nums tracking-[-0.01em] text-fr-deep min-[380px]:text-[1rem] lg:text-[1.08rem]">
+          {formatDeliveryWindow(win, d.locale)}
+        </span>
+      </div>
+      <div className="flex min-w-0 items-center gap-2 px-3 py-2.5 lg:gap-2.5 lg:px-4 lg:py-3" aria-hidden="true">
+        <Truck size={19} strokeWidth={1.9} className="flex-none text-fr-green" />
+        <span className="min-w-0">
+          <span className="block text-[0.68rem] font-semibold text-fr-muted min-[380px]:text-[0.72rem] lg:text-[0.78rem]">{d.label}</span>
+          <span className="mt-0.5 block text-[0.9rem] font-extrabold text-fr-green min-[380px]:text-[1rem] lg:text-[1.08rem]">{d.free}</span>
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -425,7 +433,7 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
             />
           ))}
         </div>
-        <PosterBadges />
+        <DeliveryEta />
       </div>
       <p className="mt-3 rounded-xl bg-fr-mint/65 px-3 py-2.5 text-[0.75rem] text-fr-deep lg:text-[0.8rem]" aria-live="polite">
         <Swap value={offer.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">

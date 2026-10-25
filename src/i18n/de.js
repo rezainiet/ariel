@@ -144,7 +144,13 @@ const de = {
       ['Wirksam', () => 'auch bei Kälte'],
       ['Sauberer', () => 'für eine grünere Zukunft'],
     ],
-    badges: [['Lieferung', 'kostenlos'], ['Lieferung', `in ${eta} Tagen`]],
+    delivery: {
+      locale: 'de-CH',
+      arrives: 'Ankunft zwischen',
+      label: 'Lieferung',
+      free: 'Kostenlos',
+      aria: (range) => `Kostenlose Lieferung in der Schweiz. Voraussichtliche Ankunft: ${range}.`,
+    },
     offerAria: ({ packs, washes, price, compareAt, featured, soldOut }) =>
       `${beutel(packs)}, ${washes} Waschladungen, ${price}${compareAt ? ` statt ${compareAt}` : ''}${featured ? ', am beliebtesten' : ''}${soldOut ? ', ausverkauft' : ''}`,
     popularShort: 'Beliebt',

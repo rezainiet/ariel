@@ -9,7 +9,7 @@ export const STORE = {
   // Nom commercial réel (obligatoire avant la mise en ligne). Vide = aucun nom inventé :
   // l'en-tête affiche alors un libellé descriptif neutre et les textes disent « notre boutique ».
   name: import.meta.env.VITE_STORE_NAME || '',
-  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || '',
+  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || 'sales@destockage-suisse.store',
   supportPhone: import.meta.env.VITE_SUPPORT_PHONE || '',
   currency: 'CHF',
   locale: 'fr-CH',
