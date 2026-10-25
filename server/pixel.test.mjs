@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 
-test('Snap sends only the three requested website events while Meta stays unchanged', async () => {
+test('Snap sends only the three requested website events and Meta uses the configured Pixel ID', async () => {
   const vite = await createServer({ configFile: false, server: { middlewareMode: true }, appType: 'custom' })
   const { initPixel, trackPageView, trackViewContent, trackStartCheckout, trackCheckoutRedirect, trackPurchase } = await vite.ssrLoadModule('/src/lib/pixel.js')
   const session = new Map()
@@ -36,7 +36,7 @@ test('Snap sends only the three requested website events while Meta stays unchan
     assert.equal(trackCheckoutRedirect(orderId, 'pack-2'), true)
     assert.equal(trackCheckoutRedirect(orderId, 'pack-2'), false)
     const events = window.fbq.queue.map((args) => Array.from(args))
-    assert.deepEqual(events.map((event) => event[1]), ['815653229569193', 'PageView', 'ViewContent', 'InitiateCheckout', 'AddPaymentInfo'])
+    assert.deepEqual(events.map((event) => event[1]), ['772187242438245', 'PageView', 'ViewContent', 'InitiateCheckout', 'AddPaymentInfo'])
     assert.equal(events[3][2].value, 7)
     assert.equal(events[3][2].currency, 'CHF')
     assert.match(events[3][3].eventID, /^checkout-pack-2-/)

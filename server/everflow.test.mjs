@@ -34,7 +34,7 @@ const images = {
   'pack-2': 'https://assets.example.ch/ariel/two.webp',
   'pack-3': 'https://assets.example.ch/ariel/three.webp',
 }
-const config = { enabled: true, images, metaPixel: '815653229569193', snapPixel: '2b408aa3-8a2d-48aa-b535-5c8dfe935d97' }
+const config = { enabled: true, images, metaPixel: '772187242438245', snapPixel: '2b408aa3-8a2d-48aa-b535-5c8dfe935d97' }
 const customer = {
   prenom: 'Ana María', nom: "D’Été", email: 'Ana.Maria@Example.ch',
   tel: '+41 (79) 123-45-67', adresse: "Rue de l'Église, 4/B", complement: 'Bât. A, étage 2',
@@ -103,7 +103,7 @@ test('unsupported carts, absent phone, and unapproved configuration stay blocked
   assert.equal(prepareCheckout(request('pack-1', false), { ...config, snapPixel: '' }).fbclid, '')
   assert.equal(prepareCheckout({ ...request('pack-1', true), fbclid: 'bad&injection' }, config).fbclid, '')
   assert.equal(prepareCheckout({ ...request('pack-1', true), sccid: 'bad&injection' }, config).sccid, '')
-  assert.equal(settings({}).metaPixel, '815653229569193')
+  assert.equal(settings({}).metaPixel, '772187242438245')
   assert.equal(settings({}).snapPixel, '2b408aa3-8a2d-48aa-b535-5c8dfe935d97')
 })
 
@@ -123,7 +123,7 @@ test('retry reuses pending order and changed payload conflicts', async () => {
 test('Pixel IDs and declined consent never add sub5 or click attribution', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ariel-everflow-meta-'))
   try {
-    const metaOnly = { ...config, metaPixel: '815653229569193', snapPixel: '' }
+    const metaOnly = { ...config, metaPixel: '772187242438245', snapPixel: '' }
     const accepted = await createPendingOrder(request('pack-2', true), metaOnly, dir)
     const declined = await createPendingOrder(request('pack-2', false, { ...customer, email: 'another@example.ch' }), metaOnly, dir)
     const acceptedUrl = new URL(accepted.redirectUrl)
