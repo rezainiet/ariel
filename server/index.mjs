@@ -21,7 +21,6 @@ import { defaultConfig, validateConfig, buildRedirectUrl } from '../src/lib/redi
 import { settings as everflowSettings, createPendingOrder, readPendingOrder, closePendingOrder, buildEverflowUrl, usesApprovedEverflowLinks, currencyReady } from './everflow.mjs'
 import { localeOf, injectLocale, devCookieHeader } from './geo.mjs'
 import { createGeoip, geoipPath } from './geoip.mjs'
-import { createFx } from './fx.mjs'
 import { getFeaturedOffer } from './featured-offer.mjs'
 import { recordOrder, listOrders, publicOrderStatus, closeExternalOrder, isOrderKey } from './orders.mjs'
 import { saveAnalytics, analyticsReport, pruneAnalytics } from './analytics.mjs'
@@ -110,8 +109,6 @@ const localCheckoutRequest = (req) => /^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.t
 
 // Base pays GeoIP2 (DATA_DIR/geoip/country.mmdb) : rechargée quand server/update-geoip.mjs la remplace.
 const geoip = createGeoip(geoipPath(DATA_DIR))
-// Taux BCE pour l'affichage des prix estimés en monnaie locale (DATA_DIR/fx-rates.json, rafraîchi toutes les 6 h).
-const fx = createFx(DATA_DIR)
 
 // Pays, langue et devise du visiteur (server/geo.mjs). Une devise autre que CHF n'est attribuée que si
 // le paiement actif peut l'encaisser avec les liens approuvés.
@@ -119,7 +116,7 @@ function visitorLocale(req) {
   const local = localCheckoutRequest(req)
   const canCharge = (currency) => currencyReady(currency) &&
     (everflowSettings(process.env, local).enabled || usesApprovedEverflowLinks(config.externalRedirect))
-  return localeOf(req, { local, canCharge, lookup: geoip.lookup, display: fx.display })
+  return localeOf(req, { local, canCharge, lookup: geoip.lookup })
 }
 
 // Vue stock de l'administration : réservations complétées par le nom du client (fiche commande).

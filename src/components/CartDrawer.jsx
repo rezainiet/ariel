@@ -75,7 +75,7 @@ const SKINS = {
 
 export default function CartDrawer() {
   const { drawerOpen, closeDrawer, offer, hasItems, washes, total, clear, changeOffer, skin, addedAt } = useCart()
-  const { t, money, local, localAmount, localSavings, estimated, priceNote, offers: OFFERS } = useI18n()
+  const { t, money, offers: OFFERS, savings } = useI18n()
   const c = t.cart
   // La boutique (Frais) est l'habillage par défaut ; les concepts de comparaison imposent le leur.
   const S = SKINS[skin] || SKINS.f
@@ -132,7 +132,7 @@ export default function CartDrawer() {
   }
 
   if (!mounted) return null
-  const saving = offer ? localSavings(offer) : 0
+  const saving = offer ? savings(offer) : 0
   const soldOut = Boolean(offer) && isSoldOut(stock, offer.id)
 
   return (
@@ -224,7 +224,7 @@ export default function CartDrawer() {
                     <p className="mt-0.5 text-sm text-muted">
                       {c.line(offer.packs, washes)}
                     </p>
-                    <Swap value={offer.id} as="p" className={`mt-2 text-xl tabular-nums ${S.display}`}>{local(offer.price)}</Swap>
+                    <Swap value={offer.id} as="p" className={`mt-2 text-xl tabular-nums ${S.display}`}>{money(offer.price)}</Swap>
                   </div>
                 </div>
 
@@ -260,7 +260,7 @@ export default function CartDrawer() {
                 )}
                 {saving > 0 && !soldOut && (
                   <Swap value={offer.id} as="p" className="mt-3 rounded-lg bg-sage/50 px-3 py-2 text-xs font-medium text-forest">
-                    {c.saving(localAmount(saving), offer.packs)}
+                    {c.saving(money(saving), offer.packs)}
                   </Swap>
                 )}
               </div>
@@ -294,32 +294,24 @@ export default function CartDrawer() {
               <dl className="space-y-1.5 text-sm">
                 <div className="flex justify-between text-muted">
                   <dt>{c.subtotal}</dt>
-                  <dd className="tabular-nums">{local(offer.price)}</dd>
+                  <dd className="tabular-nums">{money(offer.price)}</dd>
                 </div>
                 <div className="flex justify-between text-muted">
                   <dt>{c.shipping}</dt>
                   <dd className="font-semibold text-forest">{t.common.free}</dd>
                 </div>
                 <div className="mt-2 flex items-baseline justify-between border-t border-line pt-3">
-                  <dt className="text-base font-bold text-ink">{estimated ? t.price.estimatedTotal : c.total}</dt>
-                  <Swap value={total} as="dd" className={`text-2xl tabular-nums ${S.display}`}>{local(total)}</Swap>
+                  <dt className="text-base font-bold text-ink">{c.total}</dt>
+                  <Swap value={total} as="dd" className={`text-2xl tabular-nums ${S.display}`}>{money(total)}</Swap>
                 </div>
-                {/* Montant réellement débité par le prestataire de paiement */}
-                {estimated && (
-                  <div className="flex items-baseline justify-between text-ink">
-                    <dt className="font-semibold">{t.price.chargedLabel}</dt>
-                    <dd className="font-bold tabular-nums">{money(total)}</dd>
-                  </div>
-                )}
               </dl>
-              {estimated && <p className="mt-2 text-[0.7rem] leading-snug text-muted">{priceNote}</p>}
 
               <button
                 onClick={goCheckout}
                 disabled={soldOut}
                 className={`mt-4 flex h-14 disabled:cursor-not-allowed disabled:opacity-50 w-full items-center justify-center gap-2 text-base font-bold tracking-tight transition-[background-color,color,transform,box-shadow] duration-base ease-out-soft motion-safe:active:scale-[0.99] ${S.cta}`}
               >
-                {S.sentenceCta ? c.checkout(local(total)) : c.checkoutUpper}
+                {S.sentenceCta ? c.checkout(money(total)) : c.checkoutUpper}
                 <ArrowRight size={18} />
               </button>
               <button

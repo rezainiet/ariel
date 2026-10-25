@@ -5,10 +5,8 @@
 //    (ex. « x-geo-country », « cf-ipcountry ») ; aucun autre en-tête client n'est jamais lu.
 //  · Langue initiale : choix enregistré (cookie « lang »), sinon pays, sinon Accept-Language, sinon français.
 //    Le navigateur applique ensuite le choix enregistré dans localStorage, toujours prioritaire.
-//  · Devise encaissée : selon le pays, seulement si elle est configurée de bout en bout (prix + liens de
-//    paiement) ; sinon CHF. Recalculée à chaque commande.
-//  · Devise affichée : monnaie du pays, convertie au taux BCE (server/fx.mjs) et marquée comme estimation
-//    quand elle diffère de la devise encaissée ; le montant débité reste affiché à côté.
+//  · Devise : selon le pays, seulement si elle est configurée de bout en bout (prix + liens de paiement) ;
+//    sinon CHF. Recalculée à chaque commande : le montant encaissé est celui affiché.
 // Rien n'est conservé : ni l'adresse IP ni le pays.
 // ─────────────────────────────────────────────────────────────
 import { BASE_CURRENCY, currencyForCountry, formatMoney, OFFERS, pricedOffer } from '../src/config/offers.js'
@@ -48,16 +46,13 @@ export function countryOf(req, env = process.env, local = false, lookup = null) 
 }
 
 // canCharge(currency) : prix et liens approuvés existent ET le paiement actif peut encaisser cette devise.
-const SAME = (currency) => ({ currency, rate: 1, date: null, estimated: false })
-
-// display(country, charge) : devise affichée (server/fx.mjs) ; par défaut, celle qui est encaissée.
-export function localeOf(req, { env = process.env, local = false, canCharge = currencyReady, lookup = null, display = (c, charge) => SAME(charge) } = {}) {
+export function localeOf(req, { env = process.env, local = false, canCharge = currencyReady, lookup = null } = {}) {
   const country = countryOf(req, env, local, lookup)
   const wanted = currencyForCountry(country)
   const currency = wanted !== BASE_CURRENCY && canCharge(wanted) ? wanted : BASE_CURRENCY
   const stored = cookie(req, LANG_COOKIE)
   const lang = detectLang({ stored: isLang(stored) ? stored : null, country, languages: parseAcceptLanguage(req.headers['accept-language']) })
-  return { country, currency, lang, display: display(country, currency) }
+  return { country, currency, lang }
 }
 
 const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -69,11 +64,10 @@ export function entryPrice(currency, lang) {
 
 // Écrit la langue, les métadonnées et le pays/la devise dans index.html avant l'envoi :
 // la première image est déjà dans la bonne langue, sans requête supplémentaire ni changement visible.
-export function injectLocale(html, { country, currency, lang, display = SAME(currency) }, origin = '') {
+export function injectLocale(html, { country, currency, lang }, origin = '') {
   const meta = META[lang] || META.fr
   const from = entryPrice(currency, lang)
-  const geo = JSON.stringify({ country, currency, lang, display }).replace
-(/</g, '\\u003c')
+  const geo = JSON.stringify({ country, currency, lang }).replace(/</g, '\\u003c')
   const alternates = origin
     ? ['fr', 'de'].map((l) => `<link rel="alternate" hreflang="${l}" href="${escapeHtml(`${origin}/?lang=${l}`)}" />`).join('\n    ') +
       `\n    <link rel="alternate" hreflang="x-default" href="${escapeHtml(`${origin}/`)}" />`

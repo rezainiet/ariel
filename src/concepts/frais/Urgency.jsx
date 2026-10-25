@@ -72,7 +72,7 @@ function StockLine({ stock }) {
 
 // Bloc de motivation d'achat sous le bouton : uniquement des informations vérifiées.
 export default function UrgencyPanel({ status, offer }) {
-  const { t: tr, local, offer: getOffer } = useI18n()
+  const { t: tr, money, offer: getOffer } = useI18n()
   const u = tr.urgency
   const featured = useFeaturedOffer()
   const stockByOffer = useStock()
@@ -99,7 +99,7 @@ export default function UrgencyPanel({ status, offer }) {
         {featuredOffer && featuredTime && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-fr-green/10 bg-[#FFF9CF]/55 px-3.5 py-2 text-[0.71rem] font-semibold text-fr-deep lg:px-4">
             <Timer size={14} strokeWidth={1.9} className="flex-none text-fr-green" aria-hidden="true" />
-            <span>{u.featured(featuredOffer.packs, local(featuredOffer.price))}</span>
+            <span>{u.featured(featuredOffer.packs, money(featuredOffer.price))}</span>
             <span className="ml-auto tabular-nums text-fr-green">
               {u.nextPick(`${two(featuredTime.hours + featuredTime.days * 24)}:${two(featuredTime.minutes)}:${two(featuredTime.seconds)}`)}
             </span>

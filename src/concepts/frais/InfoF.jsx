@@ -248,7 +248,7 @@ export function VideoF() {
 // ── Livraison suisse & retours : uniquement des informations confirmées.
 // Trois cartes qui entrent par la droite, l'une après l'autre ; les e-mails de suivi sont résumés dans la carte livraison. ──
 export function ServiceF() {
-  const { t, money, currency, estimated, priceNote } = useI18n()
+  const { t, money, currency } = useI18n()
   const sv = t.service
   const from = MERCHANT.dispatchCity ? t.common.inSwitzerland(MERCHANT.dispatchCity) : DELIVERY.dispatchLocation
   const rows = [
@@ -309,7 +309,6 @@ export function ServiceF() {
             <p className="mt-3 text-[0.88rem] leading-relaxed text-fr-muted">
               {sv.payText(currency)}
             </p>
-            {estimated && <p className="mt-2 text-[0.8rem] leading-relaxed text-fr-muted">{priceNote}</p>}
           </Rise>
         </div>
       </div>

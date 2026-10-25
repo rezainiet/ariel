@@ -212,9 +212,9 @@ function Steps({ progress }) {
 }
 
 function Summary({ offer, changeOffer, stock }) {
-  const { t, money, local, localAmount, localSavings, estimated, priceNote, currency, offers: OFFERS } = useI18n()
+  const { t, money, currency, offers: OFFERS, savings } = useI18n()
   const sm = t.checkout.summary
-  const save = localSavings(offer)
+  const save = savings(offer)
   const group = useId()
   return (
     <div className="rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line lg:p-7">
@@ -231,9 +231,8 @@ function Summary({ offer, changeOffer, stock }) {
             {sm.line(offer.packs, offer.washes)}
           </Swap>
         </div>
-        <Swap value={offer.id} as="p" className="text-right text-[1.05rem] font-extrabold tabular-nums text-fr-ink">
-          <Chf v={offer.price} format={local} />
-          {estimated && <span className="block text-[0.7rem] font-semibold text-fr-muted">{t.price.charged(money(offer.price))}</span>}
+        <Swap value={offer.id} as="p" className="text-[1.05rem] font-extrabold tabular-nums text-fr-ink">
+          <Chf v={offer.price} format={money} />
         </Swap>
       </div>
 
@@ -256,7 +255,7 @@ function Summary({ offer, changeOffer, stock }) {
                   {t.common.sachets(o.packs)}
                 </span>
                 <span className={`text-[0.78rem] font-extrabold tabular-nums transition-colors duration-base ${out ? 'text-fr-muted' : on ? 'text-fr-green' : 'text-fr-muted'}`}>
-                  {out ? t.common.soldOut : <Chf v={o.price} format={local} />}
+                  {out ? t.common.soldOut : <Chf v={o.price} format={money} />}
                 </span>
               </label>
             )
@@ -268,7 +267,7 @@ function Summary({ offer, changeOffer, stock }) {
         <div className="flex justify-between text-fr-muted">
           <dt>{sm.subtotal}</dt>
           <Swap value={offer.id} as="dd" className="tabular-nums text-fr-ink">
-            <Chf v={offer.price} format={local} />
+            <Chf v={offer.price} format={money} />
           </Swap>
         </div>
         <div className="flex justify-between text-fr-muted">
@@ -279,27 +278,17 @@ function Summary({ offer, changeOffer, stock }) {
           <div className="flex justify-between text-fr-muted">
             <dt>{sm.save}</dt>
             <Swap value={offer.id} as="dd" className="font-semibold tabular-nums text-fr-green">
-              − <Chf v={save} format={localAmount} />
+              − <Chf v={save} format={money} />
             </Swap>
           </div>
         )}
-        {/* Estimation locale d'abord, puis le montant réellement débité, qui fait foi. */}
-        {estimated && (
-          <div className="flex items-baseline justify-between border-t border-fr-line pt-3">
-            <dt className="font-bold text-fr-ink">{t.price.estimatedTotal}</dt>
-            <Swap value={offer.id} as="dd" className="text-[1.1rem] font-extrabold tabular-nums text-fr-ink">
-              <Chf v={offer.price} format={local} />
-            </Swap>
-          </div>
-        )}
-        <div className={`flex items-baseline justify-between pt-3 ${estimated ? '' : 'border-t border-fr-line'}`}>
-          <dt className="text-[1rem] font-extrabold text-fr-ink">{estimated ? t.price.chargedLabel : sm.total}</dt>
+        <div className="flex items-baseline justify-between border-t border-fr-line pt-3">
+          <dt className="text-[1rem] font-extrabold text-fr-ink">{sm.total}</dt>
           <Swap value={offer.id} as="dd" className="text-[1.6rem] font-extrabold tabular-nums tracking-[-0.03em] text-fr-green">
             <Chf v={offer.price} format={money} />
           </Swap>
         </div>
       </dl>
-      {estimated && <p className="mt-2 rounded-xl bg-fr-soft px-3 py-2 text-[0.74rem] leading-relaxed text-fr-muted">{priceNote}</p>}
       <p className="mt-1 text-right text-[0.74rem] text-fr-muted">
         {sm.note(currency, t.pages.policies.vatNote, offer.washes)}
       </p>
@@ -333,7 +322,7 @@ function MethodPicker({ method, setMethod }) {
 
 export default function Checkout() {
   const { offer, hasItems, changeOffer } = useCart()
-  const { t, lang, money, local, estimated, currency, syncCurrency } = useI18n()
+  const { t, lang, money, currency, syncCurrency } = useI18n()
   const c = t.checkout
   const messages = t.validation
   const storeStatus = useStoreStatus()
@@ -594,9 +583,8 @@ export default function Checkout() {
                   {c.summaryLine(offer.packs, offer.washes)}
                 </span>
               </span>
-              <Swap value={offer.id} className="text-right text-[1.15rem] font-extrabold tabular-nums text-fr-ink">
-                <Chf v={offer.price} format={local} />
-                {estimated && <span className="block text-[0.68rem] font-semibold text-fr-muted">{t.price.charged(money(offer.price))}</span>}
+              <Swap value={offer.id} className="text-[1.15rem] font-extrabold tabular-nums text-fr-ink">
+                <Chf v={offer.price} format={money} />
               </Swap>
             </button>
             <div
@@ -690,7 +678,6 @@ export default function Checkout() {
                   <p className="flex gap-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.84rem] leading-relaxed text-fr-muted">
                     <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 flex-none text-fr-green" />
                     {c.redirectNote(money(offer.price))}
-                    {estimated && ` ${t.price.short(currency)}`}
                   </p>
                 </div>
               ) : (
@@ -813,8 +800,6 @@ export default function Checkout() {
             </button>
             <p className="text-center text-[0.76rem] leading-relaxed text-fr-muted">
               {paymentReady && c.legal}
-              {paymentReady && estimated && <span className="mt-1 block">{t.price.short(currency)}</span>}
-
             </p>
           </form>
         </div>

@@ -177,15 +177,10 @@ function Stage({ packs }) {
 // ── Éléments « affiche promo » (visuel de campagne validé par le marchand) ──
 const RED = '#E30613'
 const YELLOW = '#FFE600'
-// « 4 CHF », « 24,95 CHF », « 4,24 € » : format de l'affiche (chiffres puis symbole), en monnaie locale.
-// Corps choisi d'après la longueur du montant ET du symbole, pour tenir dans la carte la plus étroite (320 px).
-const posterSize = ({ number, unit }, estimated) => {
-  if (!estimated) return ['text-[1.9rem] min-[380px]:text-[2.15rem] lg:text-[2.65rem]', 'text-[1rem] min-[380px]:text-[1.2rem] lg:text-[1.5rem]']
-  const n = number.length + unit.length
-  if (n <= 5) return ['text-[1.35rem] min-[380px]:text-[1.6rem] lg:text-[2.2rem]', 'text-[0.8rem] min-[380px]:text-[0.95rem] lg:text-[1.25rem]']
-  if (n <= 8) return ['text-[1.05rem] min-[380px]:text-[1.2rem] lg:text-[1.75rem]', 'text-[0.68rem] min-[380px]:text-[0.75rem] lg:text-[1rem]']
-  return ['text-[0.85rem] min-[380px]:text-[0.95rem] lg:text-[1.35rem]', 'text-[0.6rem] min-[380px]:text-[0.66rem] lg:text-[0.85rem]']
-}
+// « 4 CHF », « 24,95 CHF », « 4 € » : format de l'affiche (le reste du site garde « CHF 4.– » / « 4,00 € »).
+const posterNumber = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ','))
+const posterUnit = (currency) => (currency === 'EUR' ? '€' : currency)
+const posterPrice = (v, currency) => `${posterNumber(v)} ${posterUnit(currency)}`
 
 // Croix suisse (drapeau carré).
 function SwissFlag({ className = '' }) {
@@ -278,16 +273,14 @@ function PosterBadges() {
 // Même ordre visuel que le sachet : vert Ariel, filet jaune, packshot, puis prix rouge sur jaune.
 // Seule l'offre sélectionnée porte le contour et la coche ; le badge populaire reste distinct.
 function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
-  const { t, money, local, localParts, estimated } = useI18n()
+  const { t, money } = useI18n()
   const h = t.hero
-  const price = localParts(o.price)
-  const was = o.compareAt && localParts(o.compareAt)
   return (
     <button
       ref={tabRef}
       role="radio"
       aria-checked={active}
-      aria-label={h.offerAria({ packs: o.packs, washes: o.washes, price: estimated ? `${local(o.price)}, ${t.price.charged(money(o.price))}` : money(o.price), compareAt: o.compareAt && local(o.compareAt), featured: o.featured, soldOut })}
+      aria-label={h.offerAria({ packs: o.packs, washes: o.washes, price: money(o.price), compareAt: o.compareAt && money(o.compareAt), featured: o.featured, soldOut })}
       tabIndex={active ? 0 : -1}
       onClick={onSelect}
       onKeyDown={onKeyDown}
@@ -334,30 +327,25 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
 
       <span className="flex w-full flex-1 flex-col items-center justify-end px-1.5 pb-1.5 lg:px-2 lg:pb-2">
         {o.compareAt ? (
-          <s className="py-1 text-[0.7rem] font-bold text-fr-muted decoration-[#E30613] decoration-[1.5px] min-[380px]:text-[0.78rem] lg:text-[0.9rem]">{was.number} {was.unit}</s>
+          <s className="py-1 text-[0.7rem] font-bold text-fr-muted decoration-[#E30613] decoration-[1.5px] min-[380px]:text-[0.78rem] lg:text-[0.9rem]">{posterPrice(o.compareAt, o.currency)}</s>
         ) : (
           <span className="text-[0.82rem]">&nbsp;</span>
         )}
         <span
-          className={`flex w-full justify-center overflow-hidden whitespace-nowrap rounded-[0.65rem] leading-none ${estimated ? 'min-h-[2.6rem] items-center gap-0.5 px-0.5 lg:min-h-[3.4rem]' : 'items-baseline gap-1 py-1.5 lg:py-2'}`}
+          className="flex w-full items-baseline justify-center gap-1 rounded-[0.65rem] py-1.5 leading-none lg:py-2"
           style={{ background: YELLOW, color: RED }}
         >
           {soldOut ? (
             <span className="py-1.5 text-[0.9rem] font-extrabold uppercase text-fr-ink">{t.common.soldOut}</span>
           ) : (
             <>
-              {estimated && <span className="text-[0.7rem] font-extrabold lg:text-[0.95rem]" aria-hidden="true">≈</span>}
-              <span className={`font-extrabold tracking-[-0.055em] ${posterSize(price, estimated)[0]}`}>
-                {price.number}
+              <span className="text-[1.9rem] font-extrabold tracking-[-0.055em] min-[380px]:text-[2.15rem] lg:text-[2.65rem]">
+                {posterNumber(o.price)}
               </span>
-              <span className={`font-extrabold tracking-[-0.03em] ${posterSize(price, estimated)[1]}`}>{price.unit}</span>
+              <span className="text-[1rem] font-extrabold tracking-[-0.03em] min-[380px]:text-[1.2rem] lg:text-[1.5rem]">{posterUnit(o.currency)}</span>
             </>
           )}
         </span>
-        {/* Montant réellement débité, toujours visible quand le prix affiché est une estimation */}
-        {estimated && !soldOut && (
-          <span className="mt-1 block whitespace-nowrap text-[0.56rem] font-bold leading-tight text-fr-muted min-[380px]:text-[0.62rem] lg:text-[0.72rem]">{t.price.chargedCard(money(o.price))}</span>
-        )}
       </span>
     </button>
   )
@@ -365,16 +353,16 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
 
 const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, ctaRef) {
   const { selectOffer } = useCart()
-  const { t, money, local, localPlain, localAmount, estimated, localSavings, offers: OFFERS, offer: getOffer } = useI18n()
+  const { t, money, offers: OFFERS, offer: getOffer, savings } = useI18n()
   const h = t.hero
   const navigate = useNavigate()
   const [added, flash] = useFlash()
   const tiles = useRef([])
   const offer = getOffer(sel)
-  const save = localSavings(offer)
-  // Prix d'entrée et prix par capsule de l'offre la moins chère, en monnaie locale (estimation) ou débitée.
+  const save = savings(offer)
+  // Prix d'entrée et prix par capsule de l'offre la moins chère, dans la devise du visiteur.
   const entry = OFFERS.reduce((a, b) => (b.price < a.price ? b : a))
-  const perCapsule = estimated ? localPlain(entry.price / entry.washes) : money(Math.round((entry.price / entry.washes) * 100) / 100)
+  const perCapsule = Math.round((entry.price / entry.washes) * 100) / 100
   const stock = useStock()
   const reviewSummary = reviewState.status === 'live' ? summarize(reviewState.reviews) : null
   const allSoldOut = status.stock?.available === 0 || OFFERS.every((o) => isSoldOut(stock, o.id))
@@ -413,14 +401,9 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
       <p className="mt-1 text-[0.92rem] text-fr-muted lg:mt-3 lg:text-lg">{h.subtitle}</p>
       <div className="mt-2.5 flex items-end gap-2.5 lg:mt-5">
         <span className="pb-1.5 text-sm font-semibold text-fr-muted">{h.from}</span>
-        <span className="text-[2.4rem] font-extrabold leading-none tracking-[-0.03em] text-fr-green lg:text-[3.6rem]"><Chf v={entry.price} format={local} /></span>
-        <span className="pb-1.5 text-[0.78rem] text-fr-muted">{h.perCapsule(perCapsule)}</span>
+        <span className="text-[2.4rem] font-extrabold leading-none tracking-[-0.03em] text-fr-green lg:text-[3.6rem]"><Chf v={entry.price} format={money} /></span>
+        <span className="pb-1.5 text-[0.78rem] text-fr-muted">{h.perCapsule(money(perCapsule))}</span>
       </div>
-      {estimated && (
-        <p className="mt-1.5 text-[0.74rem] font-semibold text-fr-muted lg:text-[0.8rem]">
-          {t.price.charged(money(entry.price))} · {t.price.short(offer.currency)}
-        </p>
-      )}
 
       <div className="mt-5 rounded-[1.5rem] border border-fr-green/10 bg-[linear-gradient(180deg,#F4FAF5_0%,#FFFFFF_100%)] p-3 shadow-[0_10px_30px_rgba(11,61,42,0.05)] lg:mt-7 lg:p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -447,7 +430,7 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
         <Swap value={offer.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
           <span><strong className="font-bold">{h.yourChoice}</strong> {h.choiceLine(offer.packs, offer.washes)}</span>
           {save > 0 && (
-            <span className="font-extrabold text-fr-green">{h.saveVsSingle(localAmount(save))}</span>
+            <span className="font-extrabold text-fr-green">{h.saveVsSingle(money(save))}</span>
           )}
         </Swap>
       </p>
@@ -465,8 +448,7 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
           ) : (
             <>
               <span>
-                {h.buyNow} · <Swap value={offer.id}><Chf v={offer.price} format={local} /></Swap>
-
+                {h.buyNow} · <Swap value={offer.id}><Chf v={offer.price} format={money} /></Swap>
               </span>
               <ArrowRight size={18} className="transition-transform duration-base ease-out-soft can-hover:group-hover:translate-x-0.5" />
             </>

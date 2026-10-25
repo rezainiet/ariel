@@ -54,12 +54,7 @@ test('country comes only from the configured proxy header, never from arbitrary 
 })
 
 test('currency depends on country only and falls back to CHF until EUR is fully configured', async () => {
-  // Devise d'affichage testée dans fx.test.mjs : ici, seulement pays, devise encaissée et langue.
-  const locale = (country, extra = {}, canCharge) => {
-    const { display, ...rest } = localeOf(req({ 'x-geo-country': country, ...extra }), { env: GEO, ...(canCharge ? { canCharge } : {}) })
-    assert.equal(display.estimated, false)
-    return rest
-  }
+  const locale = (country, extra = {}, canCharge) => localeOf(req({ 'x-geo-country': country, ...extra }), { env: GEO, ...(canCharge ? { canCharge } : {}) })
   // EUR prices and payment links are not configured: everyone pays (and sees) CHF.
   assert.equal(currencyReady('EUR'), false)
   for (const country of ['DE', 'AT', 'FR', 'CH', 'US', '']) assert.equal(locale(country).currency, 'CHF')
@@ -125,7 +120,7 @@ test('the served page carries language, localized metadata and the visitor local
   assert.match(de, /Beutel mit 60 Kapseln ab CHF 4\.–/)
   assert.match(de, /og:locale" content="de_DE"/)
   assert.match(de, /hreflang="de" href="https:\/\/destockage-suisse\.store\/\?lang=de"/)
-  assert.match(de, /<script>window\.__GEO__=\{"country":"DE","currency":"CHF","lang":"de","display":\{"currency":"CHF","rate":1,"date":null,"estimated":false\}\}<\/script>/)
+  assert.match(de, /<script>window\.__GEO__=\{"country":"DE","currency":"CHF","lang":"de"\}<\/script>/)
   const fr = injectLocale(html, { country: '', currency: 'CHF', lang: 'fr' })
   assert.match(fr, /<html lang="fr-CH"/)
   assert.match(fr, /sachets de 60 capsules dès CHF 4\.–/)
@@ -192,5 +187,5 @@ test('GeoIP uses the address written by the local Nginx, never one a remote clie
   // Without a configured header the database decides; spoofed country headers are still ignored.
   const req = { socket: { remoteAddress: '127.0.0.1' }, headers: { 'x-forwarded-for': '81.169.145.105', 'cf-ipcountry': 'FR', 'x-geo-country': 'FR' }, url: '/' }
   assert.equal(countryOf(req, {}, false, (r) => countryForIp(reader, clientIp(r))), 'DE')
-  assert.deepEqual(localeOf(req, { env: {}, lookup: (r) => countryForIp(reader, clientIp(r)) }), { country: 'DE', currency: 'CHF', lang: 'de', display: { currency: 'CHF', rate: 1, date: null, estimated: false } })
+  assert.deepEqual(localeOf(req, { env: {}, lookup: (r) => countryForIp(reader, clientIp(r)) }), { country: 'DE', currency: 'CHF', lang: 'de' })
 })

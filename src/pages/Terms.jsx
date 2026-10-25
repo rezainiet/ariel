@@ -8,7 +8,7 @@ import { useI18n } from '../i18n/index.jsx'
 // (identité, for juridique) n'apparaissent qu'une fois renseignées.
 // Prix listés dans la devise du visiteur, celle qui sera encaissée.
 export default function Terms() {
-  const { t, currency, offers, money, estimated, display } = useI18n()
+  const { t, currency, offers, money } = useI18n()
   const p = t.pages.terms
   const link = (to) => (text) => (
     <Link key={to} to={to} className="font-semibold text-fr-green underline">
@@ -24,10 +24,7 @@ export default function Terms() {
           <p>{p.seller(MERCHANT.legalName || <MissingInfo key="legal" />, MERCHANT.uid || <MissingInfo key="uid" />, link('/mentions-legales'))}</p>
         </Block>
         <Block title={p.productsTitle}>
-          <p>
-            {p.products(p.currencyNames[currency] || currency, list)}
-            {estimated && p.estimates(display.currency)}
-          </p>
+          <p>{p.products(p.currencyNames[currency] || currency, list)}</p>
         </Block>
         <Block title={p.orderTitle}>
           <p>{p.order}</p>

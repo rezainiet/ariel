@@ -144,14 +144,14 @@ function CapsuleGrid({ packs, shown }) {
 
 function Quantity({ sel, setSel, stock, soldOut }) {
   const buyNow = useBuyNow()
-  const { t, money, local, localAmount, localSavings, estimated, offers: OFFERS, offer: getOffer } = useI18n()
+  const { t, money, offers: OFFERS, offer: getOffer, savings } = useI18n()
   const q = t.story.quantity
   const sachets = t.common.sachets
   const [ref, shown] = useRevealed({ threshold: 0.25 })
   const tiles = useRef([])
   const offer = getOffer(sel)
   const idx = OFFERS.findIndex((o) => o.id === sel)
-  const save = localSavings(offer)
+  const save = savings(offer)
   return (
     <section id="f-quantite" data-analytics-section="quantity" aria-labelledby="quantite-titre" className="scroll-mt-20 bg-gradient-to-b from-fr-mint/70 to-fr-mint/20 py-14 lg:py-24">
       <div className={`${W} grid items-center gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-16`}>
@@ -207,7 +207,7 @@ function Quantity({ sel, setSel, stock, soldOut }) {
                     }`}
                   >
                     <span className="text-[0.82rem] font-bold">{sachets(o.packs)}</span>
-                    <span className={`text-[0.68rem] font-semibold ${on ? 'text-fr-mint' : ''}`}>{out ? t.common.soldOut : local(o.price)}</span>
+                    <span className={`text-[0.68rem] font-semibold ${on ? 'text-fr-mint' : ''}`}>{out ? t.common.soldOut : money(o.price)}</span>
                   </button>
                 )
               })}
@@ -226,15 +226,14 @@ function Quantity({ sel, setSel, stock, soldOut }) {
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.total}</dt>
                 <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">
                   <Swap value={offer.id}>
-                    <Chf v={offer.price} format={local} />
+                    <Chf v={offer.price} format={money} />
                   </Swap>
                 </dd>
               </div>
               <div>
                 <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.perWash}</dt>
                 <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-green lg:text-[1.6rem]">
-                  {/* Centimes en CHF ; en monnaie locale, le montant par lavage dans cette devise */}
-                  <Swap value={offer.id}>{estimated ? local(offer.price / offer.washes) : q.cents(cents(offer))}</Swap>
+                  <Swap value={offer.id}>{q.cents(cents(offer))}</Swap>
                 </dd>
               </div>
             </dl>
@@ -242,7 +241,7 @@ function Quantity({ sel, setSel, stock, soldOut }) {
               <Swap value={offer.id} as="p" className="font-jakarta text-[0.8rem] text-fr-muted">
                 {save > 0 ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-fr-mint px-2.5 py-1 font-bold text-fr-green">
-                    <Check size={13} strokeWidth={3} /> {q.saveVs(localAmount(save), offer.packs, local(OFFERS[0].price))}
+                    <Check size={13} strokeWidth={3} /> {q.saveVs(money(save), offer.packs, money(OFFERS[0].price))}
                   </span>
                 ) : (
                   q.discovery
@@ -259,7 +258,7 @@ function Quantity({ sel, setSel, stock, soldOut }) {
                   t.common.offerSoldOut
                 ) : (
                   <>
-                    {q.buy(offer.packs)}<Chf v={offer.price} format={local} /> <ArrowRight size={15} />
+                    {q.buy(offer.packs)}<Chf v={offer.price} format={money} /> <ArrowRight size={15} />
                   </>
                 )}
               </button>
@@ -269,10 +268,7 @@ function Quantity({ sel, setSel, stock, soldOut }) {
                 {q.soldOutNote(offer.packs)}
               </p>
             )}
-            <p className="mt-3 font-jakarta text-[0.7rem] text-fr-muted">
-              {q.footnote}
-              {estimated && <span className="mt-0.5 block">{t.price.charged(money(offer.price))} · {t.price.short(offer.currency)}</span>}
-            </p>
+            <p className="mt-3 font-jakarta text-[0.7rem] text-fr-muted">{q.footnote}</p>
           </div>
         </Rise>
       </div>
@@ -409,7 +405,7 @@ export default function StoryF({ sel, setSel, stock, soldOut }) {
 // Sur mobile, la barre d'achat en bas d'écran tient ce rôle : pas de second appel concurrent. ──
 export function FinalCta({ sel, soldOut }) {
   const buyNow = useBuyNow()
-  const { t, money, local, estimated, offer: getOffer } = useI18n()
+  const { t, money, offer: getOffer } = useI18n()
   const f = t.story.final
   const offer = getOffer(sel)
   return (
@@ -425,11 +421,9 @@ export function FinalCta({ sel, soldOut }) {
             <p className="text-[0.72rem] font-extrabold uppercase tracking-[0.16em] text-fr-leaf">{f.kicker}</p>
             <p className="mt-1 text-[1.6rem] font-extrabold tracking-[-0.02em]">
               <Swap value={offer.id}>
-                {f.line(offer.packs, offer.washes)}<Chf v={offer.price} format={local} />
+                {f.line(offer.packs, offer.washes)}<Chf v={offer.price} format={money} />
               </Swap>
             </p>
-            {estimated && <p className="text-[0.8rem] font-semibold text-fr-mint/80">{t.price.charged(money(offer.price))} · {t.price.short(offer.currency)}</p>}
-
             <p className="mt-1 text-[0.86rem] text-fr-mint/80">
               {f.note}
               <a href="#offres" className="font-semibold text-white underline-offset-2 hover:underline">

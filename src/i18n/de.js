@@ -87,15 +87,6 @@ const de = {
     rating: (value) => `${value} von 5`,
     decimal: (v) => String(v).replace('.', ','),
   },
-  // Preise in Landeswährung: Richtwerte zum EZB-Kurs, die Zahlung erfolgt in der abgerechneten Währung.
-  price: {
-    charged: (amount) => `Zahlbetrag ${amount}`,
-    chargedCard: (amount) => `Zahlung ${amount}`,
-    chargedLabel: 'Zahlbetrag',
-    estimatedTotal: 'Geschätzter Gesamtbetrag',
-    note: (currency, charge, rate, date) => `Beträge in ${currency} sind Richtwerte zum EZB-Referenzkurs vom ${date} (${rate}). Die Zahlung erfolgt in ${charge}: Der endgültige Betrag wird vom Zahlungsanbieter bestätigt, Ihre Bank kann einen eigenen Kurs anwenden.`,
-    short: (charge) => `Zahlung in ${charge} · endgültiger Betrag wird vom Zahlungsanbieter bestätigt.`,
-  },
   announce: {
     clearance: (from) => `Lagerabverkauf läuft · Angebote ab ${from}`,
     clearanceShort: (from) => `Lagerabverkauf · ab ${from}`,
@@ -122,7 +113,7 @@ const de = {
       ['Service', [['Kontakt & Sendungsverfolgung', '/contact'], ['Lieferung', '/livraison'], ['Rückgabe & Erstattung', '/retours-remboursements']]],
       ['Rechtliches', [['AGB', '/conditions-generales-de-vente'], ['Datenschutz', '/politique-de-confidentialite'], ['Impressum', '/mentions-legales']]],
     ],
-    bottom: (currency, shown) => `${shown ? `Abrechnung in ${currency} · Beträge in ${shown} sind Richtwerte` : `Preise in ${currency}`} · Kostenlose Lieferung in der Schweiz · Rückgabe innerhalb von ${days} Tagen`,
+    bottom: (currency) => `Preise in ${currency} · Kostenlose Lieferung in der Schweiz · Rückgabe innerhalb von ${days} Tagen`,
     brand: `Ariel ist eine Marke von The Procter & Gamble Company. ${store(true)} ist nicht die offizielle Website der Marke.`,
     geoCredit: 'IP-Geolokalisierung von DB-IP',
   },
@@ -551,7 +542,6 @@ const de = {
       productsTitle: 'Produkte und Preise',
       products: (currencyName, list) => `Ariel All-in-1 PODS, Beutel mit 60 Kapseln, solange der Vorrat reicht. Preise in ${currencyName}, Lieferung in die Schweiz inklusive: ${list}.`,
       currencyNames: { CHF: 'Schweizer Franken (CHF)', EUR: 'Euro (EUR)' },
-      estimates: (currency) => ` In ${currency} angezeigte Beträge sind unverbindliche Richtwerte; abgerechnet wird ausschließlich der Betrag in Schweizer Franken.`,
       offerItem: (packs, price) => `${beutel(packs)} ${price}`,
       orderTitle: 'Bestellung',
       order: 'Der Vertrag kommt mit dem Klick auf „Jetzt kaufen“ zustande, der zur Zahlung des angezeigten Betrags verpflichtet. Eine Bestätigung wird per E-Mail versendet. Bei offensichtlichen Preisfehlern oder fehlendem Lagerbestand können wir eine Bestellung stornieren; bereits bezahlte Beträge werden in diesem Fall erstattet.',
