@@ -8,12 +8,13 @@ Chaque valeur se règle dans `.env.local` (modèle : `.env.example`). Justificat
 
 ## 1. Identité du marchand — Bloquant (LCD art. 3 al. 1 let. s)
 
-| Information manquante | Variable | Effet tant qu'elle manque |
+| Information | Variable | Statut / effet tant qu'elle manque |
 | --- | --- | --- |
 | Nom commercial de la boutique | `VITE_STORE_NAME` | En-tête : libellé neutre « Déstockage Suisse » ; textes : « notre boutique » |
-| Raison sociale exacte (registre du commerce) | `VITE_MERCHANT_LEGAL_NAME` | Absente du pied de page, des mentions légales, des CGV, de la confidentialité |
-| Adresse postale (rue, NPA, localité) | `VITE_MERCHANT_STREET`, `_ZIP`, `_CITY` | Idem |
-| Numéro IDE (CHE-…) | `VITE_MERCHANT_UID` | Idem |
+| Raison sociale | `VITE_MERCHANT_LEGAL_NAME` | Aranden GmbH (Sàrl) fourni comme valeur par défaut |
+| Adresse postale (rue, NPA, localité) | `VITE_MERCHANT_STREET`, `_ZIP`, `_CITY` | Route du Moulin 50, 3977 Granges fourni par défaut |
+| Numéro IDE (CHE-…) | `VITE_MERCHANT_UID` | CHE-109.911.687 fourni par défaut |
+| Registre du commerce et gérant | `VITE_MERCHANT_REGISTER_NUMBER`, `VITE_MERCHANT_MANAGER` | CH-626.4.007.970-5 et Zika Cikiric fournis par défaut |
 | E-mail du service client | `VITE_SUPPORT_EMAIL` | Page Contact sans e-mail ; FAQ et retours renvoient vers /contact |
 | Téléphone (recommandé) | `VITE_SUPPORT_PHONE` | Masqué |
 | Hébergeur du site | `VITE_HOSTING_PROVIDER` | Rubrique « Hébergement » masquée |

@@ -7,7 +7,7 @@ import { IconTile } from '../concepts/frais/Icons.jsx'
 // Contact : uniquement les canaux réellement configurés.
 export default function Contact() {
   const address = [MERCHANT.legalName, MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
-    ? `${MERCHANT.legalName}, ${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}` : null
+    ? `${MERCHANT.legalName}, ${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${MERCHANT.country}` : null
   const cards = [
     [
       Mail,

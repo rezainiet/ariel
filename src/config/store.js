@@ -36,11 +36,14 @@ export const storeRef = (capital = false) => STORE.name || (capital ? 'Notre bou
 // développement et l'omet en production (voir LAUNCH-CHECKLIST.md).
 // ─────────────────────────────────────────────────────────────
 export const MERCHANT = {
-  legalName: import.meta.env.VITE_MERCHANT_LEGAL_NAME || '', // raison sociale (registre du commerce)
-  street: import.meta.env.VITE_MERCHANT_STREET || '',
-  zip: import.meta.env.VITE_MERCHANT_ZIP || '',
-  city: import.meta.env.VITE_MERCHANT_CITY || '',
-  uid: import.meta.env.VITE_MERCHANT_UID || '', // numéro IDE, ex. CHE-123.456.789
+  legalName: import.meta.env.VITE_MERCHANT_LEGAL_NAME || 'Aranden GmbH (Sàrl)',
+  street: import.meta.env.VITE_MERCHANT_STREET || 'Route du Moulin 50',
+  zip: import.meta.env.VITE_MERCHANT_ZIP || '3977',
+  city: import.meta.env.VITE_MERCHANT_CITY || 'Granges',
+  country: 'Suisse',
+  uid: import.meta.env.VITE_MERCHANT_UID || 'CHE-109.911.687',
+  registerNumber: import.meta.env.VITE_MERCHANT_REGISTER_NUMBER || 'CH-626.4.007.970-5',
+  manager: import.meta.env.VITE_MERCHANT_MANAGER || 'Zika Cikiric',
   vatNote: import.meta.env.VITE_MERCHANT_VAT_NOTE || '', // ex. « TVA incluse » si assujetti
   dispatchCity: import.meta.env.VITE_DISPATCH_CITY || '', // ville réelle de l'entrepôt
   carrier: import.meta.env.VITE_CARRIER || '', // ex. « La Poste (PostPac Economy) »

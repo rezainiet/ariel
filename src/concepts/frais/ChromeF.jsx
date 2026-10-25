@@ -143,7 +143,7 @@ export function HeaderF() {
 
 export function FooterF({ stickyPad = false }) {
   const address = [MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
-    ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}` : null
+    ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${MERCHANT.country}` : null
   const merchantLines = [
     ['legal', MERCHANT.legalName || <MissingInfo>Raison sociale à renseigner</MissingInfo>],
     ['address', address || <MissingInfo>Adresse postale à renseigner</MissingInfo>],

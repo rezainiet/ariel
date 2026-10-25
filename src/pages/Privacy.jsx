@@ -26,7 +26,7 @@ export default function Privacy() {
         <Block title="Responsable du traitement">
           <p>Raison sociale : {MERCHANT.legalName || <MissingInfo />}</p>
           <p>Adresse : {[MERCHANT.street, MERCHANT.zip, MERCHANT.city].every(Boolean)
-            ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}` : <MissingInfo />}</p>
+            ? `${MERCHANT.street}, ${MERCHANT.zip} ${MERCHANT.city}, ${MERCHANT.country}` : <MissingInfo />}</p>
           <p>E-mail : {STORE.supportEmail || <MissingInfo />}</p>
         </Block>
         <Block title="Données collectées">

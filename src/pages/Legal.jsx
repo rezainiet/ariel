@@ -9,7 +9,10 @@ export default function Legal() {
     ['Rue et numéro', MERCHANT.street || <MissingInfo key="street" />],
     ['NPA', MERCHANT.zip || <MissingInfo key="zip" />],
     ['Localité', MERCHANT.city || <MissingInfo key="city" />],
+    ['Pays', MERCHANT.country],
     ['N° IDE', MERCHANT.uid || <MissingInfo key="uid" />],
+    ['N° registre du commerce', MERCHANT.registerNumber],
+    ['Gérant', MERCHANT.manager],
     ['E-mail', STORE.supportEmail || <MissingInfo key="email" />],
     ...(STORE.supportPhone ? [['Téléphone', STORE.supportPhone]] : []),
   ]
