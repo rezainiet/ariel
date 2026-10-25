@@ -16,11 +16,8 @@ export const TRACKING_LINKS = Object.freeze({
   'pack-3': 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/',
 })
 
-// Payment links per currency. Each link charges the amount set at Everflow for that offer, so a
-// currency is only enabled once its approved prices (src/config/offers.js PRICES) AND all three
-// approved links exist. EUR: links still to be supplied by the merchant (same domain and format).
-export const EUR_TRACKING_LINKS = Object.freeze({})
-const LINKS_BY_CURRENCY = { CHF: TRACKING_LINKS, EUR: EUR_TRACKING_LINKS }
+// The Swiss store charges CHF only, through the three approved CHF links above.
+const LINKS_BY_CURRENCY = { CHF: TRACKING_LINKS }
 
 export const linksFor = (currency = BASE_CURRENCY) => LINKS_BY_CURRENCY[currency] || null
 

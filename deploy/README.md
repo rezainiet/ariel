@@ -45,6 +45,5 @@ Alternative with root access: GeoIP2 in Nginx ([ariel.nginx.geoip2.conf](ariel.n
 `libnginx-mod-http-geoip2`), `proxy_set_header X-Geo-Country $geoip2_country_code;` in the HTTPS site and
 `GEO_COUNTRY_HEADER=x-geo-country` in `/etc/ariel/ariel.env`. A configured header takes precedence over the lookup.
 
-EUR is shown to Germany, Austria and France only once approved EUR prices (`PRICES.EUR` in
-`src/config/offers.js`) and three EUR Everflow links (`EUR_TRACKING_LINKS` in `server/everflow.mjs`) exist;
-until then every visitor sees and pays CHF.
+The country only chooses the language. Déstockage Suisse shows and charges CHF to every visitor; EUR pricing
+belongs to the separate Déstockage Europe project.

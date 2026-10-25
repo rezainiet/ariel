@@ -56,20 +56,15 @@ export function getOffer(id) {
   return OFFERS.find((o) => o.id === id) || null
 }
 
-// ── Prix par devise ──
-// Uniquement des prix APPROUVÉS par le marchand : aucune conversion, aucun prix déduit d'un autre.
-// Une devise n'est proposée que si CHAQUE offre y a un prix ; le serveur exige en plus un lien de
-// paiement par offre dans cette devise (server/everflow.mjs) avant de l'afficher ou de l'encaisser.
-// EUR : prix à fournir. Format attendu : { 'pack-1': { price, compareAt }, 'pack-2': …, 'pack-3': … }.
+// ── Prix ──
+// Boutique suisse : CHF UNIQUEMENT, quels que soient le pays du visiteur et la langue choisie.
+// Aucune conversion, aucune autre devise (les prix en EUR relèvent de la boutique Déstockage Europe).
 export const BASE_CURRENCY = 'CHF'
 export const PRICES = {
   CHF: Object.fromEntries(OFFERS.map((o) => [o.id, { price: o.price, compareAt: o.compareAt }])),
-  EUR: null,
 }
 
-// Devise souhaitée selon le pays du visiteur (jamais selon la langue choisie).
-const COUNTRY_CURRENCY = { CH: 'CHF', DE: 'EUR', AT: 'EUR', FR: 'EUR' }
-export const currencyForCountry = (country) => COUNTRY_CURRENCY[country] || BASE_CURRENCY
+export const currencyForCountry = () => BASE_CURRENCY
 
 export const hasPrices = (currency) =>
   OFFERS.every((o) => Number(PRICES[currency]?.[o.id]?.price) > 0)

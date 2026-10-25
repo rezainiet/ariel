@@ -60,15 +60,11 @@ test('currency depends on country only and falls back to CHF until EUR is fully 
   for (const country of ['DE', 'AT', 'FR', 'CH', 'US', '']) assert.equal(locale(country).currency, 'CHF')
   assert.deepEqual(locale('DE'), { country: 'DE', currency: 'CHF', lang: 'de' })
   assert.deepEqual(locale('FR'), { country: 'FR', currency: 'CHF', lang: 'fr' })
-  // Once EUR can be charged: DE/AT/FR get EUR, Switzerland and other countries keep CHF.
-  const ready = (c) => c === 'EUR'
-  assert.equal(locale('DE', {}, ready).currency, 'EUR')
-  assert.equal(locale('AT', {}, ready).currency, 'EUR')
-  assert.equal(locale('FR', {}, ready).currency, 'EUR')
-  assert.equal(locale('CH', { 'accept-language': 'de-CH' }, ready).currency, 'CHF')
-  assert.equal(locale('US', {}, ready).currency, 'CHF')
+  // Swiss store: CHF only, even if another currency were declared chargeable.
+  const ready = () => true
+  for (const country of ['DE', 'AT', 'FR', 'GB', 'US', 'CA', 'CH']) assert.equal(locale(country, {}, ready).currency, 'CHF')
   // The saved language never changes the currency.
-  assert.deepEqual(locale('DE', { cookie: 'lang=fr' }, ready), { country: 'DE', currency: 'EUR', lang: 'fr' })
+  assert.deepEqual(locale('DE', { cookie: 'lang=fr' }, ready), { country: 'DE', currency: 'CHF', lang: 'fr' })
   assert.deepEqual(locale('CH', { 'accept-language': 'de-CH,de;q=0.9' }), { country: 'CH', currency: 'CHF', lang: 'de' })
   assert.deepEqual(locale('CH', { 'accept-language': 'it-CH' }), { country: 'CH', currency: 'CHF', lang: 'fr' })
   assert.equal(currencyForCountry('LU'), 'CHF')
