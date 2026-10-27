@@ -57,11 +57,7 @@ En développement : lancer `npm run server` (port 8787) en parallèle de `npm ru
   `public/images/everflow/`). Le serveur crée d'abord une commande
   `pending` idempotente dans `DATA_DIR/everflow-orders/`, puis renvoie l'URL hébergée. Aucune redirection
   ou visite de retour ne confirme le paiement. Aucun webhook/API de confirmation Everflow n'est configuré.
-  Les trois liens n'utilisent pas `sub5`. Le serveur ajoute les coordonnées validées du formulaire,
-  le libellé de l'offre et son image. Après consentement, le `fbclid` Meta capturé à l'arrivée est
-  ajouté au lien Everflow dans `sub1` et `fbclid` ; le `ScCid` Snapchat reste transmis dans `ScCid`.
-  Le Pixel Meta du site continue les événements de parcours, tandis qu'Everflow CAPI gère seul Meta Purchase
-  après paiement confirmé. Les identifiants publics des pixels restent dans `src/config/attribution.js`.
+  Le serveur ajoute les coordonnées validées du formulaire, le libellé de l'offre et son image.
   Tester avec `node --test server/everflow.test.mjs` ; ces tests n'ouvrent pas le prestataire et ne paient rien.
 
 ## Routes
@@ -90,7 +86,6 @@ Captures et notes : `design-review/frais-finition/`.
 - `src/lib/payment.js` — frontière de paiement : session hébergée chez le prestataire, vérification serveur.
 - `src/lib/storeStatus.js` — stock et campagne réels (jamais de valeur fictive).
 - `src/lib/address.js` — aide à la saisie d'adresse, uniquement via un service configuré.
-- `src/lib/pixel.js` — pixels Meta et Snapchat après consentement ; Snapchat envoie uniquement PAGE_VIEW, VIEW_CONTENT et START_CHECKOUT. Le site n'envoie ni Meta Purchase ni Snapchat PURCHASE ; Everflow gère Meta Purchase et l'intégration Snapchat CAPI reste à venir. Google purchase reste lié au paiement vérifié.
 - `src/lib/analytics.js` et `server/analytics.mjs` — statistiques internes après consentement : sessions par canal, temps actif, défilement et étapes de commande. Rapport protégé dans `/admin#analytics`, sur 24 h, 7 j ou 30 j ; conservation d’environ 90 jours. Voir `ANALYTICS.md` pour les définitions et limites.
 - `src/concepts/frais/` — composants de la boutique Frais ; `src/pages/` — commande et pages de service.
 - `server/validate-order.mjs` — validation à appeler par le serveur de commande avant de créer le paiement.
