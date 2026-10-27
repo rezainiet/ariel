@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BadgeCheck, Play, Pause, Truck, RotateCcw, LockKeyhole, Plus, ArrowUpRight, MessageCircleQuestion, Star, ShieldAlert, Languages } from 'lucide-react'
 import { DELIVERY, MERCHANT, PAYMENT_METHODS, PAYMENT_LABELS, STORE, VIDEO, STOCK_VIDEO } from '../../config/store.js'
-import { summarize, formatReviewDate } from '../../data/reviews.js'
+import { summarize } from '../../data/reviews.js'
 import { reviewText } from '../../lib/reviewText.js'
 import { useI18n } from '../../i18n/index.jsx'
 import { IconTile } from './Icons.jsx'
@@ -141,7 +141,8 @@ export function ReviewsF({ reviewState }) {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fr-mint text-sm font-extrabold text-fr-green" aria-hidden="true">{r.author.charAt(0).toLocaleUpperCase()}</span>
                 <span className="min-w-0 text-[0.76rem] leading-snug">
                   <strong className="block truncate font-semibold text-fr-ink">{r.author}</strong>
-                  <span className="text-fr-muted">{r.source ? r9.external : r.location ? `${r.location} · ` : ''}{r.source ? r.source.originalDate : formatReviewDate(r.date, lang)}</span>
+                  {/* Pas de date affichée ; la liste reste triée de la plus récente à la plus ancienne. */}
+                  {(r.source || r.location) && <span className="text-fr-muted">{r.source ? r9.external : r.location}</span>}
                 </span>
               </div>
             </Rise>

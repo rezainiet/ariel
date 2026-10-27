@@ -244,7 +244,7 @@ const fr = {
     allRatings: 'Toutes les notes',
     verified: 'Achat vérifié',
     photoBy: (author) => `Photo partagée par ${author}`,
-    external: 'Avis externe · ',
+    external: 'Avis externe',
     more: (n) => `Voir plus d’avis (${n})`,
     translatedFrom: (l) => `Traduit ${{ fr: 'du français', de: 'de l’allemand', en: 'de l’anglais' }[l] || ''}`,
     original: (l) => `Avis original en ${{ fr: 'français', de: 'allemand', en: 'anglais' }[l] || ''}`,

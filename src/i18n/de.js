@@ -244,7 +244,7 @@ const de = {
     allRatings: 'Alle Bewertungen',
     verified: 'Verifizierter Kauf',
     photoBy: (author) => `Foto von ${author}`,
-    external: 'Externe Bewertung · ',
+    external: 'Externe Bewertung',
     more: (n) => `Weitere Bewertungen anzeigen (${n})`,
     translatedFrom: (l) => `Aus dem ${{ fr: 'Französischen', de: 'Deutschen', en: 'Englischen' }[l] || ''} übersetzt`,
     original: (l) => `Originalbewertung auf ${{ fr: 'Französisch', de: 'Deutsch', en: 'Englisch' }[l] || ''}`,
