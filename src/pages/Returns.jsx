@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
 import MissingInfo from '../components/ui/MissingInfo.jsx'
-import { STORE, MERCHANT, POLICIES } from '../config/store.js'
+import { STORE, MERCHANT } from '../config/store.js'
 import { useI18n } from '../i18n/index.jsx'
 
-// Politique de retour : uniquement les engagements confirmés + les rubriques renseignées par le marchand.
+// Politique de retour : engagement de 15 jours + conditions (valeurs du marchand ou textes par défaut, voir pages.policies).
 export default function Returns() {
   const { t } = useI18n()
   const p = t.pages.returns
@@ -34,7 +34,7 @@ export default function Returns() {
               <li key={k}>{parts}</li>
             ))}
           </ol>
-          <p>{p.address}<span className="text-fr-ink">{POLICIES.returnAddress || <MissingInfo />}</span></p>
+          <p>{p.address}<span className="text-fr-ink">{policy.returnAddress || <MissingInfo />}</span></p>
         </Block>
 
         <Block title={p.costsTitle}>

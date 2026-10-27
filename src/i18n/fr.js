@@ -277,7 +277,7 @@ const fr = {
     emails: 'Confirmation par e-mail, puis un e-mail d’expédition avec un lien de suivi lorsqu’il est disponible.',
     deliveryTerms: 'Conditions de livraison',
     returnTitle: `Retour sous ${days} jours`,
-    returnText: `Vous pouvez demander un retour dans les ${days} jours suivant la réception. C’est un engagement de notre boutique : la loi suisse ne prévoit pas de droit de rétractation en ligne.`,
+    returnText: `Vous pouvez demander un retour dans les ${days} jours suivant la réception (sachets non ouverts, frais de retour à votre charge). C’est un engagement de notre boutique : la loi suisse ne prévoit pas de droit de rétractation en ligne.`,
     returnTerms: 'Conditions de retour',
     payTitle: 'Paiement sécurisé',
     payText: (currency) => `Montant total en ${currency} affiché avant l’achat. Le paiement est traité sur la page sécurisée d’un prestataire spécialisé : aucune donnée de carte ne transite par notre boutique.`,
@@ -467,7 +467,7 @@ const fr = {
       how: (contact, strong) => [
         ['Contactez ', contact, ' en indiquant votre ', strong('numéro de commande'), '.'],
         ['Nous vous transmettons les instructions de retour.'],
-        ['Dès réception et contrôle du colis, nous procédons au remboursement.'],
+        ['Après réception et contrôle du colis, nous vous remboursons dans le délai indiqué ci-dessous.'],
       ],
       address: 'Adresse de retour : ',
       costsTitle: 'Frais de retour',
@@ -478,10 +478,13 @@ const fr = {
       phone: (p) => `Téléphone : ${p}`,
     },
     // Textes fournis par le marchand (variables d'environnement, en français).
+    // Conditions par défaut (à faire confirmer par le marchand) ; les variables VITE_* les remplacent.
     policies: {
-      returnCondition: POLICIES.returnCondition,
-      returnCosts: POLICIES.returnCosts,
-      refundTerms: POLICIES.refundTerms,
+      returnCondition: POLICIES.returnCondition || 'sachets non ouverts et intacts, tels que vous les avez reçus. Cette condition ne s’applique pas à un produit endommagé, défectueux ou erroné, même si le sachet a été ouvert.',
+      returnAddress: POLICIES.returnAddress || 'communiquée par e-mail avec les instructions de retour. Merci de ne rien renvoyer avant de les avoir reçues.',
+      returnCosts: POLICIES.returnCosts || 'Les frais de retour sont à votre charge. Si le produit reçu est endommagé, défectueux ou ne correspond pas à votre commande, nous les prenons en charge.',
+      refundTerms: POLICIES.refundTerms || 'Nous remboursons le montant payé pour les produits retournés dans les 14 jours suivant la réception de votre colis, via le moyen de paiement utilisé pour votre commande. Pour une offre de plusieurs sachets, le remboursement est calculé au prorata du prix payé pour l’offre. La livraison étant offerte, aucun montant n’est déduit pour la livraison.',
+      jurisdiction: POLICIES.jurisdiction || 'siège du vendeur, sous réserve des fors légaux auxquels les consommateurs ne peuvent pas renoncer d’avance (notamment art. 32 et 35 CPC).',
       vatNote: MERCHANT.vatNote,
     },
     privacy: {

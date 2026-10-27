@@ -63,9 +63,10 @@ export const URGENCY = {
   statusApi: import.meta.env.VITE_STORE_STATUS_API || '',
 }
 
-// Détails des conditions (textes validés par le marchand). Vide = la rubrique n'est pas affichée.
+// Détails des conditions. Vide = texte par défaut de src/i18n/fr.js / de.js (pages.policies), à faire
+// confirmer par le marchand ; hébergeur vide = rubrique masquée.
 export const POLICIES = {
-  returnAddress: import.meta.env.VITE_RETURN_ADDRESS || '', // adresse physique de retour
+  returnAddress: import.meta.env.VITE_RETURN_ADDRESS || '', // adresse de retour (défaut : communiquée par e-mail)
   returnCosts: import.meta.env.VITE_RETURN_COSTS || '', // ex. « Les frais de retour sont à la charge du client. »
   returnCondition: import.meta.env.VITE_RETURN_CONDITION || '', // ex. sachets non ouverts uniquement
   refundTerms: import.meta.env.VITE_REFUND_TERMS || '', // délai et moyen de remboursement

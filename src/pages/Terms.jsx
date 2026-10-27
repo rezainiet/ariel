@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom'
 import { PageHeader, Prose, Block } from '../components/ui/Prose.jsx'
 import MissingInfo from '../components/ui/MissingInfo.jsx'
-import { MERCHANT, POLICIES } from '../config/store.js'
+import { MERCHANT } from '../config/store.js'
 import { useI18n } from '../i18n/index.jsx'
 
-// Conditions générales : uniquement des engagements confirmés ; les clauses propres au vendeur
-// (identité, for juridique) n'apparaissent qu'une fois renseignées.
+// Conditions générales : engagements confirmés ; identité du vendeur et for juridique (valeur du marchand
+// ou texte par défaut, voir pages.policies).
 // Prix listés dans la devise du visiteur, celle qui sera encaissée.
 export default function Terms() {
   const { t, currency, offers, money } = useI18n()
@@ -39,7 +39,7 @@ export default function Terms() {
           <p>{p.returns(link('/retours-remboursements'))}</p>
         </Block>
         <Block title={p.lawTitle}>
-          <p>{p.law}{POLICIES.jurisdiction || <MissingInfo />}</p>
+          <p>{p.law}{t.pages.policies.jurisdiction || <MissingInfo />}</p>
         </Block>
       </Prose>
     </>

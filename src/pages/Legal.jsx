@@ -8,7 +8,7 @@ export default function Legal() {
   const p = t.pages.legal
   const r = p.rows
   const rows = [
-    [r.store, STORE.name || <MissingInfo key="store" />],
+    [r.store, STORE.name || `${t.logo.top} ${t.logo.bottom}`],
     [r.legalName, MERCHANT.legalName || <MissingInfo key="legal" />],
     [r.street, MERCHANT.street || <MissingInfo key="street" />],
     [r.zip, MERCHANT.zip || <MissingInfo key="zip" />],

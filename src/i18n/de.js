@@ -283,7 +283,7 @@ const de = {
     emails: 'Bestätigung per E-Mail, danach eine Versand-E-Mail mit Sendungsverfolgungslink, sobald dieser verfügbar ist.',
     deliveryTerms: 'Lieferbedingungen',
     returnTitle: `Rückgabe innerhalb von ${days} Tagen`,
-    returnText: `Sie können innerhalb von ${days} Tagen nach Erhalt eine Rückgabe anfragen. Dies ist eine freiwillige Zusage unseres Shops: Das Schweizer Recht sieht kein Widerrufsrecht für Online-Käufe vor.`,
+    returnText: `Sie können innerhalb von ${days} Tagen nach Erhalt eine Rückgabe anfragen (ungeöffnete Beutel, Rücksendekosten zu Ihren Lasten). Dies ist eine freiwillige Zusage unseres Shops: Das Schweizer Recht sieht kein Widerrufsrecht für Online-Käufe vor.`,
     returnTerms: 'Rückgabebedingungen',
     payTitle: 'Sichere Zahlung',
     payText: (currency) => `Gesamtbetrag in ${currency} vor dem Kauf angezeigt. Die Zahlung erfolgt auf der sicheren Seite eines spezialisierten Anbieters: Kartendaten werden nicht über unseren Shop übermittelt.`,
@@ -486,7 +486,7 @@ const de = {
       how: (contact, strong) => [
         ['Kontaktieren Sie ', contact, ' und geben Sie Ihre ', strong('Bestellnummer'), ' an.'],
         ['Wir senden Ihnen die Anweisungen für die Rücksendung.'],
-        ['Nach Erhalt und Prüfung des Pakets erstatten wir den Betrag.'],
+        ['Nach Erhalt und Prüfung des Pakets erstatten wir den Betrag innerhalb der unten genannten Frist.'],
       ],
       address: 'Rücksendeadresse: ',
       costsTitle: 'Rücksendekosten',
@@ -497,10 +497,13 @@ const de = {
       phone: (p) => `Telefon: ${p}`,
     },
     // Vom Händler gelieferte Texte : deutsche Fassung, sonst der französische Originaltext.
+    // Standardbedingungen (vom Händler zu bestätigen); die Variablen VITE_* ersetzen sie.
     policies: {
-      returnCondition: import.meta.env.VITE_RETURN_CONDITION_DE || POLICIES.returnCondition,
-      returnCosts: import.meta.env.VITE_RETURN_COSTS_DE || POLICIES.returnCosts,
-      refundTerms: import.meta.env.VITE_REFUND_TERMS_DE || POLICIES.refundTerms,
+      returnCondition: import.meta.env.VITE_RETURN_CONDITION_DE || POLICIES.returnCondition || 'ungeöffnete, unbeschädigte Beutel, so wie Sie sie erhalten haben. Diese Bedingung gilt nicht für beschädigte, mangelhafte oder falsch gelieferte Produkte, auch wenn der Beutel geöffnet wurde.',
+      returnAddress: import.meta.env.VITE_RETURN_ADDRESS_DE || POLICIES.returnAddress || 'wird Ihnen per E-Mail mit den Anweisungen für die Rücksendung mitgeteilt. Bitte senden Sie nichts zurück, bevor Sie diese erhalten haben.',
+      returnCosts: import.meta.env.VITE_RETURN_COSTS_DE || POLICIES.returnCosts || 'Die Kosten für die Rücksendung tragen Sie. Ist das erhaltene Produkt beschädigt, defekt oder entspricht es nicht Ihrer Bestellung, übernehmen wir die Rücksendekosten.',
+      refundTerms: import.meta.env.VITE_REFUND_TERMS_DE || POLICIES.refundTerms || 'Wir erstatten den für die zurückgesandten Produkte bezahlten Betrag innerhalb von 14 Tagen nach Erhalt Ihrer Rücksendung auf das bei der Bestellung verwendete Zahlungsmittel. Bei Angeboten mit mehreren Beuteln wird der Betrag anteilig zum bezahlten Angebotspreis berechnet. Da die Lieferung kostenlos ist, werden keine Versandkosten abgezogen.',
+      jurisdiction: import.meta.env.VITE_JURISDICTION_DE || POLICIES.jurisdiction || 'Sitz des Verkäufers, vorbehaltlich der gesetzlichen Gerichtsstände, auf die Konsumentinnen und Konsumenten nicht im Voraus verzichten können (insbesondere Art. 32 und 35 ZPO).',
       vatNote: import.meta.env.VITE_MERCHANT_VAT_NOTE_DE || MERCHANT.vatNote,
     },
     privacy: {
