@@ -91,11 +91,13 @@ export function buildEverflowUrl(offerId, customer, imageUrl, fbclid = '', sccid
   for (const key of PREFILL) if (values[key]) url.searchParams.set(key, values[key])
   url.searchParams.set('adv1', productLabel(offer, lang))
   url.searchParams.set('adv2', imageUrl)
-  if (FBCLID_RE.test(fbclid)) {
-    url.searchParams.set('sub1', fbclid)
-    url.searchParams.set('fbclid', fbclid)
-  }
-  if (SCCID_RE.test(sccid)) url.searchParams.set('ScCid', sccid)
+  // sub1 = click ID of the ad that brought the visitor: Meta fbclid, otherwise Snapchat ScCid.
+  // Everflow's Meta and Snapchat integrations read it there; the named parameter travels alongside.
+  const meta = FBCLID_RE.test(fbclid) ? fbclid : ''
+  const snap = SCCID_RE.test(sccid) ? sccid : ''
+  if (meta || snap) url.searchParams.set('sub1', meta || snap)
+  if (meta) url.searchParams.set('fbclid', meta)
+  if (snap) url.searchParams.set('ScCid', snap)
   return url.toString()
 }
 

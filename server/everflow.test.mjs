@@ -120,6 +120,30 @@ test('retry reuses pending order and changed payload conflicts', async () => {
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
+test('Snapchat click ID reaches Everflow in sub1 for all three offers, Meta keeps sub1 for fbclid', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ariel-everflow-snap-'))
+  const sccid = '7d1e2f3a-4b5c-4d6e-8f70-81a2b3c4d5e6'
+  try {
+    for (const offerId of Object.keys(TRACKING_LINKS)) {
+      for (const consent of [true, false]) {
+        const who = { ...customer, email: `snap-${offerId}-${consent}@example.ch` }
+        const result = await createPendingOrder({ ...request(offerId, consent, who), fbclid: '', sccid }, config, dir)
+        assert.equal(result.status, 200)
+        const url = new URL(result.redirectUrl)
+        assert.equal(url.searchParams.get('sub1'), consent ? sccid : null)
+        assert.equal(url.searchParams.get('ScCid'), consent ? sccid : null)
+        assert.equal(url.searchParams.has('fbclid'), false)
+        assert.equal(url.searchParams.has('sub5'), false)
+      }
+    }
+    const meta = new URL(buildEverflowUrl('pack-1', customer, images['pack-1'], 'IwAR_meta_1'))
+    assert.deepEqual([meta.searchParams.get('sub1'), meta.searchParams.get('fbclid'), meta.searchParams.has('ScCid')], ['IwAR_meta_1', 'IwAR_meta_1', false])
+    const bad = new URL(buildEverflowUrl('pack-1', customer, images['pack-1'], '', 'bad&sub2=x'))
+    assert.equal(bad.searchParams.has('sub1'), false)
+    assert.equal(bad.searchParams.has('sub2'), false)
+  } finally { await rm(dir, { recursive: true, force: true }) }
+})
+
 test('Pixel IDs and declined consent never add sub5 or click attribution', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ariel-everflow-meta-'))
   try {

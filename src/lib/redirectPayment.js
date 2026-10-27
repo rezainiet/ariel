@@ -150,11 +150,12 @@ export function buildRedirectUrl(config, offer, customer, { origin = '', fbclid 
     if (v !== '') url.searchParams.set(param, v)
   }
   if (isEverflow(r.domain)) {
-    if (FBCLID_RE.test(fbclid)) {
-      url.searchParams.set('sub1', fbclid)
-      url.searchParams.set('fbclid', fbclid)
-    }
-    if (SCCID_RE.test(sccid)) url.searchParams.set('ScCid', sccid)
+    // sub1 = identifiant du clic publicitaire : fbclid Meta, sinon ScCid Snapchat.
+    const meta = FBCLID_RE.test(fbclid) ? fbclid : ''
+    const snap = SCCID_RE.test(sccid) ? sccid : ''
+    if (meta || snap) url.searchParams.set('sub1', meta || snap)
+    if (meta) url.searchParams.set('fbclid', meta)
+    if (snap) url.searchParams.set('ScCid', snap)
   }
   return url.toString()
 }

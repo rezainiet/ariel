@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { initPixel, isPixelEnabled, trackPageView, trackViewContent } from '../lib/pixel.js'
 import { initAnalytics } from '../lib/analytics.js'
 import { PRODUCT } from '../config/offers.js'
-import { commitMetaClickId, commitSnapClickId } from '../lib/trafficSource.js'
+import { commitMetaClickId, commitSnapClickId, discardPendingClickIds } from '../lib/trafficSource.js'
 import { useI18n } from '../i18n/index.jsx'
 
 // Consentement avant tout pixel publicitaire (nLPD) — deux choix de même poids.
@@ -69,7 +69,7 @@ export default function ConsentBanner() {
       if (value === 'granted') {
         commitMetaClickId()
         commitSnapClickId()
-      }
+      } else discardPendingClickIds()
     } catch {
       /* stockage indisponible : le choix vaut pour cette page */
     }
