@@ -16,8 +16,9 @@ export const STORE = {
 }
 
 // Informations logistiques — configurables, à confirmer avant mise en ligne.
-// Seules la gratuité en Suisse et le délai de retour de 15 jours sont confirmés.
-// Délai de livraison : 3 jours par défaut (bandeau « Livraison en 3 jours »), remplaçable par l'env.
+// Confirmés : gratuité en Suisse, délai de retour de 15 jours, délai de livraison.
+// Délai de livraison MAXIMAL en jours ouvrables : 3, affiché partout comme engagement
+// (« 3 jours ouvrables maximum »), remplaçable par l'env.
 // Lieu d'expédition : affiché UNIQUEMENT s'il est configuré.
 export const DELIVERY = {
   dispatchLocation: import.meta.env.VITE_DISPATCH_LOCATION || '',

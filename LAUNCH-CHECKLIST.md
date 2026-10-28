@@ -52,7 +52,8 @@ Sans voie active, « Acheter » n'envoie rien : le client lit « le paiement en 
 
 Confirmé et affiché : **livraison offerte en Suisse**, livraison en Suisse uniquement.
 
-- [ ] Délai réel (`VITE_DELIVERY_ESTIMATE_DAYS`) — sans valeur, aucun délai n'est affiché.
+- [x] Délai de livraison : **3 jours ouvrables maximum** (fixé le 2026-10-29), affiché sur la page produit, le panier,
+      la FAQ, le contact, la page Livraison et les CGV. `VITE_DELIVERY_ESTIMATE_DAYS` peut le remplacer.
 - [ ] Lieu d'expédition (`VITE_DISPATCH_CITY`) et transporteur (`VITE_CARRIER`) — sans valeur, masqués.
 
 ## 4. Retours et remboursements — Bloquant
