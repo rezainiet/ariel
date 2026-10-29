@@ -58,6 +58,7 @@ En développement : lancer `npm run server` (port 8787) en parallèle de `npm ru
   `pending` idempotente dans `DATA_DIR/everflow-orders/`, puis renvoie l'URL hébergée. Aucune redirection
   ou visite de retour ne confirme le paiement. Aucun webhook/API de confirmation Everflow n'est configuré.
   Le serveur ajoute les coordonnées validées du formulaire, le libellé de l'offre et son image.
+  Liens de paiement, paramètres envoyés et réglages : voir [PAYMENT-LINKS.md](PAYMENT-LINKS.md).
   Tester avec `node --test server/everflow.test.mjs` ; ces tests n'ouvrent pas le prestataire et ne paient rien.
 
 ## Routes
