@@ -10,13 +10,15 @@ import { sanitizeSource } from '../src/lib/trafficSource.js'
 
 // These are the three offer links supplied for this shop. No admin setting or request
 // value may replace their origin, path, or existing tracking query parameters.
+// Since 2026-10-29 they are the Déstockage Europe offers (CHF 9 / 15 / 20 on this shop),
+// replacing the former Swiss codes WMD7FHG / WMJD3P9 / WMKQZFW (CHF 4 / 7 / 10).
 export const TRACKING_LINKS = Object.freeze({
-  'pack-1': 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/',
-  'pack-2': 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/',
-  'pack-3': 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/',
+  'pack-1': 'https://www.molipy8trk.com/2J23GL9/WXPHT5G/',
+  'pack-2': 'https://www.molipy8trk.com/2J23GL9/WXS9LLN/',
+  'pack-3': 'https://www.molipy8trk.com/2J23GL9/WXTNHC9/',
 })
 
-// The Swiss store charges CHF only, through the three approved CHF links above.
+// The Swiss store displays CHF only and sends every order to the three links above.
 const LINKS_BY_CURRENCY = { CHF: TRACKING_LINKS }
 
 export const linksFor = (currency = BASE_CURRENCY) => LINKS_BY_CURRENCY[currency] || null
@@ -33,12 +35,11 @@ export function productLabel(offer, lang = 'fr') {
 }
 
 // The live admin redirect may still be enabled while the dedicated Everflow
-// checkout is off. Use the same approved URLs whenever that configuration
-// points to these three offers.
+// checkout is off. Whenever it points to the Everflow host, the approved URLs
+// above apply: the codes saved in /admin are not used, so an older saved code
+// can never send a buyer to a retired offer.
 export function usesApprovedEverflowLinks(redirect) {
-  return redirect?.enabled === true && redirect.domain === 'www.molipy8trk.com' &&
-    Object.entries(TRACKING_LINKS).every(([id, link]) =>
-      redirect.pathTemplate?.replace('{code}', redirect.packages?.[id]?.code || '') === new URL(link).pathname)
+  return redirect?.enabled === true && redirect.domain === 'www.molipy8trk.com'
 }
 
 export const IMAGE_PATHS = Object.freeze({

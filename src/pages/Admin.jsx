@@ -991,6 +991,9 @@ function PaymentEditor({ initial, everflow, onSaved, onLogout }) {
         </div>
 
         <h3 className="mt-5 text-[0.74rem] font-extrabold uppercase tracking-[0.1em] text-fr-muted">Codes par offre</h3>
+        {cfg.domain === 'www.molipy8trk.com' && (
+          <p className="mt-1 text-[0.8rem] text-fr-muted">Sur ce domaine, les trois liens d’offre figés dans le code serveur s’appliquent : les codes ci-dessous ne sont pas utilisés.</p>
+        )}
         <div className="mt-2 space-y-2">
           {OFFERS.map((o) => {
             const p = cfg.packages[o.id] || {}

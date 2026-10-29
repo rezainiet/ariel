@@ -8,9 +8,9 @@ import { getOffer } from '../src/config/offers.js'
 
 test('offer prices and approved checkout destinations match the three campaigns', () => {
   assert.deepEqual(Object.fromEntries(Object.keys(TRACKING_LINKS).map((id) => [id, { price: getOffer(id).price, url: TRACKING_LINKS[id] }])), {
-    'pack-1': { price: 4, url: 'https://www.molipy8trk.com/2J23GL9/WMD7FHG/' },
-    'pack-2': { price: 7, url: 'https://www.molipy8trk.com/2J23GL9/WMJD3P9/' },
-    'pack-3': { price: 10, url: 'https://www.molipy8trk.com/2J23GL9/WMKQZFW/' },
+    'pack-1': { price: 9, url: 'https://www.molipy8trk.com/2J23GL9/WXPHT5G/' },
+    'pack-2': { price: 15, url: 'https://www.molipy8trk.com/2J23GL9/WXS9LLN/' },
+    'pack-3': { price: 20, url: 'https://www.molipy8trk.com/2J23GL9/WXTNHC9/' },
   })
   assert.ok(Object.values(TRACKING_LINKS).every((link) => !new URL(link).searchParams.has('sub5')))
 })
@@ -18,10 +18,15 @@ test('offer prices and approved checkout destinations match the three campaigns'
 test('live admin redirect configuration resolves to the approved links', () => {
   const redirect = {
     enabled: true, domain: 'www.molipy8trk.com', pathTemplate: '/2J23GL9/{code}/',
-    packages: { 'pack-1': { code: 'WMD7FHG' }, 'pack-2': { code: 'WMJD3P9' }, 'pack-3': { code: 'WMKQZFW' } },
+    packages: { 'pack-1': { code: 'WXPHT5G' }, 'pack-2': { code: 'WXS9LLN' }, 'pack-3': { code: 'WXTNHC9' } },
   }
   assert.equal(usesApprovedEverflowLinks(redirect), true)
-  assert.equal(usesApprovedEverflowLinks({ ...redirect, packages: { ...redirect.packages, 'pack-2': { code: 'WRONG' } } }), false)
+  // Codes still saved from the retired Swiss offers (or any other code) never reach the buyer on the Everflow host.
+  const retired = { ...redirect, packages: { 'pack-1': { code: 'WMD7FHG' }, 'pack-2': { code: 'WMJD3P9' }, 'pack-3': { code: 'WMKQZFW' } } }
+  assert.equal(usesApprovedEverflowLinks(retired), true)
+  assert.equal(usesApprovedEverflowLinks({ ...redirect, pathTemplate: '/{code}', packages: {} }), true)
+  assert.equal(usesApprovedEverflowLinks({ ...redirect, enabled: false }), false)
+  assert.equal(usesApprovedEverflowLinks({ ...redirect, domain: 'pay.example.ch' }), false)
   const url = new URL(buildEverflowUrl('pack-2', { prenom: 'Ana', nom: 'Test', npa: '1201', email: 'ana@example.ch', ville: 'Genève', adresse: 'Rue Test 1', tel: '079 123 45 67' }, 'https://shop.example.ch/images/everflow/pack-2.png', 'IwAR_sample_123'))
   assert.equal(url.searchParams.has('sub5'), false)
   assert.equal(url.searchParams.get('sub1'), 'IwAR_sample_123')

@@ -94,9 +94,9 @@ Captures et notes : `design-review/frais-finition/`.
 
 | Offre     | Sachets | Capsules | Prix     |
 | --------- | ------- | -------- | -------- |
-| 1 sachet  | 1       | 60       | CHF 4.–  |
-| 2 sachets | 2       | 120      | CHF 7.–  |
-| 3 sachets | 3       | 180      | CHF 10.– |
+| 1 sachet  | 1       | 60       | CHF 9.–  |
+| 2 sachets | 2       | 120      | CHF 15.– |
+| 3 sachets | 3       | 180      | CHF 20.– |
 
 Livraison offerte en Suisse. Le serveur recalcule toujours le montant à partir de l'offre.
 

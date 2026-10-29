@@ -75,7 +75,7 @@ test('every bundle has consistent prices per currency, without conversion', asyn
   assert.equal(pricedOffer(OFFERS[0], 'EUR'), null)
   assert.equal(formatMoney(7, 'CHF', 'de'), 'CHF 7.–')
   assert.equal(formatMoney(24.95, 'CHF', 'fr'), 'CHF 24.95')
-  assert.equal(savingsFor(pricedOffer(OFFERS[2], 'CHF')), 2)
+  assert.equal(savingsFor(pricedOffer(OFFERS[2], 'CHF')), 7)
   await withTestEur(() => {
     const eur = OFFERS.map((o) => pricedOffer(o, 'EUR'))
     assert.deepEqual(eur.map((o) => [o.price, o.compareAt]), [[4.5, 25.9], [7.9, undefined], [11.5, undefined]])
@@ -90,9 +90,9 @@ const body = (extra = {}) => ({ offerId: 'pack-2', termsAccepted: true, customer
 const cfg = { enabled: true, images: { 'pack-1': 'https://x.ch/1.webp', 'pack-2': 'https://x.ch/2.png', 'pack-3': 'https://x.ch/3.png' } }
 
 test('the server charges the currency it displays and refuses a stale one', async () => {
-  const chf = prepareCheckout(body({ currency: 'CHF', total: 7, lang: 'de' }), cfg, { currency: 'CHF' })
+  const chf = prepareCheckout(body({ currency: 'CHF', total: 15, lang: 'de' }), cfg, { currency: 'CHF' })
   assert.equal(chf.status, 200)
-  assert.deepEqual([chf.order.total, chf.order.currency, chf.order.lang], [7, 'CHF', 'de'])
+  assert.deepEqual([chf.order.total, chf.order.currency, chf.order.lang], [15, 'CHF', 'de'])
   assert.deepEqual(prepareCheckout(body({ currency: 'EUR' }), cfg, { currency: 'CHF' }), { status: 409, error: 'currency_mismatch', currency: 'CHF' })
   assert.equal(prepareCheckout(body({ currency: 'CHF', total: 6 }), cfg, { currency: 'CHF' }).error, 'unsupported_cart')
   // EUR without approved payment links is never charged, even with prices.
@@ -113,13 +113,13 @@ test('the served page carries language, localized metadata and the visitor local
   const de = injectLocale(html, { country: 'DE', currency: 'CHF', lang: 'de' }, 'https://destockage-suisse.store')
   assert.match(de, /<html lang="de"/)
   assert.match(de, /<title>Ariel All-in-1 PODS · Lagerabverkauf in der Schweiz<\/title>/)
-  assert.match(de, /Beutel mit 60 Kapseln ab CHF 4\.–/)
+  assert.match(de, /Beutel mit 60 Kapseln ab CHF 9\.–/)
   assert.match(de, /og:locale" content="de_DE"/)
   assert.match(de, /hreflang="de" href="https:\/\/destockage-suisse\.store\/\?lang=de"/)
   assert.match(de, /<script>window\.__GEO__=\{"country":"DE","currency":"CHF","lang":"de"\}<\/script>/)
   const fr = injectLocale(html, { country: '', currency: 'CHF', lang: 'fr' })
   assert.match(fr, /<html lang="fr-CH"/)
-  assert.match(fr, /sachets de 60 capsules dès CHF 4\.–/)
+  assert.match(fr, /sachets de 60 capsules dès CHF 9\.–/)
   assert.doesNotMatch(fr, /hreflang/)
 })
 
