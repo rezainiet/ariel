@@ -6,16 +6,28 @@ import { LANGS } from '../i18n/detect.js'
 // Drapeaux ronds dessinés en SVG (aucune police emoji : rendu identique sur tous les appareils).
 function Flag({ lang, className = 'h-[1.15rem] w-[1.15rem]' }) {
   const clip = useId()
-  const stripes = lang === 'de'
-    ? [['#000', 0, 0, 24, 8], ['#DD0000', 0, 8, 24, 8], ['#FFCE00', 0, 16, 24, 8]]
-    : [['#0055A4', 0, 0, 8, 24], ['#FFFFFF', 8, 0, 8, 24], ['#EF4135', 16, 0, 8, 24]]
+  const stripes = {
+    de: [['#000', 0, 0, 24, 8], ['#DD0000', 0, 8, 24, 8], ['#FFCE00', 0, 16, 24, 8]],
+    fr: [['#0055A4', 0, 0, 8, 24], ['#FFFFFF', 8, 0, 8, 24], ['#EF4135', 16, 0, 8, 24]],
+  }[lang]
   return (
     <svg viewBox="0 0 24 24" className={`flex-none rounded-full shadow-[0_0_0_1px_rgba(11,61,42,0.14)] ${className}`} aria-hidden="true">
       <clipPath id={clip}>
         <circle cx="12" cy="12" r="12" />
       </clipPath>
       <g clipPath={`url(#${CSS.escape(clip)})`}>
-        {stripes.map(([fill, x, y, w, h]) => <rect key={fill} x={x} y={y} width={w} height={h} fill={fill} />)}
+        {stripes ? (
+          stripes.map(([fill, x, y, w, h]) => <rect key={fill} x={x} y={y} width={w} height={h} fill={fill} />)
+        ) : (
+          // Royaume-Uni (anglais) : croix de Saint-Georges sur sautoirs, version simplifiée lisible à 18 px.
+          <>
+            <rect width="24" height="24" fill="#012169" />
+            <path d="M0 0 24 24M24 0 0 24" stroke="#FFF" strokeWidth="5" />
+            <path d="M0 0 24 24M24 0 0 24" stroke="#C8102E" strokeWidth="1.8" />
+            <path d="M12 0v24M0 12h24" stroke="#FFF" strokeWidth="7" />
+            <path d="M12 0v24M0 12h24" stroke="#C8102E" strokeWidth="4" />
+          </>
+        )}
       </g>
     </svg>
   )

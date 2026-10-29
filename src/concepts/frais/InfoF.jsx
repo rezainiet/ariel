@@ -97,7 +97,7 @@ export function ReviewsF({ reviewState }) {
         <div className="mt-6 grid gap-6 rounded-[1.5rem] border border-fr-line bg-white p-5 font-jakarta shadow-[0_12px_32px_rgba(11,61,42,0.04)] sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:max-w-[52rem] lg:p-7">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-3">
-              <strong className="text-[3.4rem] font-extrabold leading-none tracking-[-0.05em] text-fr-ink">{sum.average.toFixed(1).replace('.', ',')}</strong>
+              <strong className="text-[3.4rem] font-extrabold leading-none tracking-[-0.05em] text-fr-ink">{t.common.decimal(sum.average.toFixed(1))}</strong>
               <span className="text-sm font-semibold text-fr-muted">{r9.outOf5}</span>
             </div>
             <div className="mt-2"><Stars value={sum.average} size={14} /></div>

@@ -10,7 +10,7 @@
 // Rien n'est conservé : ni l'adresse IP ni le pays.
 // ─────────────────────────────────────────────────────────────
 import { BASE_CURRENCY, currencyForCountry, formatMoney, OFFERS, pricedOffer } from '../src/config/offers.js'
-import { detectLang, isLang, normalizeCountry, parseAcceptLanguage, LANG_COOKIE } from '../src/i18n/detect.js'
+import { detectLang, isLang, normalizeCountry, parseAcceptLanguage, LANG_COOKIE, LANGS } from '../src/i18n/detect.js'
 import { META } from '../src/i18n/meta.js'
 import { currencyReady } from './everflow.mjs'
 
@@ -50,7 +50,11 @@ export function localeOf(req, { env = process.env, local = false, canCharge = cu
   const country = countryOf(req, env, local, lookup)
   const wanted = currencyForCountry(country)
   const currency = wanted !== BASE_CURRENCY && canCharge(wanted) ? wanted : BASE_CURRENCY
-  const stored = cookie(req, LANG_COOKIE)
+  // « ?lang=en » (liens hreflang et de campagne) vaut choix explicite, comme dans le navigateur (src/i18n/index.jsx) :
+  // la page servie à cette adresse, robots d'aperçu compris, est déjà dans cette langue.
+  let fromUrl = null
+  try { fromUrl = new URL(req.url || '/', 'http://x').searchParams.get('lang') } catch { /* adresse illisible : ignorée */ }
+  const stored = isLang(fromUrl) ? fromUrl : cookie(req, LANG_COOKIE)
   const lang = detectLang({ stored: isLang(stored) ? stored : null, country, languages: parseAcceptLanguage(req.headers['accept-language']) })
   return { country, currency, lang }
 }
@@ -69,7 +73,7 @@ export function injectLocale(html, { country, currency, lang }, origin = '') {
   const from = entryPrice(currency, lang)
   const geo = JSON.stringify({ country, currency, lang }).replace(/</g, '\\u003c')
   const alternates = origin
-    ? ['fr', 'de'].map((l) => `<link rel="alternate" hreflang="${l}" href="${escapeHtml(`${origin}/?lang=${l}`)}" />`).join('\n    ') +
+    ? LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${escapeHtml(`${origin}/?lang=${l}`)}" />`).join('\n    ') +
       `\n    <link rel="alternate" hreflang="x-default" href="${escapeHtml(`${origin}/`)}" />`
     : ''
   return html

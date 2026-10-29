@@ -48,6 +48,8 @@ if (from) {
     if (entry.hash !== reviewHash(review)) { console.log(`skip ${id}: original text differs from the reviewed translation`); skipped++; continue }
     if (dryRun) { console.log(`would add ${Object.keys(entry.translations || {}).join(', ')} for ${id}`); continue }
     const added = await setTranslations(dataDir, review, entry.translations || {}, { by: entry.by || 'reviewed', source: entry.source })
+    const kept = Object.keys(entry.translations || {}).filter((lang) => !added.includes(lang))
+    if (kept.length) console.log(`kept ${id}: ${kept.join(', ')} already translated (existing translation not replaced)`)
     applied += added.length
   }
   console.log(`${dryRun ? 'Dry run: ' : ''}${applied} translation(s) added from ${from}; ${skipped} entr${skipped === 1 ? 'y' : 'ies'} skipped.`)

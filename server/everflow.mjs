@@ -29,9 +29,9 @@ export const currencyReady = (currency) =>
 
 // Product label shown on the hosted payment page, in the customer's language.
 export function productLabel(offer, lang = 'fr') {
-  return lang === 'de'
-    ? `${PRODUCT.name} – ${offer.packs} Beutel (${offer.washes} Kapseln)`
-    : `${PRODUCT.name} – ${offer.packs} sachet${offer.packs > 1 ? 's' : ''} (${offer.washes} capsules)`
+  if (lang === 'de') return `${PRODUCT.name} – ${offer.packs} Beutel (${offer.washes} Kapseln)`
+  if (lang === 'en') return `${PRODUCT.name} – ${offer.packs} pouch${offer.packs > 1 ? 'es' : ''} (${offer.washes} pods)`
+  return `${PRODUCT.name} – ${offer.packs} sachet${offer.packs > 1 ? 's' : ''} (${offer.washes} capsules)`
 }
 
 // The live admin redirect may still be enabled while the dedicated Everflow

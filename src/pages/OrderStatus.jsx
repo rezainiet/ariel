@@ -9,9 +9,10 @@ import { formatMoney, getOffer, PRODUCT } from '../config/store.js'
 import { trackPurchase } from '../lib/pixel.js'
 import { cleanCheckoutUrl } from '../lib/checkoutUrl.js'
 import { useI18n } from '../i18n/index.jsx'
+import { DATE_LOCALES } from '../i18n/meta.js'
 
 const dateLabels = {}
-const dateLabel = (lang) => (dateLabels[lang] ||= new Intl.DateTimeFormat(lang === 'de' ? 'de-CH' : 'fr-CH', {
+const dateLabel = (lang) => (dateLabels[lang] ||= new Intl.DateTimeFormat(DATE_LOCALES[lang] || DATE_LOCALES.fr, {
   timeZone: 'Europe/Zurich', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
 }))
 

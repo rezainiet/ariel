@@ -60,11 +60,11 @@ Confirmé et affiché : **livraison offerte en Suisse**, livraison en Suisse uni
 
 Confirmé et affiché : **retour possible sous 15 jours après réception** ; garantie légale pour les défauts.
 
-Textes par défaut en ligne (src/i18n/fr.js / de.js, `pages.policies`), **à faire confirmer par Aranden GmbH** :
+Textes par défaut en ligne (src/i18n/fr.js / de.js / en.js, `pages.policies`), **à faire confirmer par Aranden GmbH** :
 sachets non ouverts (sauf produit défectueux, endommagé ou erroné), frais de retour à la charge du client
 (sauf défaut), remboursement sous 14 jours au prorata de l'offre sur le moyen de paiement, adresse de retour
 envoyée par e-mail, for au siège du vendeur sous réserve des fors des consommateurs (art. 32 et 35 CPC).
-Chaque variable renseignée remplace le texte par défaut ; renseigner aussi sa version `_DE`.
+Chaque variable renseignée remplace le texte par défaut ; renseigner aussi ses versions `_DE` et `_EN`.
 
 - [ ] Adresse de retour (`VITE_RETURN_ADDRESS`, `_DE`).
 - [ ] Sachets ouverts acceptés ou non (`VITE_RETURN_CONDITION`, `_DE`).

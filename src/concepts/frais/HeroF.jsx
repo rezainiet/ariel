@@ -179,9 +179,10 @@ function Stage({ packs }) {
 const RED = '#E30613'
 const YELLOW = '#FFE600'
 // « 4 CHF », « 24,95 CHF », « 4 € » : format de l'affiche (le reste du site garde « CHF 4.– » / « 4,00 € »).
-const posterNumber = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ','))
+// Séparateur décimal de la langue affichée (t.common.decimal : virgule en français et en allemand, point en anglais).
+const posterNumber = (v, decimal = (x) => x.replace('.', ',')) => (Number.isInteger(v) ? String(v) : decimal(v.toFixed(2)))
 const posterUnit = (currency) => (currency === 'EUR' ? '€' : currency)
-const posterPrice = (v, currency) => `${posterNumber(v)} ${posterUnit(currency)}`
+const posterPrice = (v, currency, decimal) => `${posterNumber(v, decimal)} ${posterUnit(currency)}`
 
 // Croix suisse (drapeau carré).
 function SwissFlag({ className = '' }) {
@@ -312,7 +313,7 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
       <span className="relative block rounded-t-[0.85rem] bg-[#137D3F] px-1 pb-2 pt-3 text-white lg:pb-2.5 lg:pt-3.5">
         <span className="block text-[0.85rem] font-extrabold uppercase leading-none tracking-[-0.02em] min-[380px]:text-[1.08rem] lg:text-[1.28rem]">
           <span className="min-[380px]:hidden">{h.packsShort(o.packs)}</span>
-          <span className="hidden min-[380px]:block">{t.common.sachets(o.packs)}</span>
+          <span className="hidden min-[380px]:block">{h.packsCard(o.packs)}</span>
         </span>
         <span className="mt-1 block text-[0.62rem] font-bold uppercase tracking-[0.04em] text-white/90 min-[380px]:text-[0.68rem] lg:text-[0.76rem]">
           <span className="min-[380px]:hidden">{h.podsShort(o.washes)}</span>
@@ -335,7 +336,7 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
 
       <span className="flex w-full flex-1 flex-col items-center justify-end px-1.5 pb-1.5 lg:px-2 lg:pb-2">
         {o.compareAt ? (
-          <s className="py-1 text-[0.7rem] font-bold text-fr-muted decoration-[#E30613] decoration-[1.5px] min-[380px]:text-[0.78rem] lg:text-[0.9rem]">{posterPrice(o.compareAt, o.currency)}</s>
+          <s className="py-1 text-[0.7rem] font-bold text-fr-muted decoration-[#E30613] decoration-[1.5px] min-[380px]:text-[0.78rem] lg:text-[0.9rem]">{posterPrice(o.compareAt, o.currency, t.common.decimal)}</s>
         ) : (
           <span className="text-[0.82rem]">&nbsp;</span>
         )}
@@ -348,7 +349,7 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
           ) : (
             <>
               <span className="text-[1.9rem] font-extrabold tracking-[-0.055em] min-[380px]:text-[2.15rem] lg:text-[2.65rem]">
-                {posterNumber(o.price)}
+                {posterNumber(o.price, t.common.decimal)}
               </span>
               <span className="text-[1rem] font-extrabold tracking-[-0.03em] min-[380px]:text-[1.2rem] lg:text-[1.5rem]">{posterUnit(o.currency)}</span>
             </>
@@ -398,11 +399,11 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
         Ariel All‑in‑1&nbsp;PODS
       </h1>
       {reviewSummary && (
-        <a href="#avis" className="mt-2 inline-flex items-center gap-2 rounded-md font-jakarta text-[0.78rem] text-fr-ink underline-offset-4 transition-colors hover:text-fr-green hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-fr-green lg:text-sm" aria-label={h.ratingAria(reviewSummary.average.toFixed(1).replace('.', ','), reviewSummary.count)}>
+        <a href="#avis" className="mt-2 inline-flex items-center gap-2 rounded-md font-jakarta text-[0.78rem] text-fr-ink underline-offset-4 transition-colors hover:text-fr-green hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-fr-green lg:text-sm" aria-label={h.ratingAria(t.common.decimal(reviewSummary.average.toFixed(1)), reviewSummary.count)}>
           <span className="inline-flex gap-0.5 text-fr-green" aria-hidden="true">
             {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={13} strokeWidth={1.5} className={n <= Math.round(reviewSummary.average) ? 'fill-current' : ''} />)}
           </span>
-          <span className="font-bold">{reviewSummary.average.toFixed(1).replace('.', ',')}</span>
+          <span className="font-bold">{t.common.decimal(reviewSummary.average.toFixed(1))}</span>
           <span className="text-fr-muted">· {h.reviewCount(reviewSummary.count)}</span>
         </a>
       )}

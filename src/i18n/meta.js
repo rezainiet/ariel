@@ -16,4 +16,14 @@ export const META = {
     description: (from) => `Lagerabverkauf in der Schweiz: Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in der Schweiz, Rückgabe innerhalb von 15 Tagen möglich.`,
     ogDescription: (from) => `Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in der Schweiz.`,
   },
+  en: {
+    htmlLang: 'en',
+    ogLocale: 'en_GB',
+    title: 'Ariel All-in-1 PODS · Clearance sale in Switzerland',
+    description: (from) => `Clearance sale in Switzerland: Ariel All-in-1 PODS, pouches of 60 pods from ${from}. Free delivery in Switzerland, returns possible within 15 days.`,
+    ogDescription: (from) => `Ariel All-in-1 PODS, pouches of 60 pods from ${from}. Free delivery in Switzerland.`,
+  },
 }
+
+// Locale des dates par langue (avis, suivi de commande).
+export const DATE_LOCALES = { fr: 'fr-CH', de: 'de-CH', en: 'en-CH' }

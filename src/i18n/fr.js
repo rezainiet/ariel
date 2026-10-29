@@ -87,6 +87,7 @@ const fr = {
     inSwitzerland: (place) => `${place} (Suisse)`,
     rating: (value) => `${value} sur 5`,
     decimal: (v) => String(v).replace('.', ','),
+    quote: (s) => `« ${s} »`,
   },
   announce: {
     clearance: (from) => `Déstockage en cours · offres dès ${from}`,
@@ -156,6 +157,8 @@ const fr = {
     popularShort: 'Populaire',
     popular: 'Le plus populaire',
     packsShort: (n) => `${n} pack${n > 1 ? 's' : ''}`,
+    // En-tête des cartes d'offre à partir de 380 px (en dessous : packsShort).
+    packsCard: sachets,
     podsShort: (n) => `${n} pods`,
     ratingAria: (avg, count) => `Note moyenne ${avg} sur 5, ${count} avis — voir les avis`,
     reviewCount: (count) => `${count} avis`,

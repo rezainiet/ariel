@@ -21,7 +21,6 @@ import { Packs } from './HeroF.jsx'
 // ─────────────────────────────────────────────────────────────
 
 const W = 'mx-auto max-w-[1320px] px-4 lg:px-8'
-const cents = (o) => String(centsPerWash(o)).replace('.', ',')
 
 // Achat direct : l'offre est placée au panier (sans doublon) puis la commande s'ouvre.
 function useBuyNow() {
@@ -217,23 +216,23 @@ function Quantity({ sel, setSel, stock, soldOut }) {
             </div>
             <dl className="mt-6 grid grid-cols-3 divide-x divide-fr-line border-y border-fr-line py-3 text-center font-jakarta">
               <div>
-                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.capsules}</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">
+                <dt className="px-0.5 text-[0.62rem] font-bold uppercase tracking-[0.04em] text-fr-muted min-[380px]:px-0 min-[380px]:text-[0.66rem] min-[380px]:tracking-[0.1em]">{q.capsules}</dt>
+                <dd className="mt-0.5 text-[1.1rem] font-extrabold tabular-nums min-[380px]:text-[1.35rem] text-fr-ink lg:text-[1.6rem]">
                   <Swap value={offer.id}>{offer.washes}</Swap>
                 </dd>
               </div>
               <div>
-                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.total}</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-ink lg:text-[1.6rem]">
+                <dt className="px-0.5 text-[0.62rem] font-bold uppercase tracking-[0.04em] text-fr-muted min-[380px]:px-0 min-[380px]:text-[0.66rem] min-[380px]:tracking-[0.1em]">{q.total}</dt>
+                <dd className="mt-0.5 text-[1.1rem] font-extrabold tabular-nums min-[380px]:text-[1.35rem] text-fr-ink lg:text-[1.6rem]">
                   <Swap value={offer.id}>
                     <Chf v={offer.price} format={money} />
                   </Swap>
                 </dd>
               </div>
               <div>
-                <dt className="text-[0.66rem] font-bold uppercase tracking-[0.1em] text-fr-muted">{q.perWash}</dt>
-                <dd className="mt-0.5 text-[1.35rem] font-extrabold tabular-nums text-fr-green lg:text-[1.6rem]">
-                  <Swap value={offer.id}>{q.cents(cents(offer))}</Swap>
+                <dt className="px-0.5 text-[0.62rem] font-bold uppercase tracking-[0.04em] text-fr-muted min-[380px]:px-0 min-[380px]:text-[0.66rem] min-[380px]:tracking-[0.1em]">{q.perWash}</dt>
+                <dd className="mt-0.5 text-[1.1rem] font-extrabold tabular-nums min-[380px]:text-[1.35rem] text-fr-green lg:text-[1.6rem]">
+                  <Swap value={offer.id}>{q.cents(t.common.decimal(centsPerWash(offer)))}</Swap>
                 </dd>
               </div>
             </dl>
@@ -278,7 +277,8 @@ function Quantity({ sel, setSel, stock, soldOut }) {
 
 // ── 3 · Sur l'emballage : la photo se pose, puis les repères apparaissent un à un ──
 function OnPack() {
-  const p = useI18n().t.story.onPack
+  const { t } = useI18n()
+  const p = t.story.onPack
   // Positions sur la photo + libellés de la langue affichée (quote = texte imprimé, absent en allemand).
   const spots = COLD_HOTSPOTS.map((pos, k) => ({ ...pos, ...p.hotspots[k] }))
   const [active, setActiveRaw] = useState(null)
@@ -322,7 +322,7 @@ function OnPack() {
                 <span lang={h.quote ? undefined : 'de'} className="block text-[0.95rem] font-bold leading-snug text-fr-ink">{h.label}</span>
                 {h.quote && (
                   <span lang="de" className="mt-0.5 block text-[0.78rem] italic text-fr-muted">
-                    « {h.quote} »
+                    {t.common.quote(h.quote)}
                   </span>
                 )}
               </span>
@@ -376,7 +376,7 @@ function OnPack() {
               <p lang={spots[active].quote ? undefined : 'de'} className="text-[0.92rem] font-bold text-fr-ink">{spots[active].label}</p>
               {spots[active].quote && (
                 <p lang="de" className="text-[0.76rem] italic text-fr-muted">
-                  « {spots[active].quote} »
+                  {t.common.quote(spots[active].quote)}
                 </p>
               )}
             </>

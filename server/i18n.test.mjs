@@ -23,12 +23,16 @@ test('language follows manual choice, then country, then browser, then French', 
   assert.equal(detectLang({ country: 'FR', languages: ['de-DE'] }), 'fr')
   assert.equal(detectLang({ country: 'CH', languages: ['de-CH', 'fr'] }), 'de')
   assert.equal(detectLang({ country: 'CH', languages: ['fr-CH'] }), 'fr')
-  assert.equal(detectLang({ country: 'CH', languages: ['it-CH', 'en'] }), 'fr')
-  assert.equal(detectLang({ country: 'CH', languages: ['en-GB', 'de'] }), 'de')
-  assert.equal(detectLang({ country: 'US', languages: ['en-US', 'de'] }), 'de')
+  assert.equal(detectLang({ country: 'CH', languages: ['it-CH', 'en'] }), 'en')
+  assert.equal(detectLang({ country: 'CH', languages: ['it-CH'] }), 'fr')
+  assert.equal(detectLang({ country: 'CH', languages: ['en-GB', 'de'] }), 'en')
+  assert.equal(detectLang({ country: 'CH', languages: ['de-CH', 'en'] }), 'de')
+  assert.equal(detectLang({ country: 'US', languages: ['en-US', 'de'] }), 'en')
+  assert.equal(detectLang({ country: 'GB', languages: ['fr-FR'] }), 'en')
   assert.equal(detectLang({ country: '', languages: [] }), 'fr')
   assert.equal(detectLang({ stored: 'fr', country: 'DE', languages: ['de'] }), 'fr')
   assert.equal(detectLang({ stored: 'de', country: 'FR' }), 'de')
+  assert.equal(detectLang({ stored: 'en', country: 'DE', languages: ['de'] }), 'en')
   assert.equal(detectLang({ stored: 'it', country: 'FR' }), 'fr')
 })
 
@@ -59,6 +63,9 @@ test('currency depends on country only and falls back to CHF until EUR is fully 
   assert.equal(currencyReady('EUR'), false)
   for (const country of ['DE', 'AT', 'FR', 'CH', 'US', '']) assert.equal(locale(country).currency, 'CHF')
   assert.deepEqual(locale('DE'), { country: 'DE', currency: 'CHF', lang: 'de' })
+  // ?lang= (hreflang, campaign links) wins over cookie, country and browser; an unknown value is ignored.
+  assert.equal(localeOf(req({ 'x-geo-country': 'CH', 'accept-language': 'fr-CH', cookie: 'lang=de' }, '/?lang=en'), { env: GEO }).lang, 'en')
+  assert.equal(localeOf(req({ 'x-geo-country': 'DE' }, '/?lang=it'), { env: GEO }).lang, 'de')
   assert.deepEqual(locale('FR'), { country: 'FR', currency: 'CHF', lang: 'fr' })
   // Swiss store: CHF only, even if another currency were declared chargeable.
   const ready = () => true
@@ -105,6 +112,10 @@ test('the server charges the currency it displays and refuses a stale one', asyn
   const url = new URL(buildEverflowUrl('pack-2', customer, 'https://x.ch/2.png', '', '', { currency: 'CHF', lang: 'de' }))
   assert.equal(url.searchParams.get('adv1'), 'Ariel All-in-1 PODS – 2 Beutel (120 Kapseln)')
   assert.equal(productLabel(OFFERS[0]), 'Ariel All-in-1 PODS – 1 sachet (60 capsules)')
+  assert.equal(productLabel(OFFERS[0], 'en'), 'Ariel All-in-1 PODS – 1 pouch (60 pods)')
+  const english = new URL(buildEverflowUrl('pack-2', customer, 'https://x.ch/2.png', '', '', { currency: 'CHF', lang: 'en' }))
+  assert.equal(english.searchParams.get('adv1'), 'Ariel All-in-1 PODS – 2 pouches (120 pods)')
+  assert.equal(prepareCheckout(body({ currency: 'CHF', total: 15, lang: 'en' }), cfg, { currency: 'CHF' }).order.lang, 'en')
   assert.throws(() => buildEverflowUrl('pack-2', customer, '', '', '', { currency: 'EUR' }), /unsupported_offer/)
 })
 
@@ -117,6 +128,12 @@ test('the served page carries language, localized metadata and the visitor local
   assert.match(de, /og:locale" content="de_DE"/)
   assert.match(de, /hreflang="de" href="https:\/\/destockage-suisse\.store\/\?lang=de"/)
   assert.match(de, /<script>window\.__GEO__=\{"country":"DE","currency":"CHF","lang":"de"\}<\/script>/)
+  assert.match(de, /hreflang="en" href="https:\/\/destockage-suisse\.store\/\?lang=en"/)
+  const en = injectLocale(html, { country: 'CH', currency: 'CHF', lang: 'en' }, 'https://destockage-suisse.store')
+  assert.match(en, /<html lang="en"/)
+  assert.match(en, /<title>Ariel All-in-1 PODS · Clearance sale in Switzerland<\/title>/)
+  assert.match(en, /pouches of 60 pods from CHF 9\.–/)
+  assert.match(en, /og:locale" content="en_GB"/)
   const fr = injectLocale(html, { country: '', currency: 'CHF', lang: 'fr' })
   assert.match(fr, /<html lang="fr-CH"/)
   assert.match(fr, /sachets de 60 capsules dès CHF 9\.–/)
@@ -145,20 +162,28 @@ function shape(value) {
   return typeof value
 }
 
-test('German and French translation files have the same keys and no French left in German', async () => {
+test('German and English translation files have the same keys as French and no French or German left over', async () => {
   const vite = await createServer({ configFile: false, server: { middlewareMode: true }, appType: 'custom', logLevel: 'silent' })
   try {
     const fr = (await vite.ssrLoadModule('/src/i18n/fr.js')).default
     const de = (await vite.ssrLoadModule('/src/i18n/de.js')).default
+    const en = (await vite.ssrLoadModule('/src/i18n/en.js')).default
     // Le texte d'une vidéo ou d'une politique fourni par le marchand peut être vide : seule la forme compte.
     const normalize = (s) => JSON.parse(JSON.stringify(s).replace(/"(string|undefined)"/g, '"text"'))
     assert.deepEqual(normalize(shape(de)), normalize(shape(fr)))
+    assert.deepEqual(normalize(shape(en)), normalize(shape(fr)))
     // Restes de français : accents et mots-outils, hors nom de la boutique et textes du marchand.
     const allowed = /^root\.(logo|pages\.policies)\./
     const french = /[éèêàâùçœ]|\b(le|la|les|une|pour|avec|vous|votre|sachets?|livraison|panier|commande)\b/i
     const technical = (path, text) => /\.id$/.test(path) || /^[/#]/.test(text) // ancres, adresses et identifiants
-    const leftovers = leaves(de).filter(([path, text]) => !allowed.test(path) && !technical(path, text) && french.test(text.replace(/Tox Info Suisse|Universal\+|All-in-1|Fleck-weg-Power/g, '')))
-    assert.deepEqual(leftovers, [])
+    const product = /Tox Info Suisse|Universal\+|All-in-1|Fleck-weg-Power/g
+    const leftovers = (messages) => leaves(messages).filter(([path, text]) => !allowed.test(path) && !technical(path, text) && french.test(text.replace(product, '')))
+    assert.deepEqual(leftovers(de), [])
+    assert.deepEqual(leftovers(en), [])
+    // Restes d'allemand dans l'anglais, hors texte imprimé sur le sachet (citations).
+    const german = /[äöüß]|\b(der|die|das|und|Sie|Ihre?|Beutel|Lieferung|Warenkorb|Bestellung|Kapseln)\b/
+    const printed = /\.quote$/
+    assert.deepEqual(leaves(en).filter(([path, text]) => !allowed.test(path) && !printed.test(path) && !technical(path, text) && german.test(text.replace(product, ''))), [])
     assert.ok(leaves(fr).length > 300)
   } finally {
     await vite.close()

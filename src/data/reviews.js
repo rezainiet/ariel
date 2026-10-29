@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { DATE_LOCALES } from '../i18n/meta.js'
 
 // ─────────────────────────────────────────────────────────────
 // Avis clients — architecture prête pour une source vérifiée.
@@ -181,7 +182,7 @@ export function useReviews({ pageSize = 3, allowSample = true } = {}) {
 }
 
 export function formatReviewDate(iso, lang = 'fr') {
-  return new Date(iso + 'T12:00:00').toLocaleDateString(lang === 'de' ? 'de-CH' : 'fr-CH', {
+  return new Date(iso + 'T12:00:00').toLocaleDateString(DATE_LOCALES[lang] || DATE_LOCALES.fr, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

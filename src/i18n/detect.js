@@ -1,17 +1,17 @@
 // ─────────────────────────────────────────────────────────────
 // Choix de la langue — module pur, partagé par le navigateur et le serveur (server/geo.mjs).
-// Ordre : 1. choix manuel du visiteur (toujours prioritaire) · 2. pays (DE/AT → allemand, FR → français)
-// · 3. langue préférée du navigateur (français ou allemand) · 4. français.
+// Ordre : 1. choix manuel du visiteur (toujours prioritaire) · 2. pays (DE/AT → allemand, FR → français,
+// GB/IE → anglais) · 3. langue préférée du navigateur (français, allemand ou anglais) · 4. français.
 // La Suisse et les autres pays passent par la préférence du navigateur.
 // La devise ne dépend jamais de la langue : voir currencyForCountry (src/config/offers.js).
 // ─────────────────────────────────────────────────────────────
 
-export const LANGS = ['fr', 'de']
+export const LANGS = ['fr', 'de', 'en']
 export const DEFAULT_LANG = 'fr'
 export const LANG_STORAGE_KEY = 'lang.v1'
 export const LANG_COOKIE = 'lang'
 
-const COUNTRY_LANG = { DE: 'de', AT: 'de', FR: 'fr' }
+const COUNTRY_LANG = { DE: 'de', AT: 'de', FR: 'fr', GB: 'en', IE: 'en' }
 
 export const isLang = (value) => LANGS.includes(value)
 

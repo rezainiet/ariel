@@ -8,11 +8,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import fr from './fr.js'
 import de from './de.js'
+import en from './en.js'
 import { META } from './meta.js'
 import { detectLang, isLang, normalizeCountry, LANG_STORAGE_KEY, LANG_COOKIE, DEFAULT_LANG } from './detect.js'
 import { OFFERS, BASE_CURRENCY, getOffer, hasPrices, pricedOffer, formatMoney, savingsFor } from '../config/offers.js'
 
-export const MESSAGES = { fr, de }
+export const MESSAGES = { fr, de, en }
 
 function readGeo() {
   const g = typeof window !== 'undefined' ? window.__GEO__ : null
