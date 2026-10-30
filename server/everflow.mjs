@@ -86,7 +86,9 @@ export function buildEverflowUrl(offerId, customer, imageUrl, fbclid = '', sccid
     sub3: customer.npa,
     sub4: customer.email,
     sub6: customer.ville,
-    sub7: [customer.adresse, customer.complement].filter(Boolean).join(', '),
+    // No country prefill mapping is configured for this offer. Include the ISO code in
+    // the address for non-Swiss destinations, and retain it on our order record.
+    sub7: [customer.adresse, customer.complement, customer.country && customer.country !== 'CH' ? customer.country : ''].filter(Boolean).join(', '),
     sub8: normalizePhone(customer.tel).replace(/^0041/, '+41').replace(/^0([1-9]\d{8})$/, '+41$1'),
   }
   for (const key of PREFILL) if (values[key]) url.searchParams.set(key, values[key])

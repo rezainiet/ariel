@@ -171,10 +171,10 @@ const csvCell = (v) => {
   return `"${safe.replace(/"/g, '""')}"`
 }
 function exportCsv(orders, channel) {
-  const head = ['Date', 'Commande', 'Statut', 'Provenance', 'Source UTM', 'Campagne UTM', 'Offre', 'Sachets', 'Total CHF', 'Prénom', 'Nom', 'E-mail', 'Téléphone', 'Adresse', 'Complément', 'NPA', 'Ville', 'Clics']
+  const head = ['Date', 'Commande', 'Statut', 'Provenance', 'Source UTM', 'Campagne UTM', 'Offre', 'Sachets', 'Total CHF', 'Prénom', 'Nom', 'E-mail', 'Téléphone', 'Adresse', 'Complément', 'NPA', 'Ville', 'Pays', 'Clics']
   const rows = orders.map((o) => [
     o.createdAt, o.orderId, STATUS_LABELS[o.status]?.[0] || o.status, CHANNEL_LABELS[o.channel], o.source?.last?.utmSource, o.source?.last?.utmCampaign,
-    o.offerId, o.packs, o.total, o.customer.prenom, o.customer.nom, o.customer.email, o.customer.tel, o.customer.adresse, o.customer.complement, o.customer.npa, o.customer.ville, o.clicks,
+    o.offerId, o.packs, o.total, o.customer.prenom, o.customer.nom, o.customer.email, o.customer.tel, o.customer.adresse, o.customer.complement, o.customer.npa, o.customer.ville, o.customer.country || 'CH', o.clicks,
   ])
   const csv = '﻿' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -251,7 +251,7 @@ function OrdersPanel({ data, error, onReload }) {
               <div className="mt-2 grid gap-x-4 gap-y-1 text-[0.82rem] text-fr-ink sm:grid-cols-2">
                 <span className="flex min-w-0 items-center gap-1.5"><Mail size={13} className="flex-none text-fr-muted" /><span className="truncate">{c.email}</span></span>
                 <span className="flex items-center gap-1.5"><Phone size={13} className="flex-none text-fr-muted" />{c.tel || '—'}</span>
-                <span className="flex min-w-0 items-center gap-1.5 sm:col-span-2"><MapPin size={13} className="flex-none text-fr-muted" /><span className="truncate">{[c.adresse, c.complement, `${c.npa} ${c.ville}`].filter(Boolean).join(', ')}</span></span>
+                <span className="flex min-w-0 items-center gap-1.5 sm:col-span-2"><MapPin size={13} className="flex-none text-fr-muted" /><span className="truncate">{[c.adresse, c.complement, `${c.npa} ${c.ville}`, c.country || 'CH'].filter(Boolean).join(', ')}</span></span>
               </div>
               <p className="mt-2 text-[0.78rem] text-fr-muted">
                 <strong className="font-bold text-fr-ink">{sachets(o.packs)} · {formatCHF(o.total)}</strong>

@@ -253,8 +253,14 @@ function Benefits() {
 // Livraison en une carte : à gauche la fenêtre d'arrivée estimée (délai annoncé, jours ouvrables suisses),
 // à droite la gratuité. Les dates sont calculées une fois, à l'heure de Zurich.
 function DeliveryEta() {
-  const d = useI18n().t.hero.delivery
+  const { t, country } = useI18n()
+  const d = t.hero.delivery
   const win = useMemo(() => deliveryWindow(new Date(), DELIVERY.estimateDays), [])
+  if (country !== 'CH') return (
+    <div className="mt-3 flex items-center gap-2 rounded-2xl border border-fr-green/10 bg-white/90 px-4 py-3 font-bold text-fr-green shadow-[0_6px_18px_rgba(11,61,42,0.05)]">
+      <Truck size={19} aria-hidden="true" /> {t.announce.freeDelivery}
+    </div>
+  )
   if (!win) return null
   return (
     <div className="mt-3 grid grid-cols-[1.12fr_1fr] divide-x divide-fr-line rounded-2xl border border-fr-green/10 bg-white/90 shadow-[0_6px_18px_rgba(11,61,42,0.05)]">

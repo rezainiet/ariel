@@ -6,22 +6,22 @@ export const META = {
     htmlLang: 'fr-CH',
     ogLocale: 'fr_CH',
     title: 'Ariel All-in-1 PODS · Déstockage en Suisse',
-    description: (from) => `Déstockage en Suisse : Ariel All-in-1 PODS, sachets de 60 capsules dès ${from}. Livraison offerte en Suisse, retour possible sous 15 jours.`,
-    ogDescription: (from) => `Ariel All-in-1 PODS, sachets de 60 capsules dès ${from}. Livraison offerte en Suisse.`,
+    description: (from) => `Déstockage Suisse : Ariel All-in-1 PODS, sachets de 60 capsules dès ${from}. Livraison offerte vers les pays proposés, retour possible sous 15 jours.`,
+    ogDescription: (from) => `Ariel All-in-1 PODS, sachets de 60 capsules dès ${from}. Livraison offerte vers les pays proposés.`,
   },
   de: {
     htmlLang: 'de',
     ogLocale: 'de_DE',
     title: 'Ariel All-in-1 PODS · Lagerabverkauf in der Schweiz',
-    description: (from) => `Lagerabverkauf in der Schweiz: Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in der Schweiz, Rückgabe innerhalb von 15 Tagen möglich.`,
-    ogDescription: (from) => `Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in der Schweiz.`,
+    description: (from) => `Déstockage Suisse: Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in die angebotenen Länder, Rückgabe innerhalb von 15 Tagen möglich.`,
+    ogDescription: (from) => `Ariel All-in-1 PODS, Beutel mit 60 Kapseln ab ${from}. Kostenlose Lieferung in die angebotenen Länder.`,
   },
   en: {
     htmlLang: 'en',
     ogLocale: 'en_GB',
     title: 'Ariel All-in-1 PODS · Clearance sale in Switzerland',
-    description: (from) => `Clearance sale in Switzerland: Ariel All-in-1 PODS, pouches of 60 pods from ${from}. Free delivery in Switzerland, returns possible within 15 days.`,
-    ogDescription: (from) => `Ariel All-in-1 PODS, pouches of 60 pods from ${from}. Free delivery in Switzerland.`,
+    description: (from) => `Déstockage Suisse: Ariel All-in-1 PODS, pouches of 60 pods from ${from}. Free delivery to the listed countries, returns possible within 15 days.`,
+    ogDescription: (from) => `Ariel All-in-1 PODS, pouches of 60 pods from ${from}. Free delivery to the listed countries.`,
   },
 }
 

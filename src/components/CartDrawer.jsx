@@ -75,7 +75,7 @@ const SKINS = {
 
 export default function CartDrawer() {
   const { drawerOpen, closeDrawer, offer, hasItems, washes, total, clear, changeOffer, skin, addedAt } = useCart()
-  const { t, money, offers: OFFERS, savings } = useI18n()
+  const { t, country, money, offers: OFFERS, savings } = useI18n()
   const c = t.cart
   // La boutique (Frais) est l'habillage par défaut ; les concepts de comparaison imposent le leur.
   const S = SKINS[skin] || SKINS.f
@@ -276,7 +276,7 @@ export default function CartDrawer() {
               <ul className="mt-6 space-y-3 text-sm text-ink/80">
                 <li className="flex items-center gap-2.5">
                   <Truck size={16} className="flex-none text-fr-green" /> {c.delivery}
-                  {DELIVERY.estimateDays ? c.deliveryEta(DELIVERY.estimateDays) : ''}
+                  {country === 'CH' && DELIVERY.estimateDays ? c.deliveryEta(DELIVERY.estimateDays) : ''}
                 </li>
                 {(MERCHANT.dispatchCity || DELIVERY.dispatchLocation) && (
                   <li className="flex items-center gap-2.5">

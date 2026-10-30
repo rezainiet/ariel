@@ -80,21 +80,21 @@ What it does not prove:
 | `sub3` | Postal code (`npa`) | Left out when empty |
 | `sub4` | E-mail, lowercased by `clean()` | Left out when empty |
 | `sub6` | City (`ville`) | Left out when empty |
-| `sub7` | `adresse, complement`, with empty parts dropped | [server/everflow.mjs:89](server/everflow.mjs:89) |
-| `sub8` | Phone | Approved: `+41790000000`. Generic: the form value after `clean()`. The checkout form always formats it as `+41 NN NNN NN NN`, e.g. `+41 79 000 00 00` ([src/pages/Checkout.jsx:68](src/pages/Checkout.jsx:68)) |
+| `sub7` | `adresse, complement` and the ISO delivery country code outside Switzerland, with empty parts dropped | [server/everflow.mjs](server/everflow.mjs) |
+| `sub8` | Phone | E.164 number with the selected international calling code (for example `+41790000000` or `+33612345678`). The phone selector initially follows the visitor's IP country. |
 | `adv1` | Product label | Approved: `productLabel(offer, lang)` in French, German or English, always starting with the product name and an en dash, then the capsule count. Examples: `Ariel All-in-1 PODS – 2 sachets (120 capsules)`, `Ariel All-in-1 PODS – 2 Beutel (120 Kapseln)`, `Ariel All-in-1 PODS – 2 pouches (120 pods)`. The singular forms are `1 sachet (60 capsules)`, `1 Beutel (60 Kapseln)` and `1 pouch (60 pods)` ([server/everflow.mjs:31](server/everflow.mjs:31)). Generic: the admin "Nom transmis", else `Ariel All-in-1 PODS – N sachet(s)` |
 | `adv2` | Product image URL | Approved: `{PUBLIC_ORIGIN}/images/everflow/pack-N.{webp,png}`. On `/api/checkout/redirect` only, it falls back to the admin photo URL, then to empty (`adv2=` is still present). On `/api/checkout/everflow` the image is required, otherwise 422 `unsupported_offer` ([server/everflow.mjs:121](server/everflow.mjs:121)); local preview uses `http://localhost:5173/...`. Generic: the admin photo URL, else `{origin}/images/packshot.webp`, else left out |
 | `sub1` | Meta `fbclid` if valid, else the Snapchat ScCid | Only with consent, and only on (www.)molipy8trk.com |
 | `fbclid` | Meta click ID | Only with consent, when valid, and only on (www.)molipy8trk.com (always true for the approved builder) |
 | `ScCid` | Snapchat click ID (the request body key is `sccid`) | Only with consent, when valid, and only on (www.)molipy8trk.com (always true for the approved builder) |
-| Any other admin row | Value of the mapped field: `adresse`, `complement`, `offre` (e.g. `pack-2`), `sachets` (e.g. `2`), `prix` (e.g. `15.00`), `pays` (`CH`), or any other `FIELDS` key | Generic builder only. The URL name is the one typed in the row ([src/lib/redirectPayment.js:146](src/lib/redirectPayment.js:146); values from `fieldValue`, [src/lib/redirectPayment.js:119](src/lib/redirectPayment.js:119)) |
+| Any other admin row | Value of the mapped field: `adresse`, `complement`, `offre` (e.g. `pack-2`), `sachets` (e.g. `2`), `prix` (e.g. `15.00`), `pays` (selected ISO country), or any other `FIELDS` key | Generic builder only. The URL name is the one typed in the row ([src/lib/redirectPayment.js](src/lib/redirectPayment.js)) |
 
 **Order.** Approved: `sub10`, `adv3`, `sub3`, `sub4`, `sub6`, `sub7`, `sub8`, then `adv1`, `adv2`, `sub1`, `fbclid`, `ScCid`. Generic: the admin rows in their saved order (the default rows give the same order), then `sub1`, `fbclid`, `ScCid` on (www.)molipy8trk.com. Values are form-encoded by `URLSearchParams`: a space becomes `+` and `@` becomes `%40`.
 
 Differences between the two builders:
 - **Base URL.** Approved: the frozen link. It throws `unapproved_destination` unless the origin is `https://www.molipy8trk.com` ([server/everflow.mjs:82](server/everflow.mjs:82)). Generic: `https://{domain}{pathTemplate}`, with `encodeURIComponent(code)` ([src/lib/redirectPayment.js:144](src/lib/redirectPayment.js:144)).
 - **Parameter names.** Approved: the fixed `PREFILL` list ([server/everflow.mjs:51](server/everflow.mjs:51)). Generic: the admin rows. The default rows use the same names ([src/lib/redirectPayment.js:27](src/lib/redirectPayment.js:27)).
-- **Phone (`sub8`).** Only the approved builder normalises it to `+41` with no spaces ([server/everflow.mjs:90](server/everflow.mjs:90)).
+- **Phone (`sub8`).** The approved builder removes spacing from the validated international number. Legacy Swiss local numbers are still normalized to `+41` ([server/everflow.mjs](server/everflow.mjs)).
 - **Language (`adv1`).** Only the approved builder translates it ([server/index.mjs:222](server/index.mjs:222), [src/lib/orderValidation.js:98](src/lib/orderValidation.js:98)).
   - It uses the `lang` stored with the order the server returns: `fr`, `de` or `en`. A missing or unknown value becomes `fr`.
   - Normally that is the language shown when Buy was clicked. A retry of the same offer updates the stored order, and its `lang` with it.

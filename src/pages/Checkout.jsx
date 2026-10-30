@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { getCountries, getCountryCallingCode, isSupportedCountry } from 'libphonenumber-js/min'
 import {
   ArrowLeft,
   ShoppingBag,
@@ -21,7 +22,8 @@ import { useI18n } from '../i18n/index.jsx'
 import { trackStartCheckout } from '../lib/pixel.js'
 import { trackAnalyticsEvent } from '../lib/analytics.js'
 import { startPayment, isPaymentConfigured, getRedirectPayment, startRedirectPayment } from '../lib/payment.js'
-import { validateCustomer, clean, swissNational } from '../lib/orderValidation.js'
+import { validateCustomer, clean, parsePhone } from '../lib/orderValidation.js'
+import { DELIVERY_COUNTRIES, isDeliveryCountry, postalIsNumeric } from '../config/deliveryCountries.js'
 import { hasAddressService, localitiesFor, streetsFor } from '../lib/address.js'
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import { Packs } from '../concepts/frais/HeroF.jsx'
@@ -40,7 +42,12 @@ import { Swap, useMediaQuery } from '../lib/motion.js'
 const FORM_KEY = 'checkout-form-v1'
 const readForm = () => {
   try {
-    return JSON.parse(sessionStorage.getItem(FORM_KEY)) || {}
+    const saved = JSON.parse(sessionStorage.getItem(FORM_KEY)) || {}
+    if (saved.tel && !saved.phoneCountry) {
+      const phone = parsePhone(saved.tel)
+      if (phone?.isValid()) return { ...saved, tel: phone.formatNational(), phoneCountry: phone.country || 'CH' }
+    }
+    return saved
   } catch {
     return {}
   }
@@ -51,24 +58,20 @@ const CONTACT = [
   { name: 'prenom', autoComplete: 'given-name', half: true, required: true },
   { name: 'nom', autoComplete: 'family-name', half: true, required: true },
   { name: 'email', type: 'email', autoComplete: 'email', inputMode: 'email', required: true },
-  // Indicatif +41 fixe (livraison en Suisse uniquement) : la valeur enregistrée est « +41 79 123 45 67 ».
-  { name: 'tel', type: 'tel', autoComplete: 'tel', inputMode: 'tel', required: true, prefix: '+41' },
+  { name: 'tel', type: 'tel', autoComplete: 'tel', inputMode: 'tel', required: true },
 ]
 const ADDRESS = [
   { name: 'adresse', autoComplete: 'address-line1', required: true },
   { name: 'complement', autoComplete: 'address-line2' },
-  { name: 'npa', autoComplete: 'postal-code', inputMode: 'numeric', maxLength: 4, pattern: '[0-9]*', required: true, zip: true },
+  { name: 'npa', autoComplete: 'postal-code', required: true, zip: true },
   { name: 'ville', autoComplete: 'address-level2', required: true, city: true },
 ]
 const ORDERED = [...CONTACT, ...ADDRESS]
 
 const METHOD_ICONS = { card: CreditCard, visa: CreditCard, mastercard: CreditCard, amex: CreditCard }
 
-// « 79 123 45 67 » à l'écran, « +41 79 123 45 67 » dans les valeurs du formulaire.
-const withPrefix = (f, input) => {
-  const n = swissNational(input)
-  return n ? `${f.prefix} ${n}` : ''
-}
+const PHONE_COUNTRIES = getCountries()
+const flagFor = (country) => String.fromCodePoint(...country.split('').map((c) => 127397 + c.charCodeAt(0)))
 
 function Field({ f: base, value, error, valid, onChange, onBlur, list }) {
   const { t } = useI18n()
@@ -89,15 +92,6 @@ function Field({ f: base, value, error, valid, onChange, onBlur, list }) {
         )}
       </label>
       <div className="relative mt-1.5">
-        {f.prefix && (
-          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center gap-1.5 border-r border-fr-line pl-4 pr-3 text-[1rem] font-semibold text-fr-ink" aria-hidden="true">
-            <svg viewBox="0 0 32 32" className="h-[1.1rem] w-[1.1rem] rounded-[3px]">
-              <rect width="32" height="32" fill="#E30613" />
-              <path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7z" fill="#fff" />
-            </svg>
-            {f.prefix}
-          </span>
-        )}
         <input
           id={id}
           name={f.name}
@@ -109,13 +103,12 @@ function Field({ f: base, value, error, valid, onChange, onBlur, list }) {
           placeholder={f.placeholder}
           required={f.required}
           list={list}
-          value={(f.prefix ? swissNational(value) : value) || ''}
-          aria-label={f.prefix ? t.checkout.prefixAria(f.label, f.prefix) : undefined}
+          value={value || ''}
           aria-invalid={Boolean(error)}
           aria-describedby={described}
-          onChange={(e) => onChange(f.name, f.zip ? e.target.value.replace(/\D/g, '').slice(0, 4) : f.prefix ? withPrefix(f, e.target.value) : e.target.value)}
+          onChange={(e) => onChange(f.name, f.digitsOnly ? e.target.value.replace(/\D/g, '').slice(0, f.maxLength) : e.target.value)}
           onBlur={() => onBlur(f.name)}
-          className={`h-[3.25rem] w-full rounded-2xl border bg-white px-4 pr-11 ${f.prefix ? 'pl-[5.6rem]' : ''} text-[1rem] text-fr-ink outline-none transition-[border-color,box-shadow,background-color] duration-base ease-out-soft placeholder:text-fr-muted/60 focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${
+          className={`h-[3.25rem] w-full rounded-2xl border bg-white px-4 pr-11 text-[1rem] text-fr-ink outline-none transition-[border-color,box-shadow,background-color] duration-base ease-out-soft placeholder:text-fr-muted/60 focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${
             error ? 'border-red-400 bg-red-50/40' : 'border-fr-line hover:border-fr-green/40'
           }`}
         />
@@ -136,6 +129,72 @@ function Field({ f: base, value, error, valid, onChange, onBlur, list }) {
           </p>
         )
       )}
+    </div>
+  )
+}
+
+function PhoneField({ value, country, error, valid, onChange, onCountryChange, onBlur, lang }) {
+  const { t } = useI18n()
+  const f = t.checkout.fields.tel
+  const options = useMemo(() => {
+    const names = new Intl.DisplayNames([lang], { type: 'region' })
+    return PHONE_COUNTRIES.map((code) => ({ code, name: names.of(code) || code, dial: getCountryCallingCode(code) }))
+      .sort((a, b) => a.name.localeCompare(b.name, lang))
+  }, [lang])
+  const dial = `+${getCountryCallingCode(country)}`
+  const handleInput = (raw) => {
+    const phone = /^\s*\+/.test(raw) ? parsePhone(raw) : null
+    if (phone?.isValid() && phone.country) onChange(phone.formatNational(), phone.country)
+    else onChange(raw, country)
+  }
+  return (
+    <div className="col-span-2">
+      <label htmlFor="f-tel" className="block text-[0.86rem] font-bold text-fr-ink">
+        {f.label}<span className="ml-0.5 text-fr-green" aria-hidden="true">*</span>
+      </label>
+      <div className={`mt-1.5 flex h-[3.25rem] overflow-hidden rounded-2xl border bg-white transition-[border-color,box-shadow,background-color] duration-base ease-out-soft focus-within:border-fr-green focus-within:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${error ? 'border-red-400 bg-red-50/40' : 'border-fr-line hover:border-fr-green/40'}`}>
+        <div className="relative flex w-[6.3rem] flex-none items-center justify-center border-r border-fr-line text-[0.9rem] font-semibold text-fr-ink focus-within:ring-2 focus-within:ring-inset focus-within:ring-fr-green">
+          <span aria-hidden="true">{flagFor(country)} {dial} <ChevronDown size={12} className="inline" /></span>
+          <select value={country} onChange={(e) => onCountryChange(e.target.value)} aria-label={t.checkout.phoneCountry} className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
+            {options.map((o) => <option key={o.code} value={o.code}>{o.name} (+{o.dial})</option>)}
+          </select>
+        </div>
+        <input id="f-tel" name="tel" type="tel" inputMode="tel" autoComplete="tel" required
+          value={value || ''} placeholder={country === 'CH' ? f.placeholder : t.checkout.phonePlaceholder}
+          aria-invalid={Boolean(error)} aria-describedby={error ? 'f-tel-err' : f.hint ? 'f-tel-hint' : undefined}
+          onChange={(e) => handleInput(e.target.value)} onBlur={onBlur}
+          className="min-w-0 flex-1 bg-transparent px-3 text-[1rem] text-fr-ink outline-none placeholder:text-fr-muted/60"
+        />
+        {valid && !error && <Check size={17} strokeWidth={2.6} className="mr-4 self-center text-fr-green" aria-hidden="true" />}
+      </div>
+      {error ? (
+        <p id="f-tel-err" key={error} className="mt-1.5 flex animate-reveal-down items-center gap-1.5 text-[0.8rem] font-semibold text-red-600">
+          <AlertCircle size={14} className="flex-none" /> {error}
+        </p>
+      ) : f.hint && <p id="f-tel-hint" className="mt-1.5 text-[0.76rem] text-fr-muted">{f.hint}</p>}
+    </div>
+  )
+}
+
+function DeliveryCountryField({ value, error, onChange, lang }) {
+  const { t } = useI18n()
+  const options = useMemo(() => {
+    const names = new Intl.DisplayNames([lang], { type: 'region' })
+    return DELIVERY_COUNTRIES.map((code) => ({ code, name: names.of(code) || code }))
+      .sort((a, b) => a.name.localeCompare(b.name, lang))
+  }, [lang])
+  return (
+    <div className="col-span-2">
+      <label htmlFor="f-country" className="block text-[0.86rem] font-bold text-fr-ink">{t.checkout.country}<span className="ml-0.5 text-fr-green" aria-hidden="true">*</span></label>
+      <div className="relative mt-1.5">
+        <select id="f-country" name="country" value={value} onChange={(e) => onChange(e.target.value)}
+          aria-invalid={Boolean(error)} aria-describedby={error ? 'f-country-err' : undefined}
+          className={`h-[3.25rem] w-full appearance-none rounded-2xl border bg-white px-4 pr-10 text-[1rem] text-fr-ink outline-none focus:border-fr-green focus:shadow-[0_0_0_4px_rgba(14,122,71,0.12)] ${error ? 'border-red-400' : 'border-fr-line'}`}>
+          {options.map((o) => <option key={o.code} value={o.code}>{o.name} ({o.code})</option>)}
+        </select>
+        <ChevronDown size={17} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-fr-muted" aria-hidden="true" />
+      </div>
+      {error && <p id="f-country-err" className="mt-1.5 flex items-center gap-1.5 text-[0.8rem] font-semibold text-red-600"><AlertCircle size={14} />{error}</p>}
     </div>
   )
 }
@@ -320,7 +379,7 @@ function MethodPicker({ method, setMethod }) {
 
 export default function Checkout() {
   const { offer, hasItems, changeOffer } = useCart()
-  const { t, lang, money, currency, syncCurrency } = useI18n()
+  const { t, lang, country: visitorCountry, money, currency, syncCurrency } = useI18n()
   const c = t.checkout
   const messages = t.validation
   const stock = useStock()
@@ -328,6 +387,9 @@ export default function Checkout() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [values, setValues] = useState(readForm)
+  const shippingCountry = isDeliveryCountry(values.country) ? values.country : isDeliveryCountry(visitorCountry) ? visitorCountry : 'CH'
+  const phoneCountry = isSupportedCountry(values.phoneCountry) ? values.phoneCountry : isSupportedCountry(visitorCountry) ? visitorCountry : 'CH'
+  const formValues = useMemo(() => ({ ...values, country: shippingCountry, phoneCountry }), [values, shippingCountry, phoneCountry])
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [submitted, setSubmitted] = useState(false)
@@ -355,14 +417,14 @@ export default function Checkout() {
   }, [])
   const paymentReady = redirect.enabled || isPaymentConfigured()
   const formComplete = useMemo(() =>
-    Object.keys(validateCustomer(values, { terms })).length === 0,
-  [values, terms])
+    Object.keys(validateCustomer(formValues, { terms })).length === 0,
+  [formValues, terms])
   // Changement de langue : les messages déjà affichés sont réécrits dans la nouvelle langue.
   const firstLang = useRef(lang)
   useEffect(() => {
     if (lang === firstLang.current) return
     firstLang.current = lang
-    setErrors((prev) => (Object.keys(prev).length ? validateCustomer(values, { terms: submitted ? terms : undefined, messages }) : prev))
+    setErrors((prev) => (Object.keys(prev).length ? validateCustomer(formValues, { terms: submitted ? terms : undefined, messages }) : prev))
   }, [lang]) // eslint-disable-line react-hooks/exhaustive-deps
   const canContinue = formComplete && redirect.checked && paymentReady && !soldOut && status !== 'loading'
   // Offre épuisée : le récapitulatif (où l'on change d'offre) s'ouvre aussi sur mobile.
@@ -384,7 +446,7 @@ export default function Checkout() {
 
   // Aide à la saisie : seulement si un service d'adresses réel est configuré.
   useEffect(() => {
-    if (!hasAddressService() || !/^[1-9]\d{3}$/.test(values.npa || '')) {
+    if (shippingCountry !== 'CH' || !hasAddressService() || !/^[1-9]\d{3}$/.test(values.npa || '')) {
       setCities([])
       return
     }
@@ -397,36 +459,39 @@ export default function Checkout() {
     return () => {
       alive = false
     }
-  }, [values.npa]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [values.npa, shippingCountry]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!hasAddressService()) return
+    if (shippingCountry !== 'CH' || !hasAddressService()) {
+      setStreets([])
+      return
+    }
     let alive = true
     const t = setTimeout(() => streetsFor(values.adresse, values.npa).then((l) => alive && setStreets(l)), 250)
     return () => {
       alive = false
       clearTimeout(t)
     }
-  }, [values.adresse, values.npa])
+  }, [values.adresse, values.npa, shippingCountry])
 
-  const set = (name, v) => {
-    const next = { ...values, [name]: v }
+  const set = (name, v, extra = {}) => {
+    const next = { ...formValues, [name]: v, ...extra }
     setValues(next)
     if (touched[name] || submitted) setErrors(validateCustomer(next, { terms: submitted ? terms : undefined, messages }))
   }
   const blur = (name) => {
     setTouched((t) => ({ ...t, [name]: true }))
-    setErrors(validateCustomer(values, { terms: submitted ? terms : undefined, messages }))
+    setErrors(validateCustomer(formValues, { terms: submitted ? terms : undefined, messages }))
   }
   const toggleTerms = (v) => {
     setTerms(v)
-    if (submitted) setErrors(validateCustomer(values, { terms: v, messages }))
+    if (submitted) setErrors(validateCustomer(formValues, { terms: v, messages }))
   }
 
   const focusAlert = () => requestAnimationFrame(() => alertRef.current?.focus())
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    const errs = validateCustomer(values, { terms, messages })
+    const errs = validateCustomer(formValues, { terms, messages })
     setErrors(errs)
     setSubmitted(true)
     if (Object.keys(errs).length) {
@@ -450,7 +515,7 @@ export default function Checkout() {
       if (paymentTab) paymentTab.opener = null
       // Le serveur revalide la commande puis renvoie l'URL de la page de paiement externe.
       // Devise et total affichés : le serveur refuse la commande s'ils ne correspondent plus à ce qu'il encaissera.
-      const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, currency, total: offer.price, lang, customer: clean(values) }, redirect.provider)
+      const res = await startRedirectPayment({ offerId: offer.id, termsAccepted: true, currency, total: offer.price, lang, customer: clean(formValues) }, redirect.provider)
       if (res.status === 'ready') {
         try {
           sessionStorage.setItem(`checkout-payment-v1:${res.orderId}`, res.redirectUrl)
@@ -478,7 +543,7 @@ export default function Checkout() {
       trackAnalyticsEvent('checkoutError')
       if (res.status === 'invalid') {
         // Champs refusés par le serveur, expliqués dans la langue affichée.
-        const local = validateCustomer(values, { terms: true, messages })
+        const local = validateCustomer(formValues, { terms: true, messages })
         setErrors(Object.fromEntries(Object.keys(res.errors).map((k) => [k, local[k] || messages.invalid])))
         setStatus('idle')
       } else if (res.status === 'currency_changed') {
@@ -493,7 +558,7 @@ export default function Checkout() {
       return focusAlert()
     }
     // Le serveur recalcule le montant à partir de l'offre ; aucun total n'est transmis.
-    const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, currency, lang, customer: clean(values) })
+    const res = await startPayment({ offerId: offer.id, method: method || null, termsAccepted: true, currency, lang, customer: clean(formValues) })
     if (res.status !== 'redirecting') {
       inFlight.current = false
       trackAnalyticsEvent('checkoutError')
@@ -508,11 +573,12 @@ export default function Checkout() {
   )
   const errorList = [
     ...ORDERED.filter((f) => shown[f.name]).map((f) => ({ name: f.name, label: c.fields[f.name].label })),
+    ...(shown.country ? [{ name: 'country', label: c.country }] : []),
     ...(shown.terms ? [{ name: 'terms', label: c.termsField }] : []),
   ]
   const isValid = (name) => (touched[name] || submitted) && !errors[name] && Boolean((values[name] || '').trim())
   // Avancement en direct (sans attendre la sortie du champ) : pastilles de section et trait des étapes.
-  const liveErrors = useMemo(() => validateCustomer(values), [values])
+  const liveErrors = useMemo(() => validateCustomer(formValues), [formValues])
   const complete = (f) => !liveErrors[f.name] && Boolean((values[f.name] || '').trim())
   const needed = ORDERED.filter((f) => f.required)
   const sectionDone = (fields) => fields.every((f) => !needed.includes(f) || complete(f))
@@ -611,29 +677,24 @@ export default function Checkout() {
             <Section n={1} title={c.contact} done={sectionDone(CONTACT)}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
                 {CONTACT.map((f) => (
-                  <Field key={f.name} {...fieldProps(f)} />
+                  f.name === 'tel' ? (
+                    <PhoneField key={f.name} value={values.tel} country={phoneCountry} error={shown.tel} valid={isValid('tel')}
+                      lang={lang} onChange={(number, country) => set('tel', number, { phoneCountry: country })}
+                      onCountryChange={(country) => set('tel', '', { phoneCountry: country })} onBlur={() => blur('tel')} />
+                  ) : <Field key={f.name} {...fieldProps(f)} />
                 ))}
               </div>
             </Section>
 
             <Section n={2} title={c.address} done={sectionDone(ADDRESS)} style={{ animationDelay: '50ms' }}>
               <div className="grid grid-cols-2 gap-x-3 gap-y-4 [&>*]:min-w-0">
-                <div className="col-span-2">
-                  <p className="block text-[0.86rem] font-bold text-fr-ink" id="pays-label">
-                    {c.country}
-                  </p>
-                  <p
-                    aria-labelledby="pays-label"
-                    className="mt-1.5 flex h-[3.25rem] items-center justify-between gap-3 rounded-2xl border border-fr-line bg-fr-soft px-4 text-[1rem] text-fr-ink"
-                  >
-                    {t.common.countryWithCode}
-                    <span className="text-right text-[0.72rem] font-semibold leading-tight text-fr-muted">{c.countryOnly}</span>
-                  </p>
-                </div>
+                <DeliveryCountryField value={shippingCountry} error={shown.country} lang={lang}
+                  onChange={(country) => set('country', country, { npa: '', ville: '' })} />
                 {ADDRESS.map((f) => (
                   <Field
                     key={f.name}
-                    {...fieldProps(f)}
+                    {...fieldProps(f.name === 'npa' ? { ...f, digitsOnly: postalIsNumeric(shippingCountry),
+                      inputMode: postalIsNumeric(shippingCountry) ? 'numeric' : 'text', maxLength: shippingCountry === 'CH' ? 4 : 12 } : f)}
                     list={f.name === 'adresse' && streets.length ? 'rues' : f.city && cities.length > 1 ? 'localites' : undefined}
                   />
                 ))}

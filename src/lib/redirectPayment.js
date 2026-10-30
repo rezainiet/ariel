@@ -21,7 +21,7 @@ export const FIELDS = {
   offre: 'Identifiant de l’offre',
   sachets: 'Nombre de sachets',
   prix: 'Prix (CHF)',
-  pays: 'Pays (CH)',
+  pays: 'Pays de livraison',
 }
 
 export const DEFAULT_PARAMS = [
@@ -119,7 +119,7 @@ export function validateConfig(input) {
 function fieldValue(field, { offer, customer, pkg, origin }) {
   switch (field) {
     case 'adresse_complete':
-      return [customer.adresse, customer.complement].filter(Boolean).join(', ')
+      return [customer.adresse, customer.complement, customer.country && customer.country !== 'CH' ? customer.country : ''].filter(Boolean).join(', ')
     case 'produit':
       return pkg.productName || `${PRODUCT.name} – ${offer.packs} sachet${offer.packs > 1 ? 's' : ''}`
     case 'photo':
@@ -131,7 +131,7 @@ function fieldValue(field, { offer, customer, pkg, origin }) {
     case 'prix':
       return offer.price.toFixed(2)
     case 'pays':
-      return 'CH'
+      return customer.country || 'CH'
     default:
       return customer[field] ?? ''
   }

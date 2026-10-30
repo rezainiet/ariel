@@ -50,10 +50,10 @@ Sans voie active, « Acheter » n'envoie rien : le client lit « le paiement en 
 
 ## 3. Livraison — Bloquant pour afficher un délai
 
-Confirmé et affiché : **livraison offerte en Suisse**, livraison en Suisse uniquement.
+Le paiement propose 11 pays de livraison en Europe (`src/config/deliveryCountries.js`) et affiche la livraison offerte vers ces destinations. Vérifier que les trois liens de paiement et le transporteur acceptent chacune d'elles avant la mise en ligne.
 
-- [x] Délai de livraison : **3 jours ouvrables maximum** (fixé le 2026-10-29), affiché sur la page produit, le panier,
-      la FAQ, le contact, la page Livraison et les CGV. `VITE_DELIVERY_ESTIMATE_DAYS` peut le remplacer.
+- [x] Délai de livraison en Suisse : **3 jours ouvrables maximum** (fixé le 2026-10-29), affiché sur la page produit, le panier,
+      la FAQ, le contact, la page Livraison et les CGV. Le délai hors Suisse dépend de la destination. `VITE_DELIVERY_ESTIMATE_DAYS` peut remplacer la valeur suisse.
 - [ ] Lieu d'expédition (`VITE_DISPATCH_CITY`) et transporteur (`VITE_CARRIER`) — sans valeur, masqués.
 
 ## 4. Retours et remboursements — Bloquant

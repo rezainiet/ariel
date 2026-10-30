@@ -1,4 +1,4 @@
-# Ariel — Déstockage en Suisse
+# Ariel — Déstockage
 
 Boutique e-commerce mobile-first (React + Vite + Tailwind) pour les sachets
 **Ariel All-in-1 PODS · 60 capsules**. Direction artistique approuvée : **Concept 2 « Frais »**.
@@ -66,7 +66,7 @@ En développement : lancer `npm run server` (port 8787) en parallèle de `npm ru
 | Route | Contenu |
 | ----- | ------- |
 | `/` | Boutique (annonce, héros + 3 offres, « Pourquoi choisir », livraison & retours, FAQ) |
-| `/checkout` | Commande : coordonnées, adresse suisse, paiement hébergé, récapitulatif modifiable |
+| `/checkout` | Commande : coordonnées, pays de livraison proposé, paiement hébergé, récapitulatif modifiable |
 | `/checkout/confirmation` | Confirmation affichée **uniquement** après vérification serveur du paiement |
 | `/livraison`, `/retours-remboursements`, `/conditions-generales-de-vente`, `/politique-de-confidentialite`, `/mentions-legales`, `/contact` | Pages de service et légales |
 | `/commande` | Ancienne adresse, redirigée vers `/checkout` |
@@ -99,7 +99,7 @@ Captures et notes : `design-review/frais-finition/`.
 | 2 sachets | 2       | 120      | CHF 15.– |
 | 3 sachets | 3       | 180      | CHF 20.– |
 
-Livraison offerte en Suisse. Le serveur recalcule toujours le montant à partir de l'offre.
+Livraison offerte vers les pays proposés au paiement. Le serveur recalcule toujours le montant à partir de l'offre.
 
 ## Configuration
 

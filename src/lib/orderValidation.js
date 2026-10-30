@@ -6,7 +6,9 @@
 // Les messages ne contiennent jamais la valeur saisie (aucune donnée personnelle).
 // ─────────────────────────────────────────────────────────────
 import { getOffer, pricedOffer, BASE_CURRENCY } from '../config/offers.js'
+import { isDeliveryCountry, validPostalCode } from '../config/deliveryCountries.js'
 import { isLang, DEFAULT_LANG } from '../i18n/detect.js'
+import { isSupportedCountry, parsePhoneNumberFromString } from 'libphonenumber-js/min'
 
 // Messages en français (serveur et langue par défaut) ; le navigateur passe ceux de la langue affichée.
 export const DEFAULT_MESSAGES = {
@@ -15,44 +17,41 @@ export const DEFAULT_MESSAGES = {
   email: 'Veuillez indiquer votre adresse e-mail.',
   emailInvalid: 'Adresse e-mail invalide (ex. nom@exemple.ch).',
   tel: 'Veuillez indiquer votre numéro de téléphone.',
-  telInvalid: 'Numéro suisse invalide (ex. 079 123 45 67).',
+  telInvalid: 'Numéro de téléphone invalide. Vérifiez l’indicatif et le numéro.',
+  country: 'Veuillez choisir un pays de livraison disponible.',
   adresse: 'Veuillez indiquer la rue et le numéro.',
   npa: 'Veuillez indiquer le code postal.',
-  npaInvalid: 'Le code postal suisse comporte 4 chiffres (ex. 1003).',
+  npaInvalid: 'Code postal invalide pour le pays choisi.',
   ville: 'Veuillez indiquer la ville.',
   terms: 'Veuillez accepter les conditions générales de vente.',
   invalid: 'Veuillez vérifier ce champ.',
 }
 
-export const FIELDS = ['prenom', 'nom', 'email', 'tel', 'adresse', 'complement', 'npa', 'ville']
-const MAX = { prenom: 60, nom: 60, email: 120, tel: 20, adresse: 120, complement: 120, npa: 4, ville: 60 }
+export const FIELDS = ['prenom', 'nom', 'email', 'tel', 'country', 'adresse', 'complement', 'npa', 'ville']
+const MAX = { prenom: 60, nom: 60, email: 120, tel: 40, country: 2, adresse: 120, complement: 120, npa: 12, ville: 60 }
 
-export const NPA_RE = /^[1-9]\d{3}$/ // code postal suisse : 4 chiffres, 1000–9999
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 // Normalise un numéro : espaces, points, tirets et parenthèses retirés.
 export const normalizePhone = (t) => (t || '').replace(/[\s.\-()/]/g, '')
-// Numéro suisse uniquement : +41 / 0041 / 0 suivi de 9 chiffres (indicatif 2x–9x, ex. 079, 021, 044).
-const PHONE_RE = /^(?:\+41|0041|0)[2-9]\d{8}$/
-
-// Saisie du téléphone avec indicatif fixe +41 : garde les 9 chiffres nationaux, quel que soit
-// ce qui est tapé ou collé (« 079… », « +41 79… », « 0041 79… », autoremplissage du navigateur),
-// et les regroupe à la suisse : « 79 123 45 67 ».
-export function swissNational(input) {
-  const s = String(input || '').trim()
-  let d = s.replace(/\D/g, '')
-  if (s.startsWith('+')) d = d.startsWith('41') ? d.slice(2) : d
-  else if (d.startsWith('0041')) d = d.slice(4)
-  else if (d.startsWith('41') && d.length > 9) d = d.slice(2)
-  if (d.startsWith('0')) d = d.slice(1)
-  d = d.slice(0, 9)
-  return [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean).join(' ')
+// Le pays du téléphone est choisi dans le formulaire (prérempli par GeoIP). Le serveur reçoit
+// ensuite un numéro international ; les anciennes commandes avec un numéro suisse local restent valides.
+export function parsePhone(input, country = 'CH') {
+  const defaultCountry = isSupportedCountry(country) ? country : 'CH'
+  try {
+    return parsePhoneNumberFromString(String(input || ''), { defaultCountry, extract: false })
+  } catch {
+    return undefined
+  }
 }
 
 export function clean(values = {}) {
   const out = {}
   for (const f of FIELDS) out[f] = String(values[f] ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX[f])
   out.email = out.email.toLowerCase()
+  out.country = out.country ? out.country.toUpperCase() : 'CH' // anciennes commandes sans pays
+  const phone = parsePhone(out.tel, values.phoneCountry)
+  if (phone?.isValid()) out.tel = phone.number // E.164 pour les commandes et le prestataire
   return out
 }
 
@@ -66,10 +65,11 @@ export function validateCustomer(values = {}, { terms, messages = DEFAULT_MESSAG
   if (!v.email) e.email = m.email
   else if (!EMAIL_RE.test(v.email)) e.email = m.emailInvalid
   if (!v.tel) e.tel = m.tel
-  else if (!PHONE_RE.test(normalizePhone(v.tel))) e.tel = m.telInvalid
+  else if (!parsePhone(v.tel, values.phoneCountry)?.isValid()) e.tel = m.telInvalid
+  if (!isDeliveryCountry(v.country)) e.country = m.country
   if (!v.adresse) e.adresse = m.adresse
   if (!v.npa) e.npa = m.npa
-  else if (!NPA_RE.test(v.npa)) e.npa = m.npaInvalid
+  else if (!validPostalCode(v.country, v.npa)) e.npa = m.npaInvalid
   if (!v.ville) e.ville = m.ville
   if (terms !== undefined && !terms) e.terms = m.terms
   return e
@@ -86,6 +86,7 @@ export function validateOrder(payload = {}, { enabledMethods = [], currency = BA
   Object.assign(errors, validateCustomer(payload.customer, { terms: payload.termsAccepted === true }))
   if (enabledMethods.length && !enabledMethods.includes(payload.method)) errors.method = 'Moyen de paiement non disponible.'
   if (Object.keys(errors).length) return { ok: false, errors }
+  const customer = clean(payload.customer)
   return {
     ok: true,
     order: {
@@ -94,10 +95,10 @@ export function validateOrder(payload = {}, { enabledMethods = [], currency = BA
       capsules: offer.washes,
       total: offer.price, // recalculé dans la devise du visiteur : jamais le montant envoyé par le navigateur
       currency,
-      country: 'CH',
+      country: customer.country,
       lang: isLang(payload.lang) ? payload.lang : DEFAULT_LANG,
       method: payload.method || null,
-      customer: clean(payload.customer),
+      customer,
     },
   }
 }

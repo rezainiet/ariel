@@ -279,13 +279,13 @@ export function VideoF() {
 // ── Livraison suisse & retours : uniquement des informations confirmées.
 // Trois cartes qui entrent par la droite, l'une après l'autre ; les e-mails de suivi sont résumés dans la carte livraison. ──
 export function ServiceF() {
-  const { t, money, currency } = useI18n()
+  const { t, money, currency, country } = useI18n()
   const sv = t.service
   const from = MERCHANT.dispatchCity ? t.common.inSwitzerland(MERCHANT.dispatchCity) : DELIVERY.dispatchLocation
   const rows = [
     [sv.shippingCost, <span key="f" className="font-bold text-fr-green">{money(0)}</span>],
     [sv.zone, sv.zoneValue],
-    DELIVERY.estimateDays && [sv.eta, sv.etaValue(DELIVERY.estimateDays)],
+    country === 'CH' && DELIVERY.estimateDays && [sv.eta, sv.etaValue(DELIVERY.estimateDays)],
     from && [sv.dispatch, sv.dispatchFrom(from)],
     MERCHANT.carrier && [sv.carrier, MERCHANT.carrier],
   ].filter(Boolean)
