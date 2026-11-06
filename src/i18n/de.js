@@ -169,6 +169,7 @@ const de = {
     yourChoice: 'Ihre Wahl:',
     choiceLine: (packs, washes) => `${beutel(packs)} · ${washes} Kapseln`,
     saveVsSingle: (amount) => `${amount} günstiger als einzeln`,
+    unitComparison: (packs, price) => `${packs} × ${price} einzeln`,
     buyNow: 'Jetzt kaufen',
     offerSoldOutNote: (packs) => `${beutel(packs)}: derzeit ausverkauft. Bitte wählen Sie oben ein anderes Angebot.`,
     added: 'In den Warenkorb gelegt',

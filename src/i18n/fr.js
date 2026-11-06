@@ -170,6 +170,7 @@ const fr = {
     yourChoice: 'Votre choix :',
     choiceLine: (packs, washes) => `${sachets(packs)} · ${washes} capsules`,
     saveVsSingle: (amount) => `${amount} de moins qu’à l’unité`,
+    unitComparison: (packs, price) => `${packs} × ${price} à l’unité`,
     buyNow: 'Acheter maintenant',
     offerSoldOutNote: (packs) => `${sachets(packs)} : épuisé pour le moment. Choisissez une autre offre ci‑dessus.`,
     added: 'Ajouté au panier',

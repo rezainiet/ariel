@@ -290,12 +290,15 @@ function DeliveryEta() {
 function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
   const { t, money } = useI18n()
   const h = t.hero
+  const unitTotal = o.packs * BASE_OFFERS[0].price
+  const bundleSaving = o.packs > 1 ? Math.round((unitTotal - o.price) * 100) / 100 : 0
+  const bundlePercent = bundleSaving > 0 ? Math.round((bundleSaving / unitTotal) * 100) : 0
   return (
     <button
       ref={tabRef}
       role="radio"
       aria-checked={active}
-      aria-label={h.offerAria({ packs: o.packs, washes: o.washes, price: money(o.price), compareAt: o.compareAt && money(o.compareAt), featured: o.featured, soldOut })}
+      aria-label={h.offerAria({ packs: o.packs, washes: o.washes, price: money(o.price), compareAt: o.packs === 1 && o.compareAt ? money(o.compareAt) : null, featured: o.featured, soldOut }) + (bundleSaving > 0 ? `, ${h.saveVsSingle(money(bundleSaving))} (${bundlePercent}%)` : '')}
       tabIndex={active ? 0 : -1}
       onClick={onSelect}
       onKeyDown={onKeyDown}
@@ -341,7 +344,12 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
       </span>
 
       <span className="flex w-full flex-1 flex-col items-center justify-end px-1.5 pb-1.5 lg:px-2 lg:pb-2">
-        {o.compareAt ? (
+        {bundleSaving > 0 ? (
+          <span className="flex flex-col items-center py-1 text-[0.65rem] font-bold leading-tight text-fr-muted min-[380px]:text-[0.72rem] lg:text-[0.82rem]">
+            <span>{h.unitComparison(o.packs, money(BASE_OFFERS[0].price))}</span>
+            <s className="decoration-[#E30613] decoration-[1.5px]">{money(unitTotal)}</s>
+          </span>
+        ) : o.compareAt ? (
           <s className="py-1 text-[0.7rem] font-bold text-fr-muted decoration-[#E30613] decoration-[1.5px] min-[380px]:text-[0.78rem] lg:text-[0.9rem]">{posterPrice(o.compareAt, o.currency, t.common.decimal)}</s>
         ) : (
           <span className="text-[0.82rem]">&nbsp;</span>
@@ -361,6 +369,11 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
             </>
           )}
         </span>
+        {bundleSaving > 0 && (
+          <span className="mt-1.5 inline-flex flex-wrap items-center justify-center gap-x-1 rounded-full bg-fr-mint px-2 py-1 text-[0.62rem] font-extrabold leading-tight text-fr-green min-[380px]:text-[0.7rem] lg:text-[0.8rem]">
+            <span>−{bundlePercent}%</span><span>· {h.saveVsSingle(money(bundleSaving))}</span>
+          </span>
+        )}
       </span>
     </button>
   )

@@ -170,6 +170,7 @@ const en = {
     yourChoice: 'Your choice:',
     choiceLine: (packs, washes) => `${pouches(packs)} · ${washes} pods`,
     saveVsSingle: (amount) => `${amount} less than buying singly`,
+    unitComparison: (packs, price) => `${packs} × ${price} bought singly`,
     buyNow: 'Buy now',
     offerSoldOutNote: (packs) => `${pouches(packs)}: sold out for now. Please choose another offer above.`,
     added: 'Added to basket',
