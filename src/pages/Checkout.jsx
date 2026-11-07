@@ -17,7 +17,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
-import { PRODUCT, PAYMENT_METHODS, PAYMENT_LABELS } from '../config/store.js'
+import { PRODUCT, PAYMENT_METHODS, PAYMENT_LABELS, MERCHANT, pricePerPack } from '../config/store.js'
 import { useI18n } from '../i18n/index.jsx'
 import { trackStartCheckout } from '../lib/pixel.js'
 import { trackAnalyticsEvent } from '../lib/analytics.js'
@@ -378,8 +378,8 @@ function MethodPicker({ method, setMethod }) {
 }
 
 export default function Checkout() {
-  const { offer, hasItems, changeOffer } = useCart()
-  const { t, lang, country: visitorCountry, money, currency, syncCurrency } = useI18n()
+  const { offer, hasItems, changeOffer, selectOffer } = useCart()
+  const { t, lang, country: visitorCountry, money, currency, syncCurrency, offers } = useI18n()
   const c = t.checkout
   const messages = t.validation
   const stock = useStock()
@@ -407,14 +407,29 @@ export default function Checkout() {
   const alertRef = useRef(null)
   const inFlight = useRef(false)
   // Moyen actif : redirection externe (réglée dans /admin) en priorité, sinon prestataire intégré.
+  // Une coupure réseau n'est pas « paiement fermé » : deux nouveaux essais, puis un bouton « Réessayer ».
   const [redirect, setRedirect] = useState({ enabled: false, domain: '', provider: '', checked: false })
+  const [configTry, setConfigTry] = useState(0)
   useEffect(() => {
     let alive = true
-    getRedirectPayment().then((r) => alive && setRedirect({ ...r, checked: true }))
+    const load = async () => {
+      let r = await getRedirectPayment()
+      for (const wait of [800, 2000]) {
+        if (!r.error || !alive) break
+        await new Promise((done) => setTimeout(done, wait))
+        if (alive) r = await getRedirectPayment()
+      }
+      if (alive) setRedirect({ ...r, checked: true })
+    }
+    load()
     return () => {
       alive = false
     }
-  }, [])
+  }, [configTry])
+  const retryConfig = () => {
+    setRedirect((r) => ({ ...r, checked: false, error: false }))
+    setConfigTry((n) => n + 1)
+  }
   const paymentReady = redirect.enabled || isPaymentConfigured()
   const formComplete = useMemo(() =>
     Object.keys(validateCustomer(formValues, { terms })).length === 0,
@@ -427,6 +442,14 @@ export default function Checkout() {
     setErrors((prev) => (Object.keys(prev).length ? validateCustomer(formValues, { terms: submitted ? terms : undefined, messages }) : prev))
   }, [lang]) // eslint-disable-line react-hooks/exhaustive-deps
   const canContinue = formComplete && redirect.checked && paymentReady && !soldOut && status !== 'loading'
+  // Le bouton reste actif tant que la commande est possible : un formulaire incomplet est expliqué au clic
+  // (liste des champs à vérifier) au lieu d'un bouton grisé sans raison.
+  const canSubmit = redirect.checked && paymentReady && !soldOut && status !== 'loading'
+  // Lien « reprendre le paiement » ou lien partagé : /checkout?offre=pack-2 remet l'offre au panier.
+  useEffect(() => {
+    const wanted = params.get('offre')
+    if (wanted && wanted !== offer?.id) changeOffer(wanted)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Offre épuisée : le récapitulatif (où l'on change d'offre) s'ouvre aussi sur mobile.
   useEffect(() => {
     if (soldOut) setShowSummary(true)
@@ -585,12 +608,35 @@ export default function Checkout() {
   const progress = (needed.filter(complete).length + (terms ? 1 : 0)) / (needed.length + 1)
 
   if (!hasItems) {
+    // Panier vide (nouvel onglet, lien partagé, session expirée) : on peut choisir l'offre ici, sans repartir de la boutique.
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-fr-soft px-6 text-center font-jakarta">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-fr-soft px-6 py-12 text-center font-jakarta">
         <Logo />
         <h1 className="mt-8 text-[1.8rem] font-extrabold tracking-[-0.025em] text-fr-ink">{t.cart.empty}</h1>
         <p className="mt-2 max-w-sm text-fr-muted">{c.emptyText}</p>
-        <Link to="/#offres" className="mt-6 flex h-12 items-center rounded-full bg-fr-green px-6 font-bold text-white shadow-[0_12px_26px_rgba(14,122,71,0.28)]">
+        <p className="mt-6 text-[0.86rem] font-bold text-fr-ink">{c.emptyPick}</p>
+        <div className="mt-3 grid w-full max-w-sm gap-2">
+          {offers.map((o) => {
+            const out = isSoldOut(stock, o.id)
+            return (
+              <button
+                key={o.id}
+                type="button"
+                disabled={out}
+                onClick={() => selectOffer(o.id, { openDrawer: false, feedback: false })}
+                className="flex min-h-[3.5rem] items-center gap-3 rounded-2xl bg-white px-4 text-left ring-1 ring-fr-line transition-[box-shadow,transform] duration-base ease-out-soft hover:ring-fr-green motion-safe:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <span className="flex h-10 w-12 flex-none items-end justify-center rounded-xl bg-fr-mint pb-1"><Packs n={o.packs} size="sm" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[0.92rem] font-bold text-fr-ink">{c.summary.line(o.packs, o.washes)}</span>
+                  {!out && <span className="block text-[0.74rem] text-fr-muted">{money(Math.round(pricePerPack(o) * 100) / 100)} {t.hero.perPackUnit}</span>}
+                </span>
+                <span className="text-[1rem] font-extrabold tabular-nums text-fr-green">{out ? t.common.soldOut : <Chf v={o.price} format={money} />}</span>
+              </button>
+            )
+          })}
+        </div>
+        <Link to="/#offres" className="mt-5 text-[0.86rem] font-bold text-fr-green underline underline-offset-4">
           {t.cart.seeOffers}
         </Link>
       </div>
@@ -715,8 +761,7 @@ export default function Checkout() {
               </div>
             </Section>
 
-            {!redirect.enabled && (
-              <Section
+            <Section
                 n={3}
                 title={c.payment}
                 style={{ animationDelay: '100ms' }}
@@ -730,6 +775,24 @@ export default function Checkout() {
                 <p className="flex items-center gap-2 rounded-2xl bg-fr-soft p-3.5 text-[0.86rem] text-fr-muted">
                   <Loader2 size={16} className="animate-spin" /> {c.loadingMethods}
                 </p>
+              ) : redirect.enabled ? (
+                // Paiement hébergé dans un nouvel onglet : ce qui va se passer, avant le clic.
+                <ol className="space-y-2.5 rounded-2xl bg-fr-soft p-3.5 text-[0.84rem] leading-relaxed text-fr-ink">
+                  {c.redirectSteps(money(offer.price)).map((step, k) => (
+                    <li key={k} className="flex gap-2.5">
+                      <span className="mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full bg-white text-[0.7rem] font-extrabold text-fr-green ring-1 ring-fr-line" aria-hidden="true">{k + 1}</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : redirect.error && !isPaymentConfigured() ? (
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-[0.86rem] text-amber-900" role="alert">
+                  <AlertCircle size={18} className="flex-none" />
+                  <span className="min-w-0 flex-1">{c.configError}</span>
+                  <button type="button" onClick={retryConfig} className="h-10 rounded-full bg-white px-4 font-bold text-fr-green ring-1 ring-fr-green/40 hover:bg-fr-mint">
+                    {c.retry}
+                  </button>
+                </div>
               ) : paymentReady ? (
                 <div className="space-y-3">
                   {PAYMENT_METHODS.length > 0 && <MethodPicker method={method} setMethod={setMethod} />}
@@ -746,8 +809,7 @@ export default function Checkout() {
                   </span>
                 </p>
               )}
-              </Section>
-            )}
+            </Section>
 
             <div className="animate-fade-up rounded-[1.6rem] bg-white p-5 ring-1 ring-fr-line [animation-delay:150ms] lg:p-6">
               <label
@@ -828,8 +890,7 @@ export default function Checkout() {
 
             <button
               type="submit"
-              disabled={!canContinue}
-              aria-disabled={!canContinue}
+              disabled={!canSubmit}
               data-ready={canContinue}
               className="flex h-[3.75rem] w-full items-center justify-center gap-2.5 rounded-full bg-fr-green text-[1.02rem] font-extrabold uppercase tracking-[0.04em] text-white shadow-[0_14px_28px_rgba(14,122,71,0.28)] transition-[transform,background-color,opacity,box-shadow] duration-base ease-out-soft enabled:hover:bg-[#0C6B3E] can-hover:enabled:hover:-translate-y-px enabled:active:translate-y-0 motion-safe:enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -839,7 +900,7 @@ export default function Checkout() {
                 </>
               ) : soldOut ? (
                 t.common.offerSoldOut
-              ) : redirect.checked && !paymentReady ? (
+              ) : redirect.checked && !paymentReady && !redirect.error ? (
                 c.unavailable
               ) : (
                 <>
@@ -856,6 +917,12 @@ export default function Checkout() {
             </button>
             <p className="text-center text-[0.76rem] leading-relaxed text-fr-muted">
               {paymentReady && c.legal}
+              {MERCHANT.legalName && MERCHANT.city && (
+                <span className="mt-1 block">
+                  {c.seller(MERCHANT.legalName, t.common.inSwitzerland(MERCHANT.city))} ·{' '}
+                  <Link to="/mentions-legales" target="_blank" rel="noopener" className="font-semibold text-fr-green underline">{t.offerFacts.legalLink}</Link>
+                </span>
+              )}
             </p>
           </form>
         </div>

@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, Clock3, Copy, Loader2, Lo
 import { Logo } from '../concepts/frais/ChromeF.jsx'
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx'
 
-import { formatMoney, getOffer, PRODUCT } from '../config/store.js'
+import { formatMoney, getOffer, PRODUCT, STORE } from '../config/store.js'
 import { trackPurchase } from '../lib/pixel.js'
 import { cleanCheckoutUrl } from '../lib/checkoutUrl.js'
 import { useI18n } from '../i18n/index.jsx'
@@ -41,7 +41,10 @@ export default function OrderStatus() {
   const location = useLocation()
   const { t, lang } = useI18n()
   const st = t.status
-  const [state, setState] = useState({ loading: true, order: null, error: false })
+  // error : 'not_found' (référence inconnue) | 'network' (connexion, serveur) | false.
+  // Un rafraîchissement raté garde le bon déjà affiché (stale) au lieu de le remplacer par « introuvable ».
+  const [state, setState] = useState({ loading: true, order: null, error: false, stale: false })
+  const [attempt, setAttempt] = useState(0)
   const [opening, setOpening] = useState(false)
   const [copied, setCopied] = useState(false)
   const openingRef = useRef(false)
@@ -50,13 +53,17 @@ export default function OrderStatus() {
   useEffect(() => {
     let alive = true
     const load = async () => {
+      let failure = 'network'
       try {
         const response = await fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, { cache: 'no-store' })
-        if (!response.ok) throw new Error('not_found')
+        if (response.status === 404) failure = 'not_found'
+        if (!response.ok) throw new Error(failure)
         const order = await response.json()
-        if (alive) setState({ loading: false, order, error: false })
+        if (alive) setState({ loading: false, order, error: false, stale: false })
       } catch {
-        if (alive) setState({ loading: false, order: null, error: true })
+        if (alive) setState((prev) => (prev.order && failure === 'network'
+          ? { ...prev, stale: true }
+          : { loading: false, order: null, error: failure, stale: false }))
       }
     }
     load()
@@ -67,9 +74,13 @@ export default function OrderStatus() {
       alive = false
       window.clearInterval(timer)
     }
-  }, [orderId])
+  }, [orderId, attempt])
+  const retry = () => {
+    setState((prev) => ({ ...prev, loading: !prev.order, error: false }))
+    setAttempt((n) => n + 1)
+  }
 
-  const { loading, order, error } = state
+  const { loading, order, error, stale } = state
   const processing = order?.status === 'processing'
   const confirmed = order?.status === 'confirmed'
   const cancelled = order?.status === 'cancelled'
@@ -125,8 +136,19 @@ export default function OrderStatus() {
           </div>
         ) : error ? (
           <div className="rounded-[1.5rem] bg-white p-6 ring-1 ring-fr-line sm:p-8">
-            <h1 className="font-grotesk text-2xl font-bold">{st.notFound}</h1>
-            <p className="mt-2 text-sm leading-relaxed text-fr-muted">{st.notFoundText}</p>
+            <h1 className="font-grotesk text-2xl font-bold">{error === 'network' ? st.networkTitle : st.notFound}</h1>
+            <p className="mt-2 text-sm leading-relaxed text-fr-muted">{error === 'network' ? st.networkText : st.notFoundText}</p>
+            {error === 'network' && (
+              <button type="button" onClick={retry} className="mt-4 flex min-h-12 items-center rounded-xl bg-fr-green px-5 text-[0.87rem] font-bold text-white">
+                {st.retry}
+              </button>
+            )}
+            {STORE.supportEmail && (
+              <p className="mt-4 text-[0.8rem] text-fr-muted">
+                {st.help}{' '}
+                <a href={`mailto:${STORE.supportEmail}?subject=${encodeURIComponent(orderId)}`} className="font-bold text-fr-green underline">{STORE.supportEmail}</a>
+              </p>
+            )}
           </div>
         ) : (
           <article className="overflow-hidden rounded-[1.5rem] bg-white shadow-[0_20px_70px_rgba(11,61,42,0.09)] ring-1 ring-fr-line animate-fade-up" aria-label={st.voucher}>
@@ -197,9 +219,18 @@ export default function OrderStatus() {
                 </a>
               )}
               {processing && !checkoutUrl && (
-                <Link to="/checkout" className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-fr-green px-4 text-[0.87rem] font-bold text-white">
+                // Autre appareil ou onglet : le lien de paiement n'est plus en mémoire. La commande reprend avec la même offre.
+                <Link to={offer ? `/checkout?offre=${offer.id}` : '/checkout'} className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-fr-green px-4 text-[0.87rem] font-bold text-white">
                   {st.resume}
                 </Link>
+              )}
+              {processing && (
+                <p className="mt-4 rounded-xl bg-fr-soft px-3.5 py-3 text-[0.79rem] leading-[1.5] text-fr-ink">
+                  <strong>{st.paidTitle}</strong>{st.paidText}
+                </p>
+              )}
+              {stale && (
+                <p role="status" className="mt-3 text-[0.74rem] text-fr-muted">{st.stale}</p>
               )}
               {cancelled && <p className="mt-5 rounded-xl bg-fr-soft p-3 text-[0.8rem] text-fr-muted">{st.cancelledNote}</p>}
 
@@ -208,10 +239,16 @@ export default function OrderStatus() {
                   <p className="text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-fr-muted">{st.fullRef}</p>
                   <p className="mt-0.5 break-all font-grotesk text-[0.74rem] font-medium tabular-nums text-fr-ink">{order.orderId}</p>
                 </div>
-                <button type="button" onClick={copyReference} aria-label={st.copy} className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-fr-line text-fr-green transition hover:bg-fr-mint">
+                <button type="button" onClick={copyReference} aria-label={st.copy} className="flex h-11 w-11 flex-none items-center justify-center rounded-lg border border-fr-line text-fr-green transition hover:bg-fr-mint">
                   {copied ? <Check size={16} /> : <Copy size={16} />}
                 </button>
               </div>
+              {STORE.supportEmail && (
+                <p className="mt-3 text-[0.76rem] leading-relaxed text-fr-muted">
+                  {st.help}{' '}
+                  <a href={`mailto:${STORE.supportEmail}?subject=${encodeURIComponent(order.orderId)}`} className="break-all font-bold text-fr-green underline">{STORE.supportEmail}</a>
+                </p>
+              )}
             </div>
           </article>
         )}

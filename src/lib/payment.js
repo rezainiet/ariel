@@ -75,15 +75,16 @@ export async function verifyOrder(sessionId) {
 // Le serveur valide la commande (mêmes règles que le navigateur) puis construit l'URL
 // (domaine + code de l'offre + paramètres). Aucune URL n'est construite côté navigateur.
 // ─────────────────────────────────────────────────────────────
+// `error: true` = réglage illisible (réseau, serveur) : à ne pas confondre avec un paiement désactivé.
 export async function getRedirectPayment() {
   try {
     const res = await fetch('/api/payment/config', { headers: { Accept: 'application/json' }, cache: 'no-store' })
-    if (!res.ok) return { enabled: false, domain: '' }
+    if (!res.ok) return { enabled: false, domain: '', error: true }
     const data = await res.json()
     if (data?.everflow?.enabled === true) return { enabled: true, domain: data.everflow.domain, provider: 'everflow' }
     return { enabled: data?.externalRedirect?.enabled === true, domain: data?.externalRedirect?.domain || '', provider: 'external' }
   } catch {
-    return { enabled: false, domain: '' }
+    return { enabled: false, domain: '', error: true }
   }
 }
 

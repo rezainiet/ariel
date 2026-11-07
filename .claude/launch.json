@@ -4,20 +4,53 @@
     {
       "name": "ariel-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "ariel-server",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["--env-file=.env.server.local", "server/index.mjs"],
+      "runtimeArgs": [
+        "--env-file=.env.server.local",
+        "server/index.mjs"
+      ],
       "port": 8787
     },
     {
       "name": "ariel-geo-test",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["--env-file=.env.server.local", "--env-file=.env.geo-test.local", "server/index.mjs"],
+      "runtimeArgs": [
+        "--env-file=.env.server.local",
+        "--env-file=.env.geo-test.local",
+        "server/index.mjs"
+      ],
       "port": 8787
+    },
+    {
+      "name": "europe-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "../destockage-europe",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
+      "port": 5174
+    },
+    {
+      "name": "europe-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "../destockage-europe/server/index.mjs"
+      ],
+      "port": 8788
     }
   ]
 }

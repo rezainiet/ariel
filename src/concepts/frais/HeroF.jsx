@@ -1,8 +1,8 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Check, ShoppingBag, ArrowRight, Truck, RotateCcw, LockKeyhole, ThermometerSnowflake, Expand, ChevronLeft, ChevronRight, Star, Crown, Shirt, Snowflake, Leaf } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Check, ShoppingBag, ArrowRight, ArrowUpRight, Truck, RotateCcw, LockKeyhole, ThermometerSnowflake, Expand, ChevronLeft, ChevronRight, Star, Crown, Shirt, Snowflake, Leaf, Package, Tag, Info, Building2 } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
-import { OFFERS as BASE_OFFERS, DELIVERY } from '../../config/store.js'
+import { OFFERS as BASE_OFFERS, DELIVERY, MERCHANT, pricePerPack } from '../../config/store.js'
 import { useI18n } from '../../i18n/index.jsx'
 import { IMAGES } from '../../config/assets.js'
 import { useFlash, radioKeyHandler, useSwipe } from '../shared/hooks.js'
@@ -16,8 +16,8 @@ import { deliveryWindow, formatDeliveryWindow } from '../../lib/deliveryWindow.j
 
 // Petite pile de sachets réels (même visuel que le panier).
 export function Packs({ n, size = 'md' }) {
-  const w = { sm: 'w-7', md: 'w-10', lg: 'w-12', offer: 'w-11 min-[380px]:w-14 lg:w-[4.75rem]' }[size]
-  const ml = { sm: '-ml-[1.05rem]', md: '-ml-6', lg: '-ml-7', offer: '-ml-7 min-[380px]:-ml-8 lg:-ml-11' }[size]
+  const w = { sm: 'w-7', md: 'w-10', lg: 'w-12', offer: 'w-10 min-[360px]:w-11 min-[380px]:w-14 lg:w-[4.75rem]' }[size]
+  const ml = { sm: '-ml-[1.05rem]', md: '-ml-6', lg: '-ml-7', offer: '-ml-[1.6rem] min-[360px]:-ml-7 min-[380px]:-ml-8 lg:-ml-11' }[size]
   return (
     <span className="flex items-end" aria-hidden="true">
       {Array.from({ length: n }).map((_, k) => (
@@ -182,7 +182,6 @@ const YELLOW = '#FFE600'
 // Séparateur décimal de la langue affichée (t.common.decimal : virgule en français et en allemand, point en anglais).
 const posterNumber = (v, decimal = (x) => x.replace('.', ',')) => (Number.isInteger(v) ? String(v) : decimal(v.toFixed(2)))
 const posterUnit = (currency) => (currency === 'EUR' ? '€' : currency)
-const posterPrice = (v, currency, decimal) => `${posterNumber(v, decimal)} ${posterUnit(currency)}`
 
 // Croix suisse (drapeau carré).
 function SwissFlag({ className = '' }) {
@@ -256,9 +255,16 @@ function DeliveryEta() {
   const { t, country } = useI18n()
   const d = t.hero.delivery
   const win = useMemo(() => deliveryWindow(new Date(), DELIVERY.estimateDays), [])
+  // Hors de Suisse (ou pays inconnu) : aucun délai n'est promis, mais la zone desservie est nommée.
   if (country !== 'CH') return (
-    <div className="mt-3 flex items-center gap-2 rounded-2xl border border-fr-green/10 bg-white/90 px-4 py-3 font-bold text-fr-green shadow-[0_6px_18px_rgba(11,61,42,0.05)]">
-      <Truck size={19} aria-hidden="true" /> {t.announce.freeDelivery}
+    <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-fr-green/10 bg-white/90 px-4 py-3 shadow-[0_6px_18px_rgba(11,61,42,0.05)]">
+      <Truck size={19} strokeWidth={1.9} className="flex-none text-fr-green" aria-hidden="true" />
+      <span className="min-w-0 text-[0.84rem] font-bold leading-snug text-fr-green">
+        {t.hero.deliveryElsewhere}
+        <Link to="/livraison" className="ml-1.5 whitespace-nowrap text-[0.76rem] font-semibold text-fr-deep underline underline-offset-2">
+          {t.hero.deliveryCountries}
+        </Link>
+      </span>
     </div>
   )
   if (!win) return null
@@ -290,12 +296,15 @@ function DeliveryEta() {
 function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
   const { t, money } = useI18n()
   const h = t.hero
+  const unitTotal = o.packs * BASE_OFFERS[0].price
+  const bundleSaving = o.packs > 1 ? Math.round((unitTotal - o.price) * 100) / 100 : 0
+  const bundlePercent = bundleSaving > 0 ? Math.round((bundleSaving / unitTotal) * 100) : 0
   return (
     <button
       ref={tabRef}
       role="radio"
       aria-checked={active}
-      aria-label={h.offerAria({ packs: o.packs, washes: o.washes, price: money(o.price), compareAt: o.compareAt && money(o.compareAt), featured: o.featured, soldOut })}
+      aria-label={h.offerAria({ packs: o.packs, washes: o.washes, price: money(o.price), compareAt: o.packs === 1 && o.compareAt ? money(o.compareAt) : null, featured: o.featured, soldOut }) + (bundleSaving > 0 ? `, ${h.saveVsSingle(money(bundleSaving))} (${bundlePercent}%)` : '')}
       tabIndex={active ? 0 : -1}
       onClick={onSelect}
       onKeyDown={onKeyDown}
@@ -325,41 +334,59 @@ function OfferCard({ o, active, glow, onSelect, tabRef, onKeyDown, soldOut }) {
           <span className="min-[380px]:hidden">{h.podsShort(o.washes)}</span>
           <span className="hidden min-[380px]:block">{t.common.capsules(o.washes)}</span>
         </span>
+      </span>
+      <span className="block h-1.5 w-full bg-[#FFE600]" aria-hidden="true" />
+
+      <span className="relative flex h-[6rem] w-full items-center justify-center bg-[linear-gradient(180deg,#F4FBF5_0%,#FFFFFF_100%)] px-1 pt-2 lg:h-[7.25rem]">
+        {/* Coche de sélection dans l'angle de l'image : elle ne recouvre plus le nombre de capsules. */}
         <span
-          className={`absolute -bottom-3 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#E30613] text-white ring-[3px] ring-white transition-[transform,opacity] duration-base ease-out-soft lg:h-7 lg:w-7 ${active ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
+          className={`absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#E30613] text-white ring-[3px] ring-white transition-[transform,opacity] duration-base ease-out-soft lg:right-2 lg:top-2 lg:h-7 lg:w-7 ${active ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
           aria-hidden="true"
         >
           <Check size={14} strokeWidth={3} />
         </span>
-      </span>
-      <span className="block h-1.5 w-full bg-[#FFE600]" aria-hidden="true" />
-
-      <span className="flex h-[6rem] w-full items-center justify-center bg-[linear-gradient(180deg,#F4FBF5_0%,#FFFFFF_100%)] px-1 pt-2 lg:h-[7.25rem]">
         <span className={`transition-transform duration-slow ease-out-soft ${active ? 'scale-[1.05]' : ''}`}>
           <Packs n={o.packs} size="offer" />
         </span>
       </span>
 
-      <span className="flex w-full flex-1 flex-col items-center justify-end px-1.5 pb-1.5 lg:px-2 lg:pb-2">
-        {o.compareAt ? (
-          <s className="py-1 text-[0.7rem] font-bold text-fr-muted decoration-[#E30613] decoration-[1.5px] min-[380px]:text-[0.78rem] lg:text-[0.9rem]">{posterPrice(o.compareAt, o.currency, t.common.decimal)}</s>
-        ) : (
-          <span className="text-[0.82rem]">&nbsp;</span>
-        )}
+      {/* Rangées de hauteur fixe, identiques sur chaque carte (référence · prix · remise · prix par sachet) :
+          les prix des trois offres restent alignés et rien ne passe à la ligne sur un téléphone de 320 px.
+          Pour un lot, la référence barrée est « n × prix d'un sachet », jamais un ancien prix. */}
+      <span className="flex w-full flex-1 flex-col items-center justify-end gap-1 px-1.5 pb-2 pt-1.5 lg:gap-1.5 lg:px-2 lg:pb-2.5">
+        <span className="flex h-4 items-center whitespace-nowrap text-[0.62rem] font-bold tabular-nums leading-none text-fr-muted min-[380px]:text-[0.7rem] lg:h-5 lg:text-[0.85rem]" title={bundleSaving > 0 ? h.unitComparison(o.packs, money(BASE_OFFERS[0].price)) : undefined}>
+          {bundleSaving > 0 ? (
+            <s className="decoration-[#E30613] decoration-[1.5px]">{o.packs} × {money(BASE_OFFERS[0].price)}</s>
+          ) : o.compareAt ? (
+            <s className="decoration-[#E30613] decoration-[1.5px]">{money(o.compareAt)}</s>
+          ) : null}
+        </span>
         <span
-          className="flex w-full items-baseline justify-center gap-1 rounded-[0.65rem] py-1.5 leading-none lg:py-2"
+          className="flex w-full items-baseline justify-center gap-0.5 rounded-[0.65rem] py-1.5 leading-none min-[400px]:gap-1 lg:py-2"
           style={{ background: YELLOW, color: RED }}
         >
           {soldOut ? (
             <span className="py-1.5 text-[0.9rem] font-extrabold uppercase text-fr-ink">{t.common.soldOut}</span>
           ) : (
             <>
-              <span className="text-[1.9rem] font-extrabold tracking-[-0.055em] min-[380px]:text-[2.15rem] lg:text-[2.65rem]">
+              <span className="text-[1.35rem] font-extrabold tracking-[-0.055em] min-[360px]:text-[1.6rem] min-[400px]:text-[1.9rem] lg:text-[2.65rem]">
                 {posterNumber(o.price, t.common.decimal)}
               </span>
-              <span className="text-[1rem] font-extrabold tracking-[-0.03em] min-[380px]:text-[1.2rem] lg:text-[1.5rem]">{posterUnit(o.currency)}</span>
+              <span className="text-[0.8rem] font-extrabold tracking-[-0.03em] min-[360px]:text-[0.9rem] min-[400px]:text-[1.15rem] lg:text-[1.5rem]">{posterUnit(o.currency)}</span>
             </>
           )}
+        </span>
+        <span className="flex h-5 items-center lg:h-6">
+          {bundleSaving > 0 && !soldOut && (
+            <span className="whitespace-nowrap rounded-full bg-fr-mint px-2 py-0.5 text-[0.68rem] font-extrabold tabular-nums leading-none text-fr-green min-[380px]:text-[0.74rem] lg:px-2.5 lg:py-1 lg:text-[0.85rem]">
+              −{bundlePercent}%
+            </span>
+          )}
+        </span>
+        {/* Prix par sachet calculé depuis le prix de l'offre : rend les lots comparables d'un coup d'œil. */}
+        <span className={`block text-[0.62rem] font-bold leading-tight text-fr-deep/80 tabular-nums min-[380px]:text-[0.68rem] lg:text-[0.76rem] ${soldOut ? 'invisible' : ''}`}>
+          <span className="whitespace-nowrap">{money(Math.round((o.price / o.packs) * 100) / 100)}</span>{' '}
+          <span className="block whitespace-nowrap font-semibold lg:inline">{h.perPackUnit}</span>
         </span>
       </span>
     </button>
@@ -506,9 +533,45 @@ const BuyBox = forwardRef(function BuyBox({ sel, setSel, status, reviewState }, 
       <p className="mt-3 text-[0.68rem] leading-relaxed text-fr-muted">
         {h.footnote}
       </p>
+      <OfferFacts />
     </div>
   )
 })
+
+// « Le déstockage, en clair » : ce que l'on achète, à qui, à quel prix et comment le retourner.
+// Uniquement des informations déjà confirmées ; la raison du déstockage n'apparaît que si le marchand l'a fournie.
+function OfferFacts() {
+  const { t } = useI18n()
+  const f = t.offerFacts
+  const rows = [
+    [Package, f.product[0], f.product[1]],
+    [Tag, f.price[0], f.price[1]],
+    MERCHANT.clearanceReason && [Info, f.reason, MERCHANT.clearanceReason],
+    MERCHANT.legalName && MERCHANT.city && [Building2, f.seller[0], f.seller[1](MERCHANT.legalName, t.common.inSwitzerland(MERCHANT.city), MERCHANT.uid)],
+    [RotateCcw, f.returns[0], f.returns[1]],
+  ].filter(Boolean)
+  const link = 'inline-flex min-h-[2.5rem] items-center gap-1 font-bold text-fr-green underline-offset-4 hover:underline'
+  return (
+    <section aria-labelledby="destockage-faits" className="mt-5 rounded-[1.25rem] border border-fr-line bg-white p-4 lg:p-5">
+      <h2 id="destockage-faits" className="text-[0.72rem] font-extrabold uppercase tracking-[0.14em] text-fr-green">{f.title}</h2>
+      <dl className="mt-3 space-y-3">
+        {rows.map(([Icon, term, text]) => (
+          <div key={term} className="flex gap-3">
+            <Icon size={18} strokeWidth={1.9} className="mt-0.5 flex-none text-fr-green" aria-hidden="true" />
+            <div className="min-w-0">
+              <dt className="text-[0.8rem] font-bold text-fr-ink">{term}</dt>
+              <dd className="mt-0.5 text-[0.78rem] leading-relaxed text-fr-muted">{text}</dd>
+            </div>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-1 flex flex-wrap gap-x-5 text-[0.78rem]">
+        <Link to="/retours-remboursements" className={link}>{f.returnsLink} <ArrowUpRight size={14} aria-hidden="true" /></Link>
+        <Link to="/mentions-legales" className={link}>{f.legalLink} <ArrowUpRight size={14} aria-hidden="true" /></Link>
+      </p>
+    </section>
+  )
+}
 
 const OFFER_PACKS = Object.fromEntries(BASE_OFFERS.map((o) => [o.id, o.packs]))
 
